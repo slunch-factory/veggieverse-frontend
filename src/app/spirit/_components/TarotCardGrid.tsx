@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TarotOption {
   label: string;
@@ -13,6 +13,8 @@ interface TarotOption {
 interface Question {
   id: number;
   question: string;
+  subtitle?: string;
+  multiSelect?: boolean;
   options: TarotOption[];
 }
 
@@ -37,13 +39,23 @@ export function TarotCardGrid({
 }: TarotCardGridProps) {
   const [hoveredCard, setHoveredCard] = useState<TarotOption | null>(null);
 
+  const isMulti = !!question.multiSelect;
+
+  const isOptionSelected = (value: string) => {
+    const answer = answers[question.id];
+    if (Array.isArray(answer)) return answer.includes(value);
+    return answer === value;
+  };
+
   const handleCardClick = (option: TarotOption) => {
     onSelect(question.id, option.value);
-    setTimeout(() => onNext(), 300);
+    if (!isMulti) {
+      setTimeout(() => onNext(), 300);
+    }
   };
 
   const renderCard = (option: TarotOption, size: "mobile" | "desktop") => {
-    const isSelected = answers[question.id] === option.value;
+    const isSelected = isOptionSelected(option.value);
     const showSelected = isSelected && interactedQuestions.has(question.id);
     const isHovered = hoveredCard?.value === option.value;
     const isMobile = size === "mobile";
@@ -73,6 +85,12 @@ export function TarotCardGrid({
               <span className={isMobile ? "text-sm text-stone-800" : "text-xl text-stone-800"}>{option.label}</span>
             </div>
           )}
+          {/* 멀티셀렉트 체크 표시 */}
+          {isMulti && showSelected && (
+            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#DCFD4A] flex items-center justify-center">
+              <span className="text-xs text-black font-bold">✓</span>
+            </div>
+          )}
         </div>
         <div className={`text-center ${isMobile ? "mt-2 w-[130px]" : "mt-3 w-[192px]"}`}>
           <span className={isMobile ? "text-xs text-stone-800" : "text-base text-stone-800"}>{option.label}</span>
@@ -81,6 +99,13 @@ export function TarotCardGrid({
       </div>
     );
   };
+
+  // 멀티셀렉트에서 선택된 항목이 있는지
+  const hasSelection = (() => {
+    const answer = answers[question.id];
+    if (Array.isArray(answer)) return answer.length > 0;
+    return !!answer;
+  })();
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -95,10 +120,20 @@ export function TarotCardGrid({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <h2 className="text-center text-stone-800 px-8 md:px-0 text-base md:text-xl mb-3">
+            <h2 className="text-center text-stone-800 px-8 md:px-0 text-base md:text-xl mb-1">
               {question.question}
             </h2>
-            <div className="w-full h-px bg-black mt-4" />
+            {question.subtitle && (
+              <p className="text-center text-stone-500 text-xs md:text-sm mb-3">
+                {question.subtitle}
+              </p>
+            )}
+            {isMulti && (
+              <p className="text-center text-xs text-[#8C451D] mb-3">
+                복수 선택 가능
+              </p>
+            )}
+            <div className="w-full h-px bg-black mt-2" />
             <div className="h-1 bg-black" style={{ width: `${progress}%` }} />
           </div>
 
@@ -127,6 +162,23 @@ export function TarotCardGrid({
               )}
             </div>
           </div>
+
+          {/* 멀티셀렉트: 다음 버튼 */}
+          {isMulti && (
+            <div className="flex justify-center">
+              <button
+                onClick={onNext}
+                className={`px-8 py-3 flex items-center gap-2 text-sm transition-colors ${
+                  hasSelection
+                    ? "bg-[#8C451D] text-white cursor-pointer"
+                    : "bg-stone-300 text-stone-500 cursor-pointer"
+                }`}
+              >
+                {hasSelection ? "다음" : "건너뛰기"}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

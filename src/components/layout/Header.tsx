@@ -5,9 +5,9 @@ import Link from "next/link";
 import { User, Menu } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { NavigationDrawer } from "./NavigationDrawer";
-import { LoginModal } from "./LoginModal";
-import { SearchModal } from "./SearchModal";
-import { LogoutConfirmModal } from "./LogoutConfirmModal";
+import { LoginModal } from "../modals/LoginModal";
+import { SearchModal } from "../modals/SearchModal";
+import { LogoutConfirmModal } from "../modals/LogoutConfirmModal";
 
 interface HeaderProps {
   showTopBanner?: boolean;
@@ -23,7 +23,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
   const getSpiritImageUrl = (spiritName: string | null): string | null => {
     if (!spiritName) return null;
     const spiritSlug = spiritName.toLowerCase().replace(/\s+/g, "-");
-    return `/spirits/${spiritSlug}.png`;
+    return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/spirits/${spiritSlug}.png`;
   };
 
   const spiritImageUrl = user?.spiritName ? getSpiritImageUrl(user.spiritName) : null;
@@ -50,7 +50,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/common/logo.png"
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/common/logo.png`}
               alt="SLUNCH FACTORY"
               className="h-9 block object-contain"
             />

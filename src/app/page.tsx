@@ -189,10 +189,14 @@ export default function HomePage() {
           ════════════════════════════════════════════ */}
       <section
         ref={containerRef}
-        className="relative w-full bg-white bg-[url(/images/bg.png)] bg-cover bg-center bg-no-repeat flex flex-col pt-[clamp(40px,8vw,80px)] px-[clamp(20px,5vw,60px)]"
+        className="relative w-full bg-white flex flex-col pt-[clamp(40px,8vw,80px)] px-[clamp(20px,5vw,60px)]"
         style={{
-          minHeight: "calc(100vh-var(--header-h))",
-          height: "calc(100vh-var(--header-h))",
+          backgroundImage: `url(${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/bg.png)`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          minHeight: "calc(100vh - var(--header-h, 0px))",
+          height: "calc(100vh - var(--header-h, 0px))",
           clipPath: "inset(-40px -50px 0 -50px)",
         }}
       >
@@ -269,7 +273,7 @@ export default function HomePage() {
         <div className="flex-1 min-h-[300px]" />
 
         {/* 서브헤드라인 */}
-        <p className="mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(16px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-10">
+        <p className="mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(16px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-10 text-[#C8A000]">
           &ldquo;뭐 먹지?&rdquo; 고민은 내려놓고, 나에게 맞는 한 끼를 발견하세요.
           <br />
           끌리는 재료 3가지만 고르면, 당신의 취향에 꼭 맞는 테이블이 완성됩니다.

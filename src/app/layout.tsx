@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/providers/Providers";
-import { LayoutShell } from "@/components/LayoutShell";
+import { LayoutShell } from "@/components/layout/LayoutShell";
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://slunch.co.kr"),
   title: "VeggieVerse - 슬런치 팩토리",
   description:
     "슬런치 팩토리의 비건 푸드 플랫폼. 건강한 식단, 레시피, 뉴스레터를 만나보세요.",
@@ -13,10 +16,10 @@ export const metadata: Metadata = {
     description: "슬런치 팩토리의 비건 푸드 플랫폼",
     type: "website",
     url: "https://slunch.co.kr/veggieverse",
-    images: [{ url: "/common/logo.png" }],
+    images: [{ url: `${basePath}/common/logo.png` }],
   },
   icons: {
-    icon: "/common/logo.png",
+    icon: `${basePath}/common/logo.png`,
   },
 };
 

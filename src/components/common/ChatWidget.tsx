@@ -16,7 +16,7 @@ export function ChatWidget() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/characters/chatbot.png"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/characters/chatbot.png`}
           alt="챗봇"
           className="w-full h-full object-cover rounded-full"
         />

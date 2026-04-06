@@ -1,7 +1,9 @@
 export const CANVAS_SIZE = 4000;
 export const VIEWPORT_PADDING = 500;
 
-export const PRODUCE_ITEMS = [
+const _BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+const _PRODUCE_ITEMS = [
   { name: "Asparagus", image: "/vege_flot_img/asparagus.png", color: "#7CB342" },
   { name: "Avocado", image: "/vege_flot_img/avocado.png", color: "#558B2F" },
   { name: "Blueberry", image: "/vege_flot_img/blueberry.png", color: "#5C6BC0" },
@@ -40,6 +42,11 @@ export const PRODUCE_ITEMS = [
   { name: "Tomato", image: "/vege_flot_img/tomato.png", color: "#E53935" },
   { name: "Watermelon", image: "/vege_flot_img/watermelon.png", color: "#EF5350" },
 ];
+
+export const PRODUCE_ITEMS = _PRODUCE_ITEMS.map((item) => ({
+  ...item,
+  image: `${_BASE}${item.image}`,
+}));
 
 export const VEGETABLE_NAMES = PRODUCE_ITEMS.map((item) => item.name);
 

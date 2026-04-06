@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import TopControlBar, { TabItem, SortOption } from "@/components/TopControlBar";
+import TopControlBar, { TabItem, SortOption } from "@/components/store/TopControlBar";
 import { Badge } from "@/components/ui/Badge";
 import { getProductThumbnailImages } from "@/utils/productImages";
 
