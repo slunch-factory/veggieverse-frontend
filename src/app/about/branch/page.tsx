@@ -8,7 +8,7 @@ export default function AboutBranchPage() {
         <div className="aspect-[4/3] bg-[#E8E4DF] border-r border-black flex items-center justify-center text-[var(--muted)] text-[14px]">
           [홍대점 이미지]
         </div>
-        <div className="p-12 flex flex-col justify-center">
+        <div className="p-11 flex flex-col justify-center">
           <p className="text-[11px] text-[var(--warm-gray)] uppercase tracking-[0.1em] mb-3">Flagship Store</p>
           <h2 className="text-[24px] mb-6">홍대점</h2>
           <div className="flex flex-col gap-3 mb-6">
@@ -25,7 +25,7 @@ export default function AboutBranchPage() {
               <span className="text-[14px] text-[var(--charcoal)]">02-332-6525</span>
             </div>
           </div>
-          <p className="text-[14px] text-[var(--warm-gray)] leading-[1.7] mb-6">
+          <p className="text-[14px] text-[var(--warm-gray)] leading-[1.7]">
             홍대입구역 3번 출구에서 도보 7분. 작은 골목 안에 있어요. 테이크아웃도 되고, 안에서 먹어도 돼요.
           </p>
           <a href="https://naver.me/Fx3M8pKJ" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 border border-black bg-transparent text-[14px] w-fit">
