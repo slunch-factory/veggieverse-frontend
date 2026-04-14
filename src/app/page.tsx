@@ -273,14 +273,14 @@ export default function HomePage() {
         <div className="flex-1 min-h-[300px]" />
 
         {/* 서브헤드라인 */}
-        <p className="mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(16px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-10 text-[#C8A000]">
+        <p className="bg-gray-50 mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(16px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-10 text-[#C8A000]">
           &ldquo;뭐 먹지?&rdquo; 고민은 내려놓고, 나에게 맞는 한 끼를 발견하세요.
           <br />
           끌리는 재료 3가지만 고르면, 당신의 취향에 꼭 맞는 테이블이 완성됩니다.
         </p>
 
         {/* 본문 */}
-        <p className="text-stone-600 mb-8 md:mb-12 z-30 relative text-center mx-auto text-[16px] leading-[1.8] tracking-[-0.01em] max-w-[800px] px-10">
+        <p className="bg-gray-50 text-stone-600 mb-8 md:mb-12 z-30 relative text-center mx-auto text-[16px] leading-[1.8] tracking-[-0.01em] max-w-[800px] px-10">
         슬런치는 맛있는 한 끼가 거창할 필요 없다고 믿습니다. 바쁜 하루 속에서도 나를 위한 시간, 천천히 음미하는 식사. 우리는 당신의 취향과 라이프스타일에 맞춰 매일의 식탁을 설계합니다. 건강을 위해 맛을 포기하거나, 맛을 위해 건강을 타협하지 않아도 됩니다. 그냥 맛있게 먹었을 뿐인데, 몸도 마음도 가벼워지는 경험. 슬런치가 그 테이블을 열어드릴게요.
         </p>
 
