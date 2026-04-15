@@ -97,25 +97,31 @@ export function TarotCardGrid({
     const isMobile = size === "mobile";
     const showDescription = isMobile || showSelected || isHovered;
 
+    const isAllergyX = currentStep === 3 && option.value !== "no-allergy";
+
     return (
       <div
         key={`${question.id}-${option.value}-${size}`}
-        className="flex flex-col items-center"
+        className="flex flex-col items-center px-2 py-4"
         onMouseEnter={!isMobile ? () => setHoveredCard(option) : undefined}
         onMouseLeave={!isMobile ? () => setHoveredCard(null) : undefined}
       >
+        {/* 외곽: glow + scale 담당 */}
         <div
-          onClick={() => handleCardClick(option)}
-          className={`cursor-pointer rounded-xl overflow-hidden transition-all duration-200 will-change-transform ${
-            showSelected
-              ? "scale-[1.05] shadow-[0_0_16px_rgba(220,253,74,0.6),0_8px_24px_rgba(0,0,0,0.2)]"
+          className={`relative cursor-pointer rounded-xl transition-all duration-200 will-change-transform ${
+            showSelected && isAllergyX
+              ? "scale-[1.05]"
+              : showSelected
+              ? "scale-[1.05]"
               : !isMobile && isHovered
                 ? "scale-[1.02] shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                 : ""
           }`}
+          onClick={() => handleCardClick(option)}
         >
+          {/* 카드 이미지 */}
           <div
-            className={`relative isolate rounded-xl overflow-hidden bg-[#E5E5E5] [backface-visibility:hidden] [clip-path:inset(0_round_0.75rem)] ${
+            className={`relative isolate rounded-xl overflow-hidden bg-[#E5E5E5] [backface-visibility:hidden] ${
               isMobile ? "w-[calc((100vw-72px)/3)] aspect-[5/8]" : "w-[192px] h-[307px]"
             }`}
           >
@@ -127,26 +133,27 @@ export function TarotCardGrid({
                 <span className={isMobile ? "text-sm text-stone-800" : "text-xl text-stone-800"}>{option.label}</span>
               </div>
             )}
-            {/* 3단계(알레르기): 해당 없음 제외, 선택 시 어두운 오버레이 */}
-            {showSelected && currentStep === 3 && option.value !== "no-allergy" && (
+            {/* 3단계 어두운 오버레이 */}
+            {showSelected && isAllergyX && (
               <div className="pointer-events-none absolute inset-0 bg-black/55" />
             )}
-            {/* 선택 표시: 3단계 알레르기 항목은 X, 나머지는 ✓ */}
+            {/* 체크/X 뱃지 — 이미지 내부 */}
             {showSelected && (
-              <div className={`absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center shadow-md ${
-                currentStep === 3 && option.value !== "no-allergy" ? "bg-neutral-600" : "bg-[#DCFD4A]"
+              <div className={`absolute top-2 right-2 z-[1] w-5 h-5 rounded-full flex items-center justify-center shadow-md ${
+                isAllergyX ? "bg-neutral-600" : "bg-[#DCFD4A]"
               }`}>
-                <span className={`text-xs font-bold ${currentStep === 3 && option.value !== "no-allergy" ? "text-white" : "text-[#8C451D]"}`}>{currentStep === 3 && option.value !== "no-allergy" ? "✕" : "✓"}</span>
+                <span className={`text-xs font-bold ${isAllergyX ? "text-white" : "text-[#8C451D]"}`}>{isAllergyX ? "✕" : "✓"}</span>
               </div>
             )}
-            {showSelected && (
-              <div className={`pointer-events-none absolute inset-0 rounded-xl ${
-                currentStep === 3 && option.value !== "no-allergy"
-                  ? "border-[2px] border-neutral-400 shadow-[inset_0_0_0_1px_rgba(160,160,160,0.3),0_0_14px_rgba(115,115,115,0.5),0_0_28px_rgba(115,115,115,0.25)]"
-                  : "border-[2.5px] border-[#DCFD4A] shadow-[inset_0_0_0_1px_rgba(220,253,74,0.3),0_0_14px_rgba(220,253,74,0.65),0_0_32px_rgba(220,253,74,0.35),0_0_48px_rgba(220,253,74,0.15)]"
-              }`} />
-            )}
           </div>
+          {/* 선택 테두리 + glow — 외곽 기준, 이미지 clip 밖 */}
+          {showSelected && (
+            <div className={`pointer-events-none absolute inset-0 rounded-xl ${
+              isAllergyX
+                ? "border-[2px] border-neutral-600 shadow-[0_0_14px_rgba(82,82,82,0.5),0_0_28px_rgba(82,82,82,0.25)]"
+                : "border-[2.5px] border-[#DCFD4A] shadow-[0_0_14px_rgba(220,253,74,0.65),0_0_32px_rgba(220,253,74,0.35),0_0_48px_rgba(220,253,74,0.15)]"
+            }`} />
+          )}
         </div>
         <div className={`text-center [word-break:keep-all] ${isMobile ? "mt-3 w-[calc((100vw-72px)/3)]" : "mt-5 w-[192px]"}`}>
           <span className={isMobile ? "text-[10px] leading-tight text-stone-800" : "text-base text-stone-800"}>{option.label}</span>
@@ -281,7 +288,7 @@ export function TarotCardGrid({
               </div>
             </aside>
 
-            <section className="rounded-2xl border border-[#8C451D]/10 bg-white/35 p-2.5 sm:p-3 md:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+            <section className="rounded-2xl border border-[#8C451D]/10 bg-white/35 p-2.5 sm:p-3 md:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.04)] overflow-visible">
               <div className="relative md:hidden -mx-1.5 w-[calc(100%+12px)] sm:-mx-2 sm:w-[calc(100%+16px)]">
                 <div
                   ref={mobileScrollRef}
