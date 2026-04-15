@@ -26,19 +26,19 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
     options: [
       {
         label: "비건",
-        description: "동물성 식품을 일체 섭취하지 않아요",
+        description: "동물성 식품(고기, 생선, 유제품, 계란 등)을 모두 섭취하지 않습니다",
         value: "vegan",
         tarot: { number: "I", title: "The Garden.", image: "/images/tarot/diet-type/garden.png" },
       },
       {
         label: "페스코",
-        description: "육류는 먹지 않지만 생선과 해산물은 먹어요",
+        description: "육류는 섭취하지 않지만, 생선과 해산물은 섭취합니다",
         value: "pesco",
         tarot: { number: "II", title: "The Sea.", image: "/images/tarot/diet-type/ocean.png" },
       },
       {
         label: "폴로",
-        description: "붉은 고기는 먹지 않지만 닭고기와 생선은 먹어요",
+        description: "붉은 고기는 섭취하지 않지만, 닭고기와 생선은 섭취합니다",
         value: "pollo",
         tarot: { number: "III", title: "The Dawn.", image: "/images/tarot/diet-type/dawn.png" },
       },
@@ -53,31 +53,31 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
     options: [
       {
         label: "플랜트 베이스드",
-        description: "식물성 원재료 중심의 식단을 지향해요",
+        description: "식물성 식품 위주로 구성된 식단을 선호합니다",
         value: "plant-based",
         tarot: { number: "IV", title: "The Seed.", image: "/images/tarot/diet-type/garden.png" },
       },
       {
         label: "저탄수화물",
-        description: "탄수화물 섭취를 줄이고 싶어요",
+        description: "탄수화물 섭취를 제한한 식단을 선호합니다",
         value: "low-carb",
         tarot: { number: "V", title: "The Scale.", image: "/images/tarot/priority/scale.png" },
       },
       {
         label: "저칼로리",
-        description: "전체 칼로리 섭취를 낮추고 싶어요",
+        description: "총 열량을 낮춘 식단을 선호합니다",
         value: "low-calories",
         tarot: { number: "VI", title: "The Feather.", image: "/images/tarot/priority/wind.png" },
       },
       {
         label: "고단백",
-        description: "단백질 섭취를 높이고 싶어요",
+        description: "단백질 함량이 높은 식단을 선호합니다",
         value: "high-protein",
         tarot: { number: "VII", title: "The Forge.", image: "/images/tarot/meal-meaning/tree.png" },
       },
       {
         label: "저나트륨",
-        description: "나트륨(소금) 섭취를 줄이고 싶어요",
+        description: "나트륨 함량을 낮춘 식단을 선호합니다",
         value: "low-sodium",
         tarot: { number: "VIII", title: "The Stream.", image: "/images/tarot/food-mood/silence.png" },
       },
@@ -92,19 +92,19 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
     options: [
       {
         label: "견과류",
-        description: "호두, 아몬드, 캐슈넛 등에 알레르기가 있어요",
+        description: "견과류가 포함되지 않은 식단을 선호합니다",
         value: "tree-nuts",
         tarot: { number: "IX", title: "The Nut.", image: "/images/tarot/food-mood/heritage.png" },
       },
       {
         label: "땅콩",
-        description: "땅콩 및 땅콩 가공식품에 알레르기가 있어요",
+        description: "땅콩 및 관련 식품이 포함되지 않은 식단을 선호합니다",
         value: "peanuts",
         tarot: { number: "X", title: "The Earth.", image: "/images/tarot/veg-reason/earth.png" },
       },
       {
         label: "유제품",
-        description: "우유, 치즈, 버터 등 유제품에 알레르기가 있어요",
+        description: "유제품이 포함되지 않은 식단을 선호합니다",
         value: "dairy",
         tarot: { number: "XI", title: "The Milkyway.", image: "/images/tarot/diet-option/milkyway.png" },
       },
@@ -123,14 +123,14 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
     subtitle: "평소 매운맛 선호 여부를 선택해주세요.",
     options: [
       {
-        label: "Yes",
-        description: "매운맛을 선호해요.",
+        label: "매운맛이 강한 음식을 선호해요.",
+        description: "",
         value: "spicy-yes",
         tarot: { number: "XII", title: "The Flame.", image: "/images/tarot/food-mood/alchemy.png" },
       },
       {
-        label: "No",
-        description: "매운건 잘 못 먹어요. 순한맛을 좋아해요.",
+        label: "매운맛이 약한 순한 음식을 선호해요.",
+        description: "",
         value: "spicy-no",
         tarot: { number: "XIII", title: "The Breeze.", image: "/images/tarot/food-mood/silence.png" },
       },
