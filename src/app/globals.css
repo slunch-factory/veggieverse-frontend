@@ -833,6 +833,20 @@
   background: var(--deep-forest);
 }
 
+.spirit-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.spirit-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.spirit-scroll::-webkit-scrollbar-thumb {
+  background: #8C451D40;
+  border-radius: 4px;
+}
+.spirit-scroll::-webkit-scrollbar-thumb:hover {
+  background: #8C451D80;
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

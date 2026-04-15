@@ -46,6 +46,32 @@ export function TarotCardGrid({
   const desktopScrollRef = useRef<HTMLDivElement>(null);
   const [mobileMoreRight, setMobileMoreRight] = useState(false);
   const [desktopMoreRight, setDesktopMoreRight] = useState(false);
+  const [desktopMoreLeft, setDesktopMoreLeft] = useState(false);
+  const [mobileMoreLeft, setMobileMoreLeft] = useState(false);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent, ref: React.RefObject<HTMLDivElement | null>) => {
+    if (!ref.current) return;
+    isDragging.current = true;
+    dragStartX.current = e.pageX - ref.current.offsetLeft;
+    dragScrollLeft.current = ref.current.scrollLeft;
+    ref.current.style.cursor = "grabbing";
+  };
+
+  const handleMouseMove = (e: React.MouseEvent, ref: React.RefObject<HTMLDivElement | null>) => {
+    if (!isDragging.current || !ref.current) return;
+    e.preventDefault();
+    const x = e.pageX - ref.current.offsetLeft;
+    const walk = (x - dragStartX.current) * 1.5;
+    ref.current.scrollLeft = dragScrollLeft.current - walk;
+  };
+
+  const handleMouseUp = (ref: React.RefObject<HTMLDivElement | null>) => {
+    isDragging.current = false;
+    if (ref.current) ref.current.style.cursor = "grab";
+  };
 
   const isMulti = !!question.multiSelect;
   const isFirstStep = currentStep === 1;
@@ -80,15 +106,17 @@ export function TarotCardGrid({
       >
         <div
           onClick={() => handleCardClick(option)}
-          className={`cursor-pointer transition-[transform,box-shadow] duration-200 will-change-transform ${
-            showSelected || (!isMobile && isHovered)
-              ? "scale-[1.02] shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
-              : ""
+          className={`cursor-pointer rounded-xl overflow-hidden transition-all duration-200 will-change-transform ${
+            showSelected
+              ? "scale-[1.05] shadow-[0_0_16px_rgba(220,253,74,0.6),0_8px_24px_rgba(0,0,0,0.2)]"
+              : !isMobile && isHovered
+                ? "scale-[1.02] shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                : ""
           }`}
         >
           <div
             className={`relative isolate rounded-xl overflow-hidden bg-[#E5E5E5] [backface-visibility:hidden] [clip-path:inset(0_round_0.75rem)] ${
-              isMobile ? "w-[130px] h-[208px]" : "w-[192px] h-[307px]"
+              isMobile ? "w-[calc((100vw-72px)/3)] aspect-[5/8]" : "w-[192px] h-[307px]"
             }`}
           >
             {option.tarot?.image ? (
@@ -99,41 +127,32 @@ export function TarotCardGrid({
                 <span className={isMobile ? "text-sm text-stone-800" : "text-xl text-stone-800"}>{option.label}</span>
               </div>
             )}
-            {/* 멀티셀렉트 체크 표시 */}
+            {/* 3단계(알레르기): 해당 없음 제외, 선택 시 어두운 오버레이 */}
+            {showSelected && currentStep === 3 && option.value !== "no-allergy" && (
+              <div className="pointer-events-none absolute inset-0 bg-black/55" />
+            )}
+            {/* 선택 표시: 3단계 알레르기 항목은 X, 나머지는 ✓ */}
             {showSelected && (
-              <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#8C451D] flex items-center justify-center">
-                <span className="text-xs text-white font-bold">✓</span>
+              <div className={`absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center shadow-md ${
+                currentStep === 3 && option.value !== "no-allergy" ? "bg-neutral-600" : "bg-[#DCFD4A]"
+              }`}>
+                <span className={`text-xs font-bold ${currentStep === 3 && option.value !== "no-allergy" ? "text-white" : "text-[#8C451D]"}`}>{currentStep === 3 && option.value !== "no-allergy" ? "✕" : "✓"}</span>
               </div>
             )}
             {showSelected && (
-              <div className="pointer-events-none absolute inset-0 rounded-xl border-[2px] border-[#8C451D] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2),0_10px_22px_rgba(140,69,29,0.18)]" />
+              <div className={`pointer-events-none absolute inset-0 rounded-xl ${
+                currentStep === 3 && option.value !== "no-allergy"
+                  ? "border-[2px] border-neutral-400 shadow-[inset_0_0_0_1px_rgba(160,160,160,0.3),0_0_14px_rgba(115,115,115,0.5),0_0_28px_rgba(115,115,115,0.25)]"
+                  : "border-[2.5px] border-[#DCFD4A] shadow-[inset_0_0_0_1px_rgba(220,253,74,0.3),0_0_14px_rgba(220,253,74,0.65),0_0_32px_rgba(220,253,74,0.35),0_0_48px_rgba(220,253,74,0.15)]"
+              }`} />
             )}
           </div>
         </div>
-        <div className={`text-center ${isMobile ? "mt-2 w-[130px] min-h-[72px]" : "mt-3 w-[192px] min-h-[92px] relative"}`}>
-          {isMobile ? (
-            <>
-              <span className="text-xs text-stone-800">{option.label}</span>
-              <div className="mt-1 overflow-hidden h-10">
-                <div className="leading-snug text-xs text-stone-500 opacity-100 transition-opacity duration-300">
-                  {option.description}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 transition-transform duration-300 ease-out"
-            >
-              <span className="text-base text-stone-800">{option.label}</span>
-              <div className="mt-1 overflow-hidden h-11">
-                <div
-                  className={`leading-snug text-sm text-stone-500 transition-all duration-300 ease-out ${
-                    showDescription ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
-                  }`}
-                >
-                  {option.description}
-                </div>
-              </div>
+        <div className={`text-center [word-break:keep-all] ${isMobile ? "mt-3 w-[calc((100vw-72px)/3)]" : "mt-5 w-[192px]"}`}>
+          <span className={isMobile ? "text-[10px] leading-tight text-stone-800" : "text-base text-stone-800"}>{option.label}</span>
+          {option.description && (
+            <div className={`mt-0.5 ${isMobile ? "leading-snug text-[10px] text-stone-500" : "leading-snug text-sm text-stone-500"}`}>
+              {option.description}
             </div>
           )}
         </div>
@@ -163,6 +182,12 @@ export function TarotCardGrid({
     };
     update(mobileScrollRef.current, setMobileMoreRight);
     update(desktopScrollRef.current, setDesktopMoreRight);
+    if (mobileScrollRef.current) {
+      setMobileMoreLeft(mobileScrollRef.current.scrollLeft > 12);
+    }
+    if (desktopScrollRef.current) {
+      setDesktopMoreLeft(desktopScrollRef.current.scrollLeft > 12);
+    }
   }, []);
 
   useEffect(() => {
@@ -211,13 +236,17 @@ export function TarotCardGrid({
                   <h2 className="mb-2 text-[16px] leading-snug font-semibold text-stone-800 sm:text-[17px] md:text-[21px]">
                     {question.question}
                   </h2>
-                  {question.subtitle && (
-                    <p className="text-[12px] leading-relaxed text-stone-500 md:text-sm">
-                      {question.subtitle}
-                    </p>
-                  )}
-                  {isMulti && (
-                    <p className="mt-2 md:mt-3 text-xs font-medium text-[#8C451D]">복수 선택 가능</p>
+                  {(question.subtitle || isMulti) && (
+                    <div className="flex items-center gap-2">
+                      {question.subtitle && (
+                        <p className="text-[12px] leading-relaxed text-stone-500 md:text-sm">
+                          {question.subtitle}
+                        </p>
+                      )}
+                      {isMulti && (
+                        <span className="shrink-0 text-xs font-medium text-[#8C451D]">(복수 선택 가능)</span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="shrink-0 flex items-center justify-center md:justify-end md:pt-4">
@@ -256,18 +285,42 @@ export function TarotCardGrid({
               <div className="relative md:hidden -mx-1.5 w-[calc(100%+12px)] sm:-mx-2 sm:w-[calc(100%+16px)]">
                 <div
                   ref={mobileScrollRef}
-                  className="flex overflow-x-auto flex-nowrap gap-2.5 sm:gap-3 overscroll-x-contain [scrollbar-width:thin] snap-x snap-mandatory"
+                  className={`flex gap-2 pt-3 pb-3 ${
+                    question.options.length <= 3
+                      ? "flex-wrap justify-center px-2"
+                      : "overflow-x-auto flex-nowrap overscroll-x-contain no-scrollbar snap-x snap-mandatory"
+                  }`}
                 >
                   {question.options.map((option, index) => (
                     <div
                       key={`single-row-mobile-${question.id}-${option.value}`}
-                      className={`flex-shrink-0 snap-center ${index === 0 ? "ml-2.5 sm:ml-3" : ""} ${index === question.options.length - 1 ? "mr-2.5 sm:mr-3" : ""}`}
+                      className={`${
+                        question.options.length <= 3
+                          ? ""
+                          : `flex-shrink-0 snap-center ${index === 0 ? "ml-2.5 sm:ml-3" : ""} ${index === question.options.length - 1 ? "mr-2.5 sm:mr-3" : ""}`
+                      }`}
                     >
                       {renderCard(option, "mobile")}
                     </div>
                   ))}
                 </div>
-                {mobileMoreRight ? (
+                {mobileMoreLeft && (
+                  <>
+                    <div
+                      className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-14 bg-gradient-to-r from-[#FCFBF7] via-[#FCFBF7]/85 to-transparent"
+                      aria-hidden
+                    />
+                    <button
+                      type="button"
+                      onClick={() => scrollRowBy(mobileScrollRef.current, -Math.min(280, typeof window !== "undefined" ? window.innerWidth * 0.45 : 200))}
+                      className="rounded-btn absolute left-0.5 sm:left-1 top-[45%] z-[2] flex h-9 w-9 sm:h-10 sm:w-10 -translate-y-1/2 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
+                    </button>
+                  </>
+                )}
+                {mobileMoreRight && (
                   <>
                     <div
                       className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-14 bg-gradient-to-l from-[#FCFBF7] via-[#FCFBF7]/85 to-transparent"
@@ -276,19 +329,23 @@ export function TarotCardGrid({
                     <button
                       type="button"
                       onClick={() => scrollRowBy(mobileScrollRef.current, Math.min(280, typeof window !== "undefined" ? window.innerWidth * 0.45 : 200))}
-                      className="rounded-btn absolute right-0.5 sm:right-1 top-1/2 z-[2] flex h-9 w-9 sm:h-10 sm:w-10 -translate-y-1/2 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm"
-                      aria-label="More options"
+                      className="rounded-btn absolute right-0.5 sm:right-1 top-[45%] z-[2] flex h-9 w-9 sm:h-10 sm:w-10 -translate-y-1/2 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
+                      aria-label="Scroll right"
                     >
                       <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
                     </button>
                   </>
-                ) : null}
+                )}
               </div>
 
-              <div className="relative hidden md:block w-full">
+              <div className="relative hidden md:block w-full min-h-[440px]">
                 <div
                   ref={desktopScrollRef}
-                  className="overflow-x-auto [scrollbar-width:thin]"
+                  className="overflow-x-auto no-scrollbar cursor-grab select-none"
+                  onMouseDown={(e) => handleMouseDown(e, desktopScrollRef)}
+                  onMouseMove={(e) => handleMouseMove(e, desktopScrollRef)}
+                  onMouseUp={() => handleMouseUp(desktopScrollRef)}
+                  onMouseLeave={() => handleMouseUp(desktopScrollRef)}
                 >
                   <div className="mx-auto flex w-max flex-nowrap gap-10 p-2">
                     {question.options.map((option) => (
@@ -298,26 +355,38 @@ export function TarotCardGrid({
                     ))}
                   </div>
                 </div>
-                {desktopMoreRight ? (
+                {desktopMoreLeft && (
+                  <>
+                    <div
+                      className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-16 bg-gradient-to-r from-[#FCFBF7] via-[#FCFBF7]/90 to-transparent"
+                      aria-hidden
+                    />
+                    <button
+                      type="button"
+                      onClick={() => scrollRowBy(desktopScrollRef.current, -300)}
+                      className="rounded-btn absolute -left-1 top-[170px] z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+                    </button>
+                  </>
+                )}
+                {desktopMoreRight && (
                   <>
                     <div
                       className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-16 bg-gradient-to-l from-[#FCFBF7] via-[#FCFBF7]/90 to-transparent"
                       aria-hidden
                     />
-                    {/* <button
+                    <button
                       type="button"
-                      onClick={() => scrollRowBy(desktopScrollRef.current, 400)}
-                      className="rounded-btn absolute right-2 top-1/2 z-[2] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm"
-                      aria-label="More options"
+                      onClick={() => scrollRowBy(desktopScrollRef.current, 300)}
+                      className="rounded-btn absolute -right-1 top-[170px] z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
+                      aria-label="Scroll right"
                     >
-                      <ChevronRight className="h-6 w-6" strokeWidth={2.25} />
-                    </button> */}
+                      <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
+                    </button>
                   </>
-                ) : 
-                <div
-                  className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-16 bg-gradient-to-r from-[#FCFBF7] via-[#FCFBF7]/90 to-transparent"
-                  aria-hidden
-                />}
+                )}
               </div>
             </section>
           </div>

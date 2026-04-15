@@ -14,6 +14,7 @@ interface MenuItem {
   name: string;
   path: string;
   subItems?: SubItem[];
+  external?: boolean;
 }
 
 interface NavigationDrawerProps {
@@ -43,6 +44,8 @@ const menuItems: MenuItem[] = [
   { name: "Recipe", path: "/recipe" },
   { name: "Newsletter", path: "/newsletter" },
   { name: "Event", path: "/event" },
+  { name: "Experts", path: "https://slunch-catalog.vercel.app/ko/fob", external: true },
+  { name: "OEM", path: "https://slunch-catalog.vercel.app/ko/oemodm", external: true },
 ];
 
 export function NavigationDrawer({
@@ -82,6 +85,9 @@ export function NavigationDrawer({
   const handleMenuClick = (item: MenuItem) => {
     if (item.subItems) {
       setExpandedMenu(expandedMenu === item.name ? null : item.name);
+    } else if (item.external) {
+      window.open(item.path, "_blank", "noopener,noreferrer");
+      onClose();
     } else {
       router.push(item.path);
       onClose();
