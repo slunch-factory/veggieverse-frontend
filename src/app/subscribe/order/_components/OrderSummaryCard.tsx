@@ -32,6 +32,18 @@ export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCar
 
   const mealEntries = Object.entries(order.mealPlan).sort(([a], [b]) => a.localeCompare(b));
   const itemCount = mealEntries.length;
+
+  /** 날짜별 그룹 — dateKey(YYYY-MM-DD) 기준 */
+  const groupedByDate = (() => {
+    const groups = new Map<string, [string, DisplayMenuData][]>();
+    for (const [slotId, meal] of mealEntries) {
+      const dateKey = slotId.slice(0, 10);
+      const list = groups.get(dateKey) ?? [];
+      list.push([slotId, meal]);
+      groups.set(dateKey, list);
+    }
+    return Array.from(groups.entries()).map(([dateKey, entries]) => ({ dateKey, entries }));
+  })();
   const subtotal = order.totalPrice;
   const discount =
     order.purchaseType === "subscription" ? Math.round(subtotal * SUBSCRIPTION_DISCOUNT_RATE) : 0;
@@ -110,11 +122,11 @@ export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCar
           )}
         </button>
         {mealListOpen && (
-          <ul className="px-6 pb-4 max-h-[240px] overflow-y-auto no-scrollbar">
-            {mealEntries.map(([slotId, meal]) => (
-              <MealLine key={slotId} slotId={slotId} meal={meal} />
+          <div className="pb-4 max-h-[460px] overflow-y-auto no-scrollbar">
+            {groupedByDate.map(({ dateKey, entries }) => (
+              <DateGroup key={dateKey} dateKey={dateKey} entries={entries} />
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
@@ -161,23 +173,77 @@ export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCar
   );
 }
 
-function MealLine({ slotId, meal }: { slotId: string; meal: DisplayMenuData }) {
-  // slotId format: YYYY-MM-DD-{0|1}
-  const parts = slotId.split("-");
-  const d = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
+function DateGroup({
+  dateKey,
+  entries,
+}: {
+  dateKey: string;
+  entries: [string, DisplayMenuData][];
+}) {
+  const d = new Date(dateKey);
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   const dow = WEEKDAY_KO[d.getDay()];
+  const isSun = d.getDay() === 0;
+  const isSat = d.getDay() === 6;
+  const dateTone = isSun ? "text-red-500" : isSat ? "text-blue-500" : "text-gray-800";
+  const dayTotal = entries.reduce((sum, [, m]) => sum + m.price, 0);
+
+  return (
+    <div>
+      <header className="sticky top-0 z-10 bg-gray-50 px-4 py-2 border-y border-gray-200 flex items-baseline justify-between">
+        <div className="flex items-baseline gap-2">
+          <span className={`text-[14px] leading-none tracking-tight ${dateTone}`}>
+            {mm}.{dd}
+          </span>
+          <span className={`text-[11px] ${dateTone}`}>{dow}</span>
+          <span className="text-[10px] text-gray-400">· {entries.length}끼</span>
+        </div>
+        <span className="text-[11px] text-gray-500">{dayTotal.toLocaleString()}원</span>
+      </header>
+      <ul className="px-4">
+        {entries.map(([slotId, meal]) => (
+          <MealCartItem key={slotId} slotId={slotId} meal={meal} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function MealCartItem({ slotId, meal }: { slotId: string; meal: DisplayMenuData }) {
+  // slotId format: YYYY-MM-DD-{0|1}
+  const parts = slotId.split("-");
   const mealTime = parts[3] === "0" ? "점심" : "저녁";
 
   return (
-    <li className="flex items-baseline gap-2 py-1.5 border-b border-gray-100 last:border-b-0">
-      <span className="w-[60px] shrink-0 text-[11px] text-gray-500">
-        {mm}.{dd} {dow}
+    <li className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-b-0">
+      <div className="relative w-[64px] h-[64px] shrink-0 overflow-hidden bg-[#F5F5F5] rounded">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={meal.image}
+          alt={meal.displayName}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
+        {meal.isVariation && (
+          <span className="absolute left-1 top-1 bg-[#8C451D] text-white text-[9px] leading-none px-1 py-0.5 rounded">
+            변형
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-700">
+            {mealTime}
+          </span>
+        </div>
+        <p className="text-[13px] text-black leading-tight truncate">{meal.displayName}</p>
+      </div>
+      <span className="text-[13px] text-black shrink-0 self-center">
+        {meal.price.toLocaleString()}원
       </span>
-      <span className="w-[28px] shrink-0 text-[10px] text-gray-400">{mealTime}</span>
-      <span className="flex-1 text-[12px] text-gray-800 truncate">{meal.displayName}</span>
-      <span className="text-[11px] text-gray-500 shrink-0">{meal.price.toLocaleString()}원</span>
     </li>
   );
 }
