@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>소셜 로그인 프론트엔드 구현 가이드 — Naver · Google · Kakao (Next.js 16 App Router)</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #111827;
+      --muted: #4b5563;
+      --line: #e5e7eb;
+      --soft: #f9fafb;
+      --accent: #2f7d32;
+      --accent-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fffbeb;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --naver: #03c75a;
+      --google: #4285f4;
+      --kakao: #fee500;
+      --kakao-fg: #191600;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", Segoe UI, Roboto, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+    header.hero {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    header.hero .eyebrow {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 { font-size: 30px; line-height: 1.3; margin: 0 0 12px; letter-spacing: -0.01em; }
+    h2 { font-size: 22px; margin: 56px 0 12px; padding-top: 16px; border-top: 1px solid var(--line); letter-spacing: -0.005em; }
+    h3 { font-size: 18px; margin: 28px 0 8px; }
+    h4 { font-size: 15px; margin: 18px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    p, li { color: var(--fg); }
+    .lede { color: var(--muted); font-size: 15px; max-width: 70ch; }
+
+    nav.toc {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+    nav.toc h2 {
+      border: none;
+      margin: 0 0 8px;
+      padding: 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    nav.toc ol { margin: 0; padding-left: 20px; }
+    nav.toc li { margin: 4px 0; }
+    nav.toc a { color: var(--fg); text-decoration: none; }
+    nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: var(--warn-soft);
+    }
+    .callout p { margin: 4px 0; }
+    .callout strong { color: var(--accent); }
+    .callout.warn strong { color: var(--warn); }
+
+    code {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 13.5px;
+      background: #f3f4f6;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 16px 18px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.55;
+      margin: 12px 0 20px;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+    .filename {
+      display: inline-block;
+      background: #1e293b;
+      color: #cbd5e1;
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 6px 6px 0 0;
+      margin-bottom: -10px;
+      margin-top: 12px;
+    }
+    .filename + pre { border-top-left-radius: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { background: var(--soft); font-weight: 600; }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .pill.naver .dot { background: var(--naver); }
+    .pill.google .dot { background: var(--google); }
+    .pill.kakao .dot { background: var(--kakao); border: 1px solid #d4d4d4; }
+
+    .provider-card {
+      border: 1px solid var(--line);
+      padding: 4px 28px 28px;
+      background: #fff;
+      border-radius: 0 14px 14px 14px;
+    }
+    .provider-card.naver  { border-top: 4px solid var(--naver); }
+    .provider-card.google { border-top: 4px solid var(--google); }
+    .provider-card.kakao  { border-top: 4px solid var(--kakao); }
+
+    /* ---- Tabs ---- */
+    .tabs { margin: 24px 0 32px; }
+    .tablist {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      appearance: none;
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      padding: 12px 20px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 10px 10px 0 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: -1px;
+      transition: color .15s, background .15s, border-color .15s;
+    }
+    .tab:hover { color: var(--fg); background: var(--soft); }
+    .tab[aria-selected="true"] {
+      color: var(--fg);
+      background: #fff;
+      border-color: var(--line);
+      border-bottom-color: #fff;
+      font-weight: 600;
+    }
+    .tab .swatch {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .tab[data-provider="naver"]  .swatch { background: var(--naver); }
+    .tab[data-provider="google"] .swatch { background: var(--google); }
+    .tab[data-provider="kakao"]  .swatch { background: var(--kakao); border: 1px solid #d4d4d4; }
+    .tabpanel { display: none; padding-top: 0; }
+    .tabpanel.is-active { display: block; }
+
+    .step {
+      counter-increment: step;
+      padding-left: 44px;
+      position: relative;
+      margin: 24px 0;
+    }
+    .step::before {
+      content: counter(step);
+      position: absolute;
+      left: 0; top: 0;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .steps { counter-reset: step; }
+
+    .pkce-flow {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      white-space: pre;
+      overflow-x: auto;
+      line-height: 1.55;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 520px) {
+      .tab { padding: 10px 14px; font-size: 13px; }
+    }
+
+    @media print {
+      .container { padding: 0; max-width: none; }
+      pre { font-size: 11px; }
+      a { color: var(--fg); text-decoration: none; }
+      h2 { page-break-before: auto; }
+      .tablist { display: none; }
+      .tabpanel { display: block !important; page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<header class="hero">
+  <div class="eyebrow">Slunch Veggieverse · Frontend Engineering</div>
+  <h1>소셜 로그인 프론트엔드 구현 가이드<br/>Naver · Google · Kakao</h1>
+  <p class="lede">
+    Next.js 16 App Router · TypeScript · Tailwind v4 · Vercel 환경에서 검증된 OAuth 2.0 Authorization Code Flow(+ PKCE) 기준 구현 가이드.
+    프론트(브라우저)와 Next.js 서버 라우트가 어떻게 협력해야 안전한 소셜 로그인을 만들 수 있는지 단계별로 정리.
+  </p>
+  <div class="pill-row">
+    <span class="pill"><span class="dot"></span>Next.js 16.2 App Router</span>
+    <span class="pill"><span class="dot"></span>TypeScript</span>
+    <span class="pill"><span class="dot"></span>Tailwind v4</span>
+    <span class="pill"><span class="dot"></span>Vercel</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#overview">전체 아키텍처 — OAuth 2.0 Code Flow + PKCE</a></li>
+    <li><a href="#prereq">사전 준비 — 환경 변수와 공통 유틸</a></li>
+    <li><a href="#providers">공급자별 구현 — Naver · Google · Kakao (탭)</a></li>
+    <li><a href="#button">로그인 버튼 컴포넌트(공통)</a></li>
+    <li><a href="#session">세션 / 로그아웃 / 보호 라우트</a></li>
+    <li><a href="#vercel">Vercel 배포 체크리스트</a></li>
+    <li><a href="#troubleshoot">자주 발생하는 오류와 해결</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================== -->
+<h2 id="overview">1. 전체 아키텍처 — OAuth 2.0 Code Flow + PKCE</h2>
+
+<p>
+세 공급자(Naver, Google, Kakao)는 모두 <strong>OAuth 2.0 Authorization Code Flow</strong>를 따릅니다.
+브라우저(SPA)에서 직접 토큰을 교환하면 <code>client_secret</code>이 노출되므로,
+<strong>모든 토큰 교환은 Next.js 서버 라우트(Route Handler)에서 수행</strong>해야 합니다.
+프론트의 역할은 “로그인 시작 버튼”과 “로그인 완료 후 UI 갱신”뿐입니다.
+</p>
+
+<div class="callout">
+  <p><strong>핵심 원칙</strong></p>
+  <p>① <code>client_secret</code>은 절대 브라우저 번들에 포함하지 않는다 (<code>NEXT_PUBLIC_</code> 접두사 금지).<br/>
+     ② <code>state</code>(CSRF 방어) + <code>nonce</code>(replay 방어) + <code>PKCE code_verifier</code>는 서버 측 쿠키에 임시 저장.<br/>
+     ③ 세션 쿠키는 반드시 <code>HttpOnly · Secure · SameSite=Lax</code>로 발급한다.</p>
+</div>
+
+<h3>공통 플로우</h3>
+<pre class="pkce-flow">[Browser] /login 페이지에서 "OOO 로그인" 클릭
+   │  &lt;a href="/api/auth/{provider}/start"&gt;
+   ▼
+[Next.js] /api/auth/{provider}/start  (Route Handler, GET)
+   │  · state, nonce, code_verifier 생성
+   │  · 임시 쿠키 3종(HttpOnly, 5분 TTL) 저장
+   │  · 공급자 인가 URL로 302 redirect
+   ▼
+[Provider 로그인 화면] 사용자가 동의
+   │
+   ▼
+[Next.js] /api/auth/{provider}/callback?code=...&state=...
+   │  · state 일치 검증 (쿠키 vs 쿼리)
+   │  · code + code_verifier → access_token 교환 (서버↔서버)
+   │  · access_token → 사용자 정보 조회
+   │  · 우리 DB에 upsert → 세션 쿠키 발급
+   │  · 임시 쿠키 3종 삭제
+   ▼
+[Browser] redirect_to(원래 가려던 페이지) 로 redirect</pre>
+
+<h3>왜 PKCE를 쓰는가?</h3>
+<p>
+PKCE(Proof Key for Code Exchange)는 본래 모바일/SPA용이지만, 서버 사이드 OAuth에서도 권장됩니다.
+인가 코드가 중간에 탈취돼도 <code>code_verifier</code>를 모르면 토큰 교환이 불가능합니다.
+Google과 Kakao는 표준 PKCE를 지원하고, Naver는 <code>state</code>만 필수입니다(이 가이드는 모두에 PKCE 적용 가능한 형태로 작성).
+</p>
+
+<!-- ============================================================== -->
+<h2 id="prereq">2. 사전 준비 — 환경 변수와 공통 유틸</h2>
+
+<h3>2-1. 환경 변수 (<code>.env.local</code>)</h3>
+<p>로컬과 Vercel 양쪽 모두에 등록합니다. <strong>접두사가 없어야</strong> 서버 전용으로 취급됩니다.</p>
+<div class="filename">.env.local</div>
+<pre><code># 공통
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+SESSION_SECRET=          # `openssl rand -base64 32`로 생성
+
+# Naver
+NAVER_CLIENT_ID=
+NAVER_CLIENT_SECRET=
+NAVER_REDIRECT_URI=http://localhost:3000/api/auth/naver/callback
+
+# Google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+
+# Kakao
+KAKAO_REST_API_KEY=
+KAKAO_CLIENT_SECRET=     # 카카오 콘솔에서 ON으로 활성화한 경우에만
+KAKAO_REDIRECT_URI=http://localhost:3000/api/auth/kakao/callback
+</code></pre>
+
+<div class="callout warn">
+  <p><strong>주의</strong> 프로덕션에서는 <code>NEXT_PUBLIC_APP_URL=https://veggieverse.com</code>처럼 실제 도메인으로 바꾸고,
+  각 <code>*_REDIRECT_URI</code>도 동일 도메인으로 맞춰야 합니다. 콘솔에 등록한 값과 <strong>완전히 같아야</strong>(트레일링 슬래시 포함) callback이 통과합니다.</p>
+</div>
+
+<h3>2-2. 공통 OAuth 유틸</h3>
+<p>state·nonce·PKCE 생성을 한 곳에 모아 둡니다. Web Crypto API만 사용하므로 Edge·Node 양쪽에서 동작합니다.</p>
+
+<div class="filename">src/lib/oauth.ts</div>
+<pre><code>import "server-only";
+
+const enc = new TextEncoder();
+
+function base64url(bytes: ArrayBuffer | Uint8Array): string {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let s = "";
+  for (const x of b) s += String.fromCharCode(x);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function randomString(byteLen = 32): string {
+  const buf = new Uint8Array(byteLen);
+  crypto.getRandomValues(buf);
+  return base64url(buf);
+}
+
+export async function pkceChallenge(verifier: string): Promise&lt;string&gt; {
+  const hash = await crypto.subtle.digest("SHA-256", enc.encode(verifier));
+  return base64url(hash);
+}
+
+export const TEMP_COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 60 * 5, // 5분
+};
+</code></pre>
+
+<h3>2-3. 세션 쿠키 발급/검증 (Jose 사용)</h3>
+<p>인증 라이브러리를 도입하지 않고 직접 JWT 세션을 굴리는 가장 가벼운 패턴입니다.
+Auth.js(NextAuth) v5를 쓰는 선택지도 있지만, Cafe24 SSO 등 <strong>커스텀 세션이 필요한 우리 구조</strong>에서는 직접 구현이 더 명확합니다.</p>
+
+<div class="filename">terminal</div>
+<pre><code>yarn add jose</code></pre>
+
+<div class="filename">src/lib/session.ts</div>
+<pre><code>import "server-only";
+import { cookies } from "next/headers";
+import { SignJWT, jwtVerify } from "jose";
+
+const SESSION_COOKIE = "vv_session";
+const key = new TextEncoder().encode(process.env.SESSION_SECRET!);
+
+export type SessionPayload = {
+  userId: string;
+  provider: "naver" | "google" | "kakao";
+  email?: string;
+  name?: string;
+};
+
+export async function createSession(payload: SessionPayload) {
+  const token = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(key);
+
+  const store = await cookies(); // Next.js 16: async!
+  store.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
+export async function readSession(): Promise&lt;SessionPayload | null&gt; {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
+    return payload as unknown as SessionPayload;
+  } catch {
+    return null;
+  }
+}
+
+export async function destroySession() {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+}
+</code></pre>
+
+<div class="callout">
+  <p><strong>Next.js 16의 변경 포인트</strong></p>
+  <p>· <code>cookies()</code>가 <strong>async</strong>입니다. 반드시 <code>await cookies()</code>로 호출하세요.<br/>
+     · <code>middleware.ts</code>는 <strong>deprecated</strong>되어 <code>proxy.ts</code>로 이름이 바뀌었습니다 (뒤 §5에서 사용).</p>
+</div>
+
+<!-- ============================================================== -->
+<h2 id="providers">3. 공급자별 구현 — Naver · Google · Kakao</h2>
+
+<p>
+각 공급자별로 <strong>① 콘솔 등록 → ② 시작 라우트 → ③ 콜백 라우트</strong> 순서로 구성됩니다.
+탭을 클릭하면 해당 공급자의 가이드만 표시됩니다.
+</p>
+
+<div class="tabs">
+  <div class="tablist" role="tablist" aria-label="OAuth 공급자 선택">
+    <button class="tab" role="tab" data-provider="naver"  aria-selected="true"  aria-controls="panel-naver"  id="tab-naver"><span class="swatch"></span>네이버</button>
+    <button class="tab" role="tab" data-provider="google" aria-selected="false" aria-controls="panel-google" id="tab-google"><span class="swatch"></span>Google</button>
+    <button class="tab" role="tab" data-provider="kakao"  aria-selected="false" aria-controls="panel-kakao"  id="tab-kakao"><span class="swatch"></span>카카오</button>
+  </div>
+
+  <!-- ===== Naver Panel ===== -->
+  <section class="tabpanel is-active" role="tabpanel" id="panel-naver" aria-labelledby="tab-naver">
+    <div class="provider-card naver">
+      <div class="pill-row" style="margin-top:16px">
+        <span class="pill naver"><span class="dot"></span>Provider: Naver</span>
+        <span class="pill naver"><span class="dot"></span>Spec: OAuth 2.0 (state 필수, PKCE 미지원이지만 호환 가능)</span>
+      </div>
+
+      <div class="steps">
+
+        <div class="step">
+          <h3>네이버 개발자센터에서 애플리케이션 등록</h3>
+          <ol>
+            <li><a href="https://developers.naver.com/apps/" target="_blank">developers.naver.com</a> → <em>Application</em> → <em>애플리케이션 등록</em></li>
+            <li><strong>사용 API</strong>: “네이버 로그인” 추가</li>
+            <li><strong>제공 정보 선택</strong>: 이메일·이름 등 필요한 항목만 체크 (필수 동의/선택 동의 분리됨)</li>
+            <li><strong>서비스 환경</strong>: PC 웹</li>
+            <li><strong>서비스 URL</strong>: <code>https://veggieverse.com</code></li>
+            <li><strong>Callback URL</strong>: <code>https://veggieverse.com/api/auth/naver/callback</code> (개발용으로 <code>http://localhost:3000/...</code>도 함께 등록)</li>
+            <li>등록 후 <em>Client ID / Client Secret</em> 복사 → <code>.env.local</code>에 입력</li>
+          </ol>
+        </div>
+
+        <div class="step">
+          <h3>로그인 시작 라우트</h3>
+          <p>사용자가 <code>/api/auth/naver/start</code>에 GET하면 <code>state</code>를 발급해 쿠키에 저장하고 네이버 인가 URL로 302 리다이렉트합니다.</p>
+          <div class="filename">src/app/api/auth/naver/start/route.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { randomString, TEMP_COOKIE_OPTS } from "@/lib/oauth";
+
+export async function GET(req: NextRequest) {
+  const state = randomString();
+  const next = req.nextUrl.searchParams.get("next") ?? "/";
+
+  const url = new URL("https://nid.naver.com/oauth2.0/authorize");
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", process.env.NAVER_CLIENT_ID!);
+  url.searchParams.set("redirect_uri", process.env.NAVER_REDIRECT_URI!);
+  url.searchParams.set("state", state);
+
+  const store = await cookies();
+  store.set("oauth_state_naver", state, TEMP_COOKIE_OPTS);
+  store.set("oauth_next", next, TEMP_COOKIE_OPTS);
+
+  return NextResponse.redirect(url);
+}
+</code></pre>
+        </div>
+
+        <div class="step">
+          <h3>콜백 라우트</h3>
+          <p>네이버가 <code>code</code>와 <code>state</code>를 붙여 돌아옵니다. 검증 → 토큰 교환 → 사용자 정보 조회 → 세션 발급 순서.</p>
+          <div class="filename">src/app/api/auth/naver/callback/route.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createSession } from "@/lib/session";
+
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get("code");
+  const state = req.nextUrl.searchParams.get("state");
+  const error = req.nextUrl.searchParams.get("error");
+  if (error) return NextResponse.redirect(new URL(`/login?error=${error}`, req.url));
+  if (!code || !state) return NextResponse.redirect(new URL("/login?error=invalid", req.url));
+
+  const store = await cookies();
+  const savedState = store.get("oauth_state_naver")?.value;
+  const next = store.get("oauth_next")?.value ?? "/";
+  if (state !== savedState) {
+    return NextResponse.redirect(new URL("/login?error=state_mismatch", req.url));
+  }
+
+  // 1) code → access_token
+  const tokenRes = await fetch("https://nid.naver.com/oauth2.0/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: process.env.NAVER_CLIENT_ID!,
+      client_secret: process.env.NAVER_CLIENT_SECRET!,
+      code,
+      state,
+    }),
+  });
+  const token = await tokenRes.json();
+  if (!token.access_token) {
+    return NextResponse.redirect(new URL("/login?error=token", req.url));
+  }
+
+  // 2) access_token → 사용자 정보
+  const profileRes = await fetch("https://openapi.naver.com/v1/nid/me", {
+    headers: { Authorization: `Bearer ${token.access_token}` },
+  });
+  const profile = await profileRes.json();
+  // profile.response: { id, email, name, nickname, profile_image, ... }
+
+  // 3) DB upsert (예시)
+  // const user = await upsertUser({ provider: "naver", providerId: profile.response.id, ... });
+
+  // 4) 세션 발급
+  await createSession({
+    userId: profile.response.id,
+    provider: "naver",
+    email: profile.response.email,
+    name: profile.response.name,
+  });
+
+  // 5) 임시 쿠키 정리
+  store.delete("oauth_state_naver");
+  store.delete("oauth_next");
+
+  return NextResponse.redirect(new URL(next, req.url));
+}
+</code></pre>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Google Panel ===== -->
+  <section class="tabpanel" role="tabpanel" id="panel-google" aria-labelledby="tab-google">
+    <div class="provider-card google">
+      <div class="pill-row" style="margin-top:16px">
+        <span class="pill google"><span class="dot"></span>Provider: Google</span>
+        <span class="pill google"><span class="dot"></span>Spec: OAuth 2.0 + OIDC + PKCE 권장</span>
+      </div>
+
+      <div class="steps">
+
+        <div class="step">
+          <h3>Google Cloud Console에서 OAuth 클라이언트 생성</h3>
+          <ol>
+            <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com → APIs &amp; Services → Credentials</a></li>
+            <li><strong>OAuth 동의 화면</strong> 먼저 구성 (User Type: External, 앱 이름·로고·스코프 입력). 테스트 단계에서는 “테스트 사용자”에 본인 Gmail 추가.</li>
+            <li><strong>Credentials → Create Credentials → OAuth client ID</strong></li>
+            <li>Application type: <em>Web application</em></li>
+            <li><strong>Authorized JavaScript origins</strong>: <code>https://veggieverse.com</code>, <code>http://localhost:3000</code></li>
+            <li><strong>Authorized redirect URIs</strong>: <code>https://veggieverse.com/api/auth/google/callback</code>, <code>http://localhost:3000/api/auth/google/callback</code></li>
+            <li>발급된 Client ID / Secret을 <code>.env.local</code>에 입력</li>
+          </ol>
+        </div>
+
+        <div class="step">
+          <h3>로그인 시작 라우트 (PKCE 포함)</h3>
+          <div class="filename">src/app/api/auth/google/start/route.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { randomString, pkceChallenge, TEMP_COOKIE_OPTS } from "@/lib/oauth";
+
+export async function GET(req: NextRequest) {
+  const state = randomString();
+  const nonce = randomString();
+  const verifier = randomString(48);
+  const challenge = await pkceChallenge(verifier);
+  const next = req.nextUrl.searchParams.get("next") ?? "/";
+
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID!);
+  url.searchParams.set("redirect_uri", process.env.GOOGLE_REDIRECT_URI!);
+  url.searchParams.set("scope", "openid email profile");
+  url.searchParams.set("state", state);
+  url.searchParams.set("nonce", nonce);
+  url.searchParams.set("code_challenge", challenge);
+  url.searchParams.set("code_challenge_method", "S256");
+  url.searchParams.set("access_type", "online"); // refresh_token 필요시 "offline"
+  url.searchParams.set("prompt", "select_account");
+
+  const store = await cookies();
+  store.set("oauth_state_google", state, TEMP_COOKIE_OPTS);
+  store.set("oauth_nonce_google", nonce, TEMP_COOKIE_OPTS);
+  store.set("oauth_verifier_google", verifier, TEMP_COOKIE_OPTS);
+  store.set("oauth_next", next, TEMP_COOKIE_OPTS);
+
+  return NextResponse.redirect(url);
+}
+</code></pre>
+        </div>
+
+        <div class="step">
+          <h3>콜백 라우트</h3>
+          <div class="filename">src/app/api/auth/google/callback/route.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createSession } from "@/lib/session";
+
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get("code");
+  const state = req.nextUrl.searchParams.get("state");
+  if (!code || !state) return NextResponse.redirect(new URL("/login?error=invalid", req.url));
+
+  const store = await cookies();
+  const savedState = store.get("oauth_state_google")?.value;
+  const verifier = store.get("oauth_verifier_google")?.value;
+  const next = store.get("oauth_next")?.value ?? "/";
+  if (state !== savedState || !verifier) {
+    return NextResponse.redirect(new URL("/login?error=state_mismatch", req.url));
+  }
+
+  // 1) 토큰 교환
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
+      code_verifier: verifier,
+    }),
+  });
+  const token = await tokenRes.json();
+  if (!token.access_token) {
+    return NextResponse.redirect(new URL("/login?error=token", req.url));
+  }
+
+  // 2) 사용자 정보 (id_token을 디코드해도 되지만 단순화를 위해 userinfo 사용)
+  const userRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { Authorization: `Bearer ${token.access_token}` },
+  });
+  const profile = await userRes.json();
+  // profile: { sub, email, email_verified, name, picture, ... }
+
+  await createSession({
+    userId: profile.sub,
+    provider: "google",
+    email: profile.email,
+    name: profile.name,
+  });
+
+  store.delete("oauth_state_google");
+  store.delete("oauth_nonce_google");
+  store.delete("oauth_verifier_google");
+  store.delete("oauth_next");
+
+  return NextResponse.redirect(new URL(next, req.url));
+}
+</code></pre>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Kakao Panel ===== -->
+  <section class="tabpanel" role="tabpanel" id="panel-kakao" aria-labelledby="tab-kakao">
+    <div class="provider-card kakao">
+      <div class="pill-row" style="margin-top:16px">
+        <span class="pill kakao"><span class="dot"></span>Provider: Kakao</span>
+        <span class="pill kakao"><span class="dot"></span>Spec: OAuth 2.0 + PKCE 지원</span>
+      </div>
+
+      <div class="steps">
+
+        <div class="step">
+          <h3>Kakao Developers에서 앱 등록</h3>
+          <ol>
+            <li><a href="https://developers.kakao.com/console/app" target="_blank">developers.kakao.com → 내 애플리케이션 → 애플리케이션 추가하기</a></li>
+            <li>생성 후 <strong>앱 키</strong> 메뉴에서 <em>REST API 키</em> 복사 → <code>KAKAO_REST_API_KEY</code>에 입력 (이게 <code>client_id</code> 역할)</li>
+            <li><strong>플랫폼 → Web 플랫폼 등록</strong>: 사이트 도메인에 <code>https://veggieverse.com</code>, <code>http://localhost:3000</code></li>
+            <li><strong>카카오 로그인 → 활성화 ON</strong></li>
+            <li><strong>Redirect URI</strong>: <code>https://veggieverse.com/api/auth/kakao/callback</code>, <code>http://localhost:3000/api/auth/kakao/callback</code></li>
+            <li><strong>동의항목</strong>: 닉네임/프로필 이미지/카카오계정(이메일) 등 필요한 것 ON. 이메일은 <em>비즈 앱</em> 전환 후 검수가 필요할 수 있음.</li>
+            <li>(선택) <strong>보안 → Client Secret 생성 → 사용함</strong>으로 두면 <code>KAKAO_CLIENT_SECRET</code>도 함께 사용</li>
+          </ol>
+          <div class="callout warn">
+            <p><strong>주의</strong> 카카오는 “REST API 키”를 OAuth의 <code>client_id</code>로 씁니다. JavaScript 키와 다르니 혼동하지 마세요.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <h3>로그인 시작 라우트 (PKCE 포함)</h3>
+          <div class="filename">src/app/api/auth/kakao/start/route.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { randomString, pkceChallenge, TEMP_COOKIE_OPTS } from "@/lib/oauth";
+
+export async function GET(req: NextRequest) {
+  const state = randomString();
+  const verifier = randomString(48);
+  const challenge = await pkceChallenge(verifier);
+  const next = req.nextUrl.searchParams.get("next") ?? "/";
+
+  const url = new URL("https://kauth.kakao.com/oauth/authorize");
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", process.env.KAKAO_REST_API_KEY!);
+  url.searchParams.set("redirect_uri", process.env.KAKAO_REDIRECT_URI!);
+  url.searchParams.set("state", state);
+  url.searchParams.set("code_challenge", challenge);
+  url.searchParams.set("code_challenge_method", "S256");
+  // 필요한 동의 항목만 강제로 받고 싶다면:
+  // url.searchParams.set("scope", "profile_nickname,account_email");
+
+  const store = await cookies();
+  store.set("oauth_state_kakao", state, TEMP_COOKIE_OPTS);
+  store.set("oauth_verifier_kakao", verifier, TEMP_COOKIE_OPTS);
+  store.set("oauth_next", next, TEMP_COOKIE_OPTS);
+
+  return NextResponse.redirect(url);
+}
+</code></pre>
+        </div>
+
+        <div class="step">
+          <h3>콜백 라우트</h3>
+          <div class="filename">src/app/api/auth/kakao/callback/route.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createSession } from "@/lib/session";
+
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get("code");
+  const state = req.nextUrl.searchParams.get("state");
+  if (!code || !state) return NextResponse.redirect(new URL("/login?error=invalid", req.url));
+
+  const store = await cookies();
+  const savedState = store.get("oauth_state_kakao")?.value;
+  const verifier = store.get("oauth_verifier_kakao")?.value;
+  const next = store.get("oauth_next")?.value ?? "/";
+  if (state !== savedState || !verifier) {
+    return NextResponse.redirect(new URL("/login?error=state_mismatch", req.url));
+  }
+
+  // 1) 토큰 교환
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: process.env.KAKAO_REST_API_KEY!,
+    redirect_uri: process.env.KAKAO_REDIRECT_URI!,
+    code,
+    code_verifier: verifier,
+  });
+  if (process.env.KAKAO_CLIENT_SECRET) {
+    body.set("client_secret", process.env.KAKAO_CLIENT_SECRET);
+  }
+
+  const tokenRes = await fetch("https://kauth.kakao.com/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+    body,
+  });
+  const token = await tokenRes.json();
+  if (!token.access_token) {
+    return NextResponse.redirect(new URL("/login?error=token", req.url));
+  }
+
+  // 2) 사용자 정보
+  const userRes = await fetch("https://kapi.kakao.com/v2/user/me", {
+    headers: { Authorization: `Bearer ${token.access_token}` },
+  });
+  const profile = await userRes.json();
+  // profile: { id, kakao_account: { email, profile: { nickname, profile_image_url } } }
+
+  await createSession({
+    userId: String(profile.id),
+    provider: "kakao",
+    email: profile.kakao_account?.email,
+    name: profile.kakao_account?.profile?.nickname,
+  });
+
+  store.delete("oauth_state_kakao");
+  store.delete("oauth_verifier_kakao");
+  store.delete("oauth_next");
+
+  return NextResponse.redirect(new URL(next, req.url));
+}
+</code></pre>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================== -->
+<h2 id="button">4. 로그인 버튼 컴포넌트(공통)</h2>
+
+<p>
+프론트의 “버튼”은 단순히 <code>/api/auth/{provider}/start</code>로 이동시키는 링크입니다.
+JS 핸들러나 popup 없이 <strong>일반 <code>&lt;a&gt;</code> 태그가 가장 안전</strong>합니다(prefetch 방지를 위해 <code>next/link</code>가 아닌 <code>&lt;a&gt;</code> 사용).
+</p>
+
+<div class="filename">src/components/auth/SocialLoginButtons.tsx</div>
+<pre><code>"use client";
+
+import { usePathname } from "next/navigation";
+
+const providers = [
+  { id: "naver",  label: "네이버로 시작하기",  bg: "bg-[#03C75A] text-white" },
+  { id: "kakao",  label: "카카오로 시작하기",  bg: "bg-[#FEE500] text-[#191600]" },
+  { id: "google", label: "Google로 시작하기",  bg: "bg-white text-gray-800 border border-gray-300" },
+] as const;
+
+export function SocialLoginButtons({ next }: { next?: string }) {
+  const pathname = usePathname();
+  const target = next ?? pathname ?? "/";
+
+  return (
+    &lt;div className="flex flex-col gap-3 w-full max-w-sm"&gt;
+      {providers.map((p) =&gt; (
+        &lt;a
+          key={p.id}
+          href={`/api/auth/${p.id}/start?next=${encodeURIComponent(target)}`}
+          className={`${p.bg} h-12 rounded-xl flex items-center justify-center font-medium text-sm hover:opacity-90 transition`}
+        &gt;
+          {p.label}
+        &lt;/a&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+</code></pre>
+
+<p>그리고 로그인 페이지에서 그대로 사용:</p>
+<div class="filename">src/app/login/page.tsx</div>
+<pre><code>import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
+
+export default function LoginPage() {
+  return (
+    &lt;main className="min-h-screen flex items-center justify-center px-4"&gt;
+      &lt;div className="w-full max-w-sm space-y-8"&gt;
+        &lt;h1 className="text-2xl font-bold text-center"&gt;로그인&lt;/h1&gt;
+        &lt;SocialLoginButtons /&gt;
+      &lt;/div&gt;
+    &lt;/main&gt;
+  );
+}
+</code></pre>
+
+<div class="callout">
+  <p><strong>왜 <code>&lt;a&gt;</code>인가?</strong> <code>&lt;Link&gt;</code>를 쓰면 Next.js가 prefetch를 시도해 <code>/api/auth/google/start</code>가 의도치 않게 호출되고, state·verifier 쿠키가 미리 발급돼버립니다. 일반 <code>&lt;a&gt;</code>가 가장 안전합니다.</p>
+</div>
+
+<!-- ============================================================== -->
+<h2 id="session">5. 세션 / 로그아웃 / 보호 라우트</h2>
+
+<h3>5-1. 현재 사용자 가져오기 (Server Component)</h3>
+<div class="filename">예: src/app/mypage/page.tsx</div>
+<pre><code>import { redirect } from "next/navigation";
+import { readSession } from "@/lib/session";
+
+export default async function MyPage() {
+  const session = await readSession();
+  if (!session) redirect("/login?next=/mypage");
+
+  return (
+    &lt;div className="p-8"&gt;
+      &lt;h1&gt;마이페이지&lt;/h1&gt;
+      &lt;p&gt;{session.name} ({session.provider})&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</code></pre>
+
+<h3>5-2. 클라이언트에서 세션 정보가 필요할 때</h3>
+<p>클라이언트 컴포넌트에서는 직접 쿠키를 읽지 말고, 작은 API를 통해 받아옵니다.</p>
+<div class="filename">src/app/api/auth/me/route.ts</div>
+<pre><code>import { NextResponse } from "next/server";
+import { readSession } from "@/lib/session";
+
+export async function GET() {
+  const session = await readSession();
+  if (!session) return NextResponse.json({ user: null }, { status: 200 });
+  return NextResponse.json({ user: session });
+}
+</code></pre>
+
+<h3>5-3. 로그아웃</h3>
+<div class="filename">src/app/api/auth/logout/route.ts</div>
+<pre><code>import { NextResponse } from "next/server";
+import { destroySession } from "@/lib/session";
+
+export async function POST(req: Request) {
+  await destroySession();
+  const url = new URL("/", req.url);
+  return NextResponse.redirect(url, { status: 303 });
+}
+</code></pre>
+
+<p>버튼 측:</p>
+<pre><code>&lt;form action="/api/auth/logout" method="post"&gt;
+  &lt;button type="submit"&gt;로그아웃&lt;/button&gt;
+&lt;/form&gt;
+</code></pre>
+
+<h3>5-4. 보호 라우트 — Next.js 16의 <code>proxy.ts</code></h3>
+<p>
+Next.js 16부터 <code>middleware.ts</code>는 <strong>deprecated</strong>되고 <code>proxy.ts</code>로 이름이 바뀌었습니다. 위치는 <code>src/proxy.ts</code> (또는 프로젝트 루트의 <code>proxy.ts</code>).
+</p>
+<div class="filename">src/proxy.ts</div>
+<pre><code>import { NextRequest, NextResponse } from "next/server";
+
+const PROTECTED = ["/mypage", "/subscribe"];
+
+export default function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const isProtected = PROTECTED.some((p) =&gt; pathname.startsWith(p));
+  if (!isProtected) return NextResponse.next();
+
+  // 쿠키 존재 여부만 체크(낙관적 검사). 실제 검증은 페이지/DAL에서 readSession()으로.
+  const hasSession = req.cookies.get("vv_session");
+  if (!hasSession) {
+    const url = new URL("/login", req.url);
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
+};
+</code></pre>
+
+<div class="callout warn">
+  <p><strong>왜 proxy에서 JWT 검증을 하지 않나?</strong> <code>proxy.ts</code>는 모든 요청(prefetch 포함)에서 동작하기 때문에 무거운 검증을 하면 성능이 무너집니다. 쿠키 존재 여부만 보는 “낙관적 검사”에 그치고, 실제 신뢰가 필요한 곳(Server Component, Server Action, Route Handler)에서 <code>readSession()</code>으로 다시 검증하세요.</p>
+</div>
+
+<!-- ============================================================== -->
+<h2 id="vercel">6. Vercel 배포 체크리스트</h2>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>설정 방법</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>환경 변수 등록</td>
+      <td>Vercel 프로젝트 → Settings → Environment Variables에 <code>SESSION_SECRET</code>, <code>{NAVER,GOOGLE,KAKAO}_*</code> 모두 등록. <strong>Production / Preview / Development</strong> 환경 분리 가능.</td>
+    </tr>
+    <tr>
+      <td>Redirect URI 일치</td>
+      <td>각 콘솔(Naver/Google/Kakao)에 등록한 Redirect URI가 Vercel의 실제 도메인과 <strong>1자도 다르지 않아야</strong> 함. Preview 도메인(<code>*.vercel.app</code>)은 별도 클라이언트를 만들거나, Preview용 서브 콘솔 등록 권장.</td>
+    </tr>
+    <tr>
+      <td>NEXT_PUBLIC_APP_URL</td>
+      <td>Production은 <code>https://veggieverse.com</code>, Preview는 비워두거나 <code>VERCEL_URL</code>을 활용. 코드에서 <code>req.url</code> 기반으로 redirect를 만들면 도메인 의존을 줄일 수 있음(이 가이드의 예시들이 그 패턴).</td>
+    </tr>
+    <tr>
+      <td>HTTPS 필수</td>
+      <td>Naver/Google/Kakao 모두 프로덕션 Redirect URI는 <code>https</code>만 허용. Vercel은 자동 HTTPS이므로 별도 설정 불필요.</td>
+    </tr>
+    <tr>
+      <td>쿠키 도메인</td>
+      <td><code>SameSite=Lax</code>, <code>Secure</code>, <code>HttpOnly</code>를 그대로 둘 것. 서브도메인 간 SSO가 필요하면 <code>domain: ".veggieverse.com"</code> 옵션 추가.</td>
+    </tr>
+    <tr>
+      <td>Edge vs Node 런타임</td>
+      <td>이 가이드의 라우트는 모두 표준 Web API만 쓰므로 둘 다 동작. 단, DB 드라이버에 따라 <code>export const runtime = "nodejs";</code>를 라우트 파일 상단에 추가해야 할 수 있음.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================================================== -->
+<h2 id="troubleshoot">7. 자주 발생하는 오류와 해결</h2>
+
+<table>
+  <thead>
+    <tr><th>증상</th><th>원인</th><th>해결</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>callback에서 <code>redirect_uri_mismatch</code></td>
+      <td>콘솔 등록값과 실제 요청값 불일치 (<code>http</code> vs <code>https</code>, 트레일링 슬래시, 포트 누락)</td>
+      <td>콘솔의 Redirect URI를 <strong>복사·붙여넣기</strong>로 <code>.env</code>에 동일하게 입력</td>
+    </tr>
+    <tr>
+      <td><code>state_mismatch</code></td>
+      <td>임시 쿠키가 만료(5분 초과)되었거나, 다른 브라우저/시크릿 창에서 콜백을 열었음</td>
+      <td>처음부터 다시 로그인 시도. 또는 <code>TEMP_COOKIE_OPTS.maxAge</code>를 10분으로 연장</td>
+    </tr>
+    <tr>
+      <td>Kakao 토큰 교환 시 <code>KOE320</code></td>
+      <td>이미 사용한 <code>code</code>를 재사용 (브라우저가 콜백을 두 번 호출)</td>
+      <td>콜백 핸들러가 멱등이 되도록 작성, prefetch 유발하는 <code>&lt;Link&gt;</code> 사용 금지</td>
+    </tr>
+    <tr>
+      <td>이메일이 <code>undefined</code>로 옴</td>
+      <td>사용자가 “선택 동의” 항목을 거절</td>
+      <td>UI에서 “이메일 미제공시 가입 불가” 안내 표시 + 재요청 시 <code>auth_type=reauthorize</code>(Kakao) / <code>prompt=consent</code>(Google) 추가</td>
+    </tr>
+    <tr>
+      <td>Next.js 16: <code>cookies()</code> 관련 타입 오류</td>
+      <td>v15 이전과 달리 <code>cookies()</code>가 Promise 반환</td>
+      <td>모든 호출부를 <code>const store = await cookies();</code>로 수정</td>
+    </tr>
+    <tr>
+      <td>middleware가 동작하지 않음</td>
+      <td>Next.js 16에서 <code>middleware.ts</code>는 deprecated</td>
+      <td>파일명을 <code>proxy.ts</code>로 변경, export도 <code>proxy</code>로 변경</td>
+    </tr>
+    <tr>
+      <td>Vercel Preview에서 로그인이 깨짐</td>
+      <td>Preview URL이 매 배포마다 바뀌어 콘솔에 등록 불가</td>
+      <td>Preview용 별도 OAuth 클라이언트를 만들고 <code>*.vercel.app</code> 또는 고정 Preview 도메인 사용</td>
+    </tr>
+  </tbody>
+</table>
+
+<footer>
+  <p>본 가이드는 Next.js 16.2 기준 공식 문서(<code>node_modules/next/dist/docs/01-app/02-guides/authentication.md</code>)와 각 공급자 OAuth 2.0 사양을 토대로 작성되었습니다. 환경에 맞게 DB upsert·에러 처리·로깅을 보강해 사용하세요.</p>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  const tabs = document.querySelectorAll('.tablist .tab');
+  const panels = document.querySelectorAll('.tabpanel');
+
+  function activate(provider, push) {
+    tabs.forEach((t) => {
+      const active = t.dataset.provider === provider;
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+      if (active) t.focus({ preventScroll: true });
+    });
+    panels.forEach((p) => {
+      p.classList.toggle('is-active', p.id === 'panel-' + provider);
+    });
+    if (push) {
+      const url = new URL(window.location.href);
+      url.hash = 'providers';
+      url.searchParams.set('p', provider);
+      history.replaceState(null, '', url);
+    }
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => activate(tab.dataset.provider, true));
+    tab.addEventListener('keydown', (e) => {
+      const order = ['naver', 'google', 'kakao'];
+      const idx = order.indexOf(tab.dataset.provider);
+      if (e.key === 'ArrowRight') activate(order[(idx + 1) % order.length], true);
+      if (e.key === 'ArrowLeft')  activate(order[(idx - 1 + order.length) % order.length], true);
+    });
+  });
+
+  // 초기 진입 시 ?p=google 같은 쿼리 또는 hash 위치에 따라 탭 자동 선택
+  const params = new URLSearchParams(window.location.search);
+  const initial = params.get('p');
+  if (initial && ['naver', 'google', 'kakao'].includes(initial)) {
+    activate(initial, false);
+  }
+})();
+</script>
+</body>
+</html>
