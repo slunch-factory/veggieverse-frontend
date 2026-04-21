@@ -174,7 +174,7 @@ export function CheckoutBar({
       )}
 
       {/* 가격 + 결제 */}
-      <div className="flex h-[64px] shrink-0 items-center gap-3 border-t border-gray-200 bg-white px-4">
+      <div className="flex shrink-0 items-center gap-3 border-t border-gray-200 bg-white px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           {totalPrice > 0 && purchaseType === "once" && (
             <span className="inline-flex w-fit items-center gap-0.5 px-2 py-0.5 bg-[#E6F0FB] text-[#4A8CCB] text-[10px] rounded-full whitespace-nowrap">

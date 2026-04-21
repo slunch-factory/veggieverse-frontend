@@ -4,6 +4,7 @@ import { Plus, X } from "lucide-react";
 import type { DayPlan, DisplayMenuData, PlanType } from "../_data/subscription";
 import { getHolidayMeta, WEEKDAY_KO } from "../_data/subscription";
 import type { HoveredMealState } from "./MealHoverTooltip";
+import type { MobilePreviewState } from "./MobileMealPreview";
 
 interface DayRowProps {
   day: DayPlan;
@@ -18,7 +19,7 @@ interface DayRowProps {
   onDragOverDay: (key: string | null) => void;
   onDropMeal: (dateKey: string, mealId: string) => void;
   onHoverMeal: (state: HoveredMealState | null) => void;
-  onShowMobilePreview: (meal: DisplayMenuData) => void;
+  onShowMobilePreview: (state: MobilePreviewState) => void;
 }
 
 const POPUP_WIDTH = 280;
@@ -86,7 +87,7 @@ export function DayRow({
         if (!mealId) return;
         onDropMeal(day.dateKey, mealId);
       }}
-      className={`flex min-h-[56px] lg:min-h-[76px] flex-row items-center gap-6 md:gap-10 overflow-hidden border-b border-gray-200 px-4 md:px-5 last:border-b-0 transition-colors ${
+      className={`flex min-h-[56px] lg:min-h-[76px] flex-1 flex-row items-center gap-6 md:gap-10 overflow-hidden border-b border-gray-200 px-4 md:px-5 last:border-b-0 transition-colors ${
         isDragOver ? "bg-[#FDEEE8]" : "bg-white"
       }`}
     >
@@ -104,16 +105,22 @@ export function DayRow({
 
       {mealEntries.length > 0 ? (
         <div
-          className="min-w-0 flex-1 flex items-center flex-wrap gap-x-2 gap-y-1 text-[14px] leading-tight text-gray-800"
+          className="min-w-0 flex-1 flex flex-col lg:flex-row lg:items-center lg:flex-wrap gap-x-2 gap-y-1 text-[14px] leading-tight text-gray-800"
           style={{ color: selectedPlan ? selectedPlan.accent : undefined }}
         >
           {mealEntries.map(({ slot, meal }, idx) => (
             <span key={slot.slotId} className="inline-flex items-center gap-1 min-w-0 group/meal">
-              {idx > 0 && <span className="text-gray-300 shrink-0 mr-1">·</span>}
+              {idx > 0 && (
+                <span className="hidden lg:inline text-gray-300 shrink-0 mr-1">·</span>
+              )}
               <span
                 className="truncate hover:underline underline-offset-2 decoration-gray-400 cursor-pointer max-w-[180px]"
-                onClick={() => {
-                  onShowMobilePreview(meal);
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  onShowMobilePreview({
+                    meal,
+                    y: rect.top + rect.height / 2,
+                  });
                   onSelectSlot(slot.slotId);
                 }}
                 onMouseEnter={(e) => {

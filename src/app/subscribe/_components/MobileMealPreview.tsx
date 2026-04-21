@@ -1,67 +1,61 @@
 "use client";
 
-import { X } from "lucide-react";
-import type { DisplayMenuData, ExcludeCategory } from "../_data/subscription";
-import { getAllergyLabel } from "../_data/subscription";
+import type { DisplayMenuData } from "../_data/subscription";
+
+export interface MobilePreviewState {
+  meal: DisplayMenuData;
+  /** 클릭된 요소의 수직 중앙 (viewport 기준) */
+  y: number;
+}
 
 interface MobileMealPreviewProps {
-  meal: DisplayMenuData | null;
+  preview: MobilePreviewState | null;
   onClose: () => void;
 }
 
-export function MobileMealPreview({ meal, onClose }: MobileMealPreviewProps) {
-  if (!meal) return null;
+const IMG_SIZE = 160;
+const RIGHT_OFFSET = 20;
+const EDGE_PADDING = 16;
 
-  const allergy = getAllergyLabel(meal.excludable as ExcludeCategory[]);
+export function MobileMealPreview({ preview, onClose }: MobileMealPreviewProps) {
+  if (!preview || typeof window === "undefined") return null;
+
+  const viewportH = window.innerHeight;
+  const top = Math.max(
+    EDGE_PADDING,
+    Math.min(preview.y - IMG_SIZE / 2, viewportH - IMG_SIZE - EDGE_PADDING),
+  );
 
   return (
     <div className="lg:hidden">
+      {/* 투명 backdrop — 탭으로 닫기 */}
       <div
-        className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[200]"
         onClick={onClose}
         aria-hidden="true"
       />
+      {/* 이미지 */}
       <div
         role="dialog"
-        aria-label={meal.displayName}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] w-[85vw] max-w-[360px] bg-white shadow-xl overflow-hidden animate-fadeIn"
+        aria-label={preview.meal.displayName}
+        onClick={onClose}
+        className="fixed z-[201] bg-white border border-black shadow-[0_8px_24px_rgba(0,0,0,0.2)] overflow-hidden animate-fadeIn cursor-pointer"
+        style={{
+          right: RIGHT_OFFSET,
+          top,
+          width: IMG_SIZE,
+          height: IMG_SIZE,
+        }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="닫기"
-          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center cursor-pointer"
-        >
-          <X className="w-4 h-4 text-stone-700" />
-        </button>
-        <div className="relative aspect-square bg-[#F5F5F5]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={meal.image}
-            alt={meal.displayName}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
-          {allergy && (
-            <div className="absolute right-0 bottom-0 bg-white/90 px-2 py-0.5 text-[10px] text-gray-900 backdrop-blur-sm rounded-tl">
-              Allergy: {allergy}
-            </div>
-          )}
-        </div>
-        <div className="p-4">
-          <h3 className="text-[16px] leading-tight mb-1">{meal.displayName}</h3>
-          {meal.isVariation && meal.badge && (
-            <p className="text-[11px] text-[#8C451D] mb-1">{meal.badge}</p>
-          )}
-          {meal.description && (
-            <p className="text-[13px] text-gray-500 leading-relaxed">{meal.description}</p>
-          )}
-          <div className="mt-3 flex items-baseline justify-end">
-            <span className="text-[16px]">{meal.price.toLocaleString()}원</span>
-          </div>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={preview.meal.image}
+          alt={preview.meal.displayName}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
       </div>
     </div>
   );

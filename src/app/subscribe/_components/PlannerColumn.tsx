@@ -13,7 +13,7 @@ import { WEEKDAY_KO } from "../_data/subscription";
 import { DayRow } from "./DayRow";
 import { DatePickerCalendar } from "./DatePickerCalendar";
 import { MealHoverTooltip, type HoveredMealState } from "./MealHoverTooltip";
-import { MobileMealPreview } from "./MobileMealPreview";
+import { MobileMealPreview, type MobilePreviewState } from "./MobileMealPreview";
 
 interface PlannerColumnProps {
   duration: DurationType;
@@ -61,7 +61,7 @@ export function PlannerColumn({
 }: PlannerColumnProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [hoveredMeal, setHoveredMeal] = useState<HoveredMealState | null>(null);
-  const [previewMeal, setPreviewMeal] = useState<DisplayMenuData | null>(null);
+  const [previewMeal, setPreviewMeal] = useState<MobilePreviewState | null>(null);
 
   const atMin = stripTime(startDate) <= stripTime(earliestStart);
   const shift = (days: number) => {
@@ -190,7 +190,7 @@ export function PlannerColumn({
         ))}
       </div>
 
-      <MobileMealPreview meal={previewMeal} onClose={() => setPreviewMeal(null)} />
+      <MobileMealPreview preview={previewMeal} onClose={() => setPreviewMeal(null)} />
     </section>
   );
 }

@@ -191,7 +191,7 @@ function DateGroup({
 
   return (
     <div>
-      <header className="sticky top-0 z-10 bg-gray-50 px-4 py-2 border-y border-gray-200 flex items-baseline justify-between">
+      <header className="bg-gray-50 px-4 py-2 border-y border-gray-200 flex items-baseline justify-between">
         <div className="flex items-baseline gap-2">
           <span className={`text-[14px] leading-none tracking-tight ${dateTone}`}>
             {mm}.{dd}

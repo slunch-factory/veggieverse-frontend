@@ -146,29 +146,25 @@ export function MobileMealWheel({
 
   return (
     <>
-      {centerCategoryLabel && (
-        <div className="shrink-0 flex items-center justify-center gap-1.5 bg-gray-100 pt-2 pb-0.5 text-[11px]">
-          <span className="inline-block w-1 h-1 rounded-full bg-gray-400" aria-hidden />
-          <span
-            className={
-              centerCategoryLabel.tone === "primary"
-                ? "text-[#8C451D]"
-                : "text-gray-500"
-            }
-          >
-            {centerCategoryLabel.text}
-          </span>
-          <span className="inline-block w-1 h-1 rounded-full bg-gray-400" aria-hidden />
-        </div>
-      )}
       <div
-        className="relative h-[150px] overflow-visible select-none bg-gray-100"
+        className="relative h-[140px] overflow-visible select-none bg-gray-200 border-t border-gray-200"
         style={{ touchAction: "none" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
+        {centerCategoryLabel && (
+          <div className="absolute top-2 right-4 z-0 flex items-center gap-1 text-[11px] pointer-events-none">
+            <span
+              className={
+                centerCategoryLabel.tone === "primary" ? "text-[#8C451D]" : "text-gray-500"
+              }
+            >
+              {centerCategoryLabel.text}
+            </span>
+          </div>
+        )}
         {count === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center text-[12px] text-gray-400">
             조건에 맞는 메뉴가 없습니다

@@ -128,7 +128,7 @@ export function OrderClient() {
   }
 
   return (
-    <div className="bg-[#FAFAFA] min-h-screen pb-24 lg:pb-8">
+    <div className="bg-white min-h-screen pb-24 lg:pb-8">
       <div className="max-w-[1280px] mx-auto lg:px-6 lg:pt-6">
         {/* Top header */}
         <header className="flex items-center px-5 py-4 lg:px-6 lg:py-0 lg:mb-5 bg-white lg:bg-transparent border-b border-black lg:border-b-0">

@@ -19,7 +19,7 @@ export function MealHoverTooltip({ hovered }: MealHoverTooltipProps) {
 
   return createPortal(
     <div
-      className="fixed z-[1000] pointer-events-none"
+      className="hidden lg:block fixed z-[1000] pointer-events-none"
       style={{
         left: hovered.x,
         top: hovered.y,
