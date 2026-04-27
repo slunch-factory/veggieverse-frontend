@@ -9,13 +9,12 @@ import {
   type DurationType,
   type ExcludeCategory,
   type MenuCategory,
+  type MenuData,
   type PackComposition,
   type PurchaseType,
   generateWeekDays,
-  getDisplayMenu,
   getEarliestStartDate,
   isFlexibleToday,
-  MENUS,
 } from "../_data/subscription";
 
 export interface SubscribePlannerState {
@@ -64,7 +63,11 @@ export interface SubscribePlannerActions {
   dropMealOnDay: (dateKey: string, mealId: string) => void;
 }
 
-export function useSubscribePlanner(): SubscribePlannerState & SubscribePlannerActions {
+export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState & SubscribePlannerActions {
+  const menusMap = useMemo(
+    () => Object.fromEntries(menuList.map((m) => [m.id, m])),
+    [menuList],
+  );
   const [duration, setDurationState] = useState<DurationType>(1);
   const [selectedExcludes, setSelectedExcludes] = useState<ExcludeCategory[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -157,16 +160,16 @@ export function useSubscribePlanner(): SubscribePlannerState & SubscribePlannerA
   );
 
   const filteredMeals = useMemo(() => {
-    let menus: DisplayMenuData[] = Object.keys(MENUS).map((id) => ({
-      ...MENUS[id],
-      displayName: MENUS[id].name,
+    let items: DisplayMenuData[] = menuList.map((m) => ({
+      ...m,
+      displayName: m.name,
       isVariation: false,
     }));
     if (selectedExcludes.length > 0) {
-      menus = menus.filter((m) => !m.excludable.some((e) => selectedExcludes.includes(e)));
+      items = items.filter((m) => !m.excludable.some((e) => selectedExcludes.includes(e)));
     }
-    return menus;
-  }, [selectedExcludes]);
+    return items;
+  }, [menuList, selectedExcludes]);
 
   const planMeals = useMemo(() => {
     if (!selectedPlanType) return { primary: [] as DisplayMenuData[], others: filteredMeals };
@@ -248,8 +251,9 @@ export function useSubscribePlanner(): SubscribePlannerState & SubscribePlannerA
       }
       const cat = CATEGORY_MAP[planId];
       if (!cat) return;
-      const menuIds = Object.keys(MENUS).filter((id) => MENUS[id].category === cat);
-      const meals = menuIds.map((id) => getDisplayMenu(id, selectedExcludes));
+      const meals: DisplayMenuData[] = menuList
+        .filter((m) => m.category === cat)
+        .map((m) => ({ ...m, displayName: m.name, isVariation: false }));
       if (meals.length === 0) return;
       const plan: Record<string, DisplayMenuData> = {};
       let i = 0;
@@ -261,7 +265,7 @@ export function useSubscribePlanner(): SubscribePlannerState & SubscribePlannerA
       setMealPlan(plan);
       setSelectedSlotId(null);
     },
-    [allDays, selectedExcludes, selectedPlanType],
+    [allDays, menuList, selectedPlanType],
   );
 
   const resetMealPlan = useCallback(() => {
@@ -279,10 +283,11 @@ export function useSubscribePlanner(): SubscribePlannerState & SubscribePlannerA
 
   const dropMealOnDay = useCallback(
     (dateKey: string, mealId: string) => {
-      if (!MENUS[mealId]) return;
+      const menuItem = menusMap[mealId];
+      if (!menuItem) return;
       const day = allDays.find((d) => d.dateKey === dateKey);
       if (!day) return;
-      const displayMenu = getDisplayMenu(mealId, selectedExcludes);
+      const displayMenu: DisplayMenuData = { ...menuItem, displayName: menuItem.name, isVariation: false };
       const emptySlot = day.slots.find((s) => !mealPlan[s.slotId]);
       const targetId = emptySlot ? emptySlot.slotId : day.slots[0]?.slotId;
       if (!targetId) return;
@@ -290,7 +295,7 @@ export function useSubscribePlanner(): SubscribePlannerState & SubscribePlannerA
       setDraggingMealId(null);
       setDragOverDayKey(null);
     },
-    [allDays, mealPlan, selectedExcludes],
+    [allDays, mealPlan, menusMap],
   );
 
   return {

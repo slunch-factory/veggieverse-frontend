@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SubscribeClient } from "./_components/SubscribeClient";
+import { getMenus } from "@/lib/api/subscription";
 
 export const metadata: Metadata = {
   title: "구독 - 슬런치 팩토리",
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SubscribePage() {
-  return <SubscribeClient />;
+export default async function SubscribePage() {
+  const menus = await getMenus();
+  return <SubscribeClient menus={menus} />;
 }

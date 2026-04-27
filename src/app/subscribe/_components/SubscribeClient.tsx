@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { PLAN_TYPES } from "../_data/subscription";
+import { PLAN_TYPES, type MenuData } from "../_data/subscription";
 import { saveOrder } from "../_data/order";
 import { useSubscribePlanner } from "../_hooks/useSubscribePlanner";
 import { SubscribeShell } from "./SubscribeShell";
@@ -12,9 +12,13 @@ import { PlannerColumn } from "./PlannerColumn";
 import { CheckoutBar } from "./CheckoutBar";
 import { MobileMealWheel } from "./MobileMealWheel";
 
-export function SubscribeClient() {
+interface SubscribeClientProps {
+  menus: MenuData[];
+}
+
+export function SubscribeClient({ menus }: SubscribeClientProps) {
   const router = useRouter();
-  const p = useSubscribePlanner();
+  const p = useSubscribePlanner(menus);
 
   const selectedPlan = useMemo(
     () => (p.selectedPlanType ? PLAN_TYPES.find((pl) => pl.id === p.selectedPlanType) ?? null : null),

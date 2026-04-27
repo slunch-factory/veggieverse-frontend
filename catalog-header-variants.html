@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>카탈로그 헤더 변형 비교 — A · B · C</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --lime: #dcfd4a;
+      --brown: #8c451d;
+      --cream: #ffffff;
+      --eggshell: #f7f4ef;
+      --charcoal: #3d3d3d;
+      --warm-gray: #6b6b6b;
+      --muted: #a0a0a0;
+      --line: #e5e2dc;
+      --black: #000;
+      --red: #e05858;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: #f5f5f5;
+      color: var(--charcoal);
+      font-family: "Noto Sans KR", -apple-system, sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .page-title {
+      font-size: 24px;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+    .page-sub {
+      font-size: 13px;
+      color: var(--warm-gray);
+      margin-bottom: 40px;
+    }
+
+    .variant-card {
+      margin-bottom: 48px;
+    }
+    .variant-label {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 0 4px 12px;
+    }
+    .variant-label .letter {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      width: 28px; height: 28px;
+      background: var(--black);
+      color: var(--lime);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      font-weight: 500;
+    }
+    .variant-label .title {
+      font-size: 15px;
+      letter-spacing: -0.005em;
+    }
+    .variant-label .note {
+      font-size: 12px;
+      color: var(--warm-gray);
+    }
+
+    .mock {
+      background: var(--cream);
+      border: 1px solid var(--black);
+    }
+    .mock .menu-placeholder {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .mock .menu-placeholder .card {
+      aspect-ratio: 4 / 5;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--eggshell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .mock .menu-placeholder .card:nth-child(4n) { border-right: 0; }
+    .mock .menu-placeholder .card:last-child { border-bottom: 0; }
+
+    .name-pill {
+      display: inline-block;
+      padding: 1px 7px;
+      background: var(--black);
+      color: var(--lime);
+      font-size: 12px;
+      letter-spacing: -0.005em;
+    }
+    .ci-msg strong { font-weight: 400; color: var(--charcoal); }
+    .ci-again {
+      flex-shrink: 0;
+      padding: 0;
+      font-size: 12px;
+      color: var(--warm-gray);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      white-space: nowrap;
+    }
+    .ci-again:hover { color: var(--brown); }
+
+    /* ═════════════════════════════════════════════════
+       VARIANT A — 2줄 복귀 + 밀도 조정
+       ═════════════════════════════════════════════════ */
+    .v-a .catalog-header {
+      padding: 18px 32px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .v-a .h-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .v-a .h-row h1 {
+      font-size: 22px;
+      letter-spacing: -0.01em;
+    }
+    .v-a .h-row .ci-again {
+      font-size: 12px;
+    }
+    .v-a .ci-msg {
+      font-size: 13px;
+      color: var(--warm-gray);
+      margin-top: 8px;
+      line-height: 1.65;
+    }
+    .v-a .allergy-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 32px;
+      border-bottom: 1px solid var(--black);
+    }
+    .v-a .allergy-label {
+      font-size: 12px;
+      color: var(--warm-gray);
+      padding-right: 12px;
+      border-right: 1px solid var(--line);
+      flex-shrink: 0;
+      margin-right: 4px;
+    }
+    .v-a .allergy-row button[data-allergy] {
+      padding: 5px 11px;
+      font-size: 12px;
+      color: var(--warm-gray);
+      background: var(--eggshell);
+      flex-shrink: 0;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .v-a .allergy-row button[data-allergy]:hover {
+      background: #ede9e1;
+      color: var(--charcoal);
+    }
+    .v-a .allergy-row button[data-allergy].active {
+      background: transparent;
+      color: var(--charcoal);
+      text-decoration: line-through;
+    }
+    .v-a .allergy-row .reset {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--warm-gray);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      padding: 4px 2px;
+    }
+    .v-a .allergy-row .reset:hover { color: var(--brown); }
+
+    /* ═════════════════════════════════════════════════
+       VARIANT B — 좌측 정렬 블록 + chip 강화
+       ═════════════════════════════════════════════════ */
+    .v-b .catalog-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--line);
+    }
+    .v-b .catalog-header .col-left {
+      flex: 1;
+      min-width: 0;
+    }
+    .v-b .catalog-header h1 {
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+    .v-b .catalog-header .ci-msg {
+      font-size: 12px;
+      color: var(--warm-gray);
+      line-height: 1.7;
+    }
+    .v-b .catalog-header .ci-again {
+      padding-top: 4px;
+    }
+    .v-b .allergy-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 32px;
+      border-bottom: 1px solid var(--black);
+    }
+    .v-b .allergy-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      padding-right: 14px;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+    .v-b .allergy-row button[data-allergy] {
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--charcoal);
+      background: #ede9e1;
+      flex-shrink: 0;
+      transition: background 0.12s ease, border-color 0.12s ease;
+      border: 1px solid transparent;
+    }
+    .v-b .allergy-row button[data-allergy]:hover {
+      border-color: var(--black);
+    }
+    .v-b .allergy-row button[data-allergy].active {
+      background: transparent;
+      color: var(--muted);
+      text-decoration: line-through;
+      border-color: var(--line);
+    }
+    .v-b .allergy-row .reset {
+      margin-left: 4px;
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .v-b .allergy-row .reset:hover { color: var(--charcoal); }
+
+    /* ═════════════════════════════════════════════════
+       VARIANT C — 히어로형 타이틀 강화
+       ═════════════════════════════════════════════════ */
+    .v-c .catalog-header {
+      padding: 24px 32px 18px;
+      border-bottom: 1px solid var(--black);
+    }
+    .v-c .catalog-header h1 {
+      font-size: 30px;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .v-c .catalog-header .sub-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .v-c .catalog-header .ci-msg {
+      font-size: 13px;
+      color: var(--warm-gray);
+      line-height: 1.65;
+      flex: 1;
+    }
+    .v-c .allergy-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 32px;
+      border-bottom: 1px solid var(--black);
+    }
+    .v-c .allergy-label {
+      font-size: 13px;
+      color: var(--charcoal);
+      padding-right: 20px;
+      flex-shrink: 0;
+      font-weight: 500;
+    }
+    .v-c .allergy-row button[data-allergy] {
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--charcoal);
+      background: transparent;
+      border: 1px solid var(--line);
+      flex-shrink: 0;
+      transition: border-color 0.12s ease, background 0.12s ease;
+    }
+    .v-c .allergy-row button[data-allergy]:hover {
+      border-color: var(--charcoal);
+    }
+    .v-c .allergy-row button[data-allergy].active {
+      background: var(--eggshell);
+      color: var(--muted);
+      text-decoration: line-through;
+      border-color: var(--line);
+    }
+    .v-c .allergy-row .reset {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--warm-gray);
+      padding: 4px 2px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .v-c .allergy-row .reset:hover { color: var(--brown); }
+
+    /* lime band (project header accent) */
+    .lime-band {
+      height: 4px;
+      background: var(--lime);
+      border-bottom: 1px solid var(--black);
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1 class="page-title">카탈로그 헤더 레이아웃 비교</h1>
+    <p class="page-sub">A · B · C 세 가지 배치를 동일한 placeholder 그리드와 함께 비교</p>
+
+    <!-- ═══════════════ VARIANT A ═══════════════ -->
+    <div class="variant-card v-a">
+      <div class="variant-label">
+        <span class="letter">A</span>
+        <span class="title">2줄 복귀 + 밀도 조정</span>
+        <span class="note">타이틀 + 액션 같은 행, 안내문 아래 행 / 구분선 제거 / 라벨 설명적 / 리셋 우측</span>
+      </div>
+      <div class="mock">
+        <div class="lime-band"></div>
+        <section class="catalog-header">
+          <div class="h-row">
+            <h1>메뉴 고르기</h1>
+            <button type="button" class="ci-again">스피릿 다시 찾기 →</button>
+          </div>
+          <p class="ci-msg">
+            <span class="name-pill">guest1</span> 님을 위한 맞춤형 식단을 구성했어요.
+            자유롭게 메뉴를 바꿀 수 있어요.
+          </p>
+        </section>
+        <div class="allergy-row">
+          <span class="allergy-label">제외할 알러지</span>
+          <button type="button" data-allergy="유제품">유제품</button>
+          <button type="button" data-allergy="갑각류">갑각류</button>
+          <button type="button" data-allergy="생선" class="active">생선</button>
+          <button type="button" data-allergy="견과류" class="active">견과류</button>
+          <button type="button" data-allergy="닭고기">닭고기</button>
+          <button type="button" data-allergy="계란">계란</button>
+          <button type="button" data-allergy="글루텐">글루텐</button>
+          <button type="button" data-allergy="매운맛">매운맛</button>
+          <button type="button" class="reset">초기화</button>
+        </div>
+        <div class="menu-placeholder">
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ VARIANT B ═══════════════ -->
+    <div class="variant-card v-b">
+      <div class="variant-label">
+        <span class="letter">B</span>
+        <span class="title">좌측 정렬 블록 + chip 강화</span>
+        <span class="note">인트로 2줄로 자연 줄바꿈 / 액션 우측 고정 / chip 배경 진하게(#ede9e1) + hover 검정 border</span>
+      </div>
+      <div class="mock">
+        <div class="lime-band"></div>
+        <section class="catalog-header">
+          <div class="col-left">
+            <h1>메뉴 고르기</h1>
+            <p class="ci-msg">
+              <span class="name-pill">guest1</span> 님을 위한 맞춤형 식단을 구성했어요.
+              자유롭게 메뉴를 바꿀 수 있어요.
+            </p>
+          </div>
+          <button type="button" class="ci-again">스피릿 다시 찾기 →</button>
+        </section>
+        <div class="allergy-row">
+          <span class="allergy-label">제외</span>
+          <button type="button" data-allergy="유제품">유제품</button>
+          <button type="button" data-allergy="갑각류">갑각류</button>
+          <button type="button" data-allergy="생선" class="active">생선</button>
+          <button type="button" data-allergy="견과류" class="active">견과류</button>
+          <button type="button" data-allergy="닭고기">닭고기</button>
+          <button type="button" data-allergy="계란">계란</button>
+          <button type="button" data-allergy="글루텐">글루텐</button>
+          <button type="button" data-allergy="매운맛">매운맛</button>
+          <button type="button" class="reset" title="필터 초기화">↺</button>
+        </div>
+        <div class="menu-placeholder">
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ VARIANT C ═══════════════ -->
+    <div class="variant-card v-c">
+      <div class="variant-label">
+        <span class="letter">C</span>
+        <span class="title">히어로형 타이틀 강화</span>
+        <span class="note">타이틀 30px / border-bottom으로 영역 분리 / chip은 border-only 스타일</span>
+      </div>
+      <div class="mock">
+        <div class="lime-band"></div>
+        <section class="catalog-header">
+          <h1>메뉴 고르기</h1>
+          <div class="sub-row">
+            <p class="ci-msg">
+              <span class="name-pill">guest1</span> 님을 위한 맞춤형 식단을 구성했어요.
+              자유롭게 메뉴를 바꿀 수 있어요.
+            </p>
+            <button type="button" class="ci-again">스피릿 다시 찾기 →</button>
+          </div>
+        </section>
+        <div class="allergy-row">
+          <span class="allergy-label">제외</span>
+          <button type="button" data-allergy="유제품">유제품</button>
+          <button type="button" data-allergy="갑각류">갑각류</button>
+          <button type="button" data-allergy="생선" class="active">생선</button>
+          <button type="button" data-allergy="견과류" class="active">견과류</button>
+          <button type="button" data-allergy="닭고기">닭고기</button>
+          <button type="button" data-allergy="계란">계란</button>
+          <button type="button" data-allergy="글루텐">글루텐</button>
+          <button type="button" data-allergy="매운맛">매운맛</button>
+          <button type="button" class="reset">초기화</button>
+        </div>
+        <div class="menu-placeholder">
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+          <div class="card">menu card</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
