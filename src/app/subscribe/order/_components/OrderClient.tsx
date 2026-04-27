@@ -11,6 +11,7 @@ import {
 } from "../../_data/order";
 import { getUserProfile } from "@/lib/api/user";
 import { OrderSummaryCard } from "./OrderSummaryCard";
+import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 
 interface FormState {
   customerName: string;
@@ -72,6 +73,7 @@ export function OrderClient() {
     getServerOrderSnapshot,
   );
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [postcodeOpen, setPostcodeOpen] = useState(false);
 
   useEffect(() => {
     if (order === null || Object.keys(order.mealPlan).length === 0) {
@@ -144,6 +146,16 @@ export function OrderClient() {
   }
 
   return (
+    <>
+    <KakaoPostcodeModal
+      isOpen={postcodeOpen}
+      onClose={() => setPostcodeOpen(false)}
+      onSelect={({ postalCode, address }) => {
+        update("postalCode", postalCode);
+        update("address", address);
+        update("addressDetail", "");
+      }}
+    />
     <div className="bg-white min-h-screen pb-24 lg:pb-8">
       <div className="max-w-[1280px] mx-auto lg:px-6 lg:pt-6">
         {/* Top header */}
@@ -228,10 +240,11 @@ export function OrderClient() {
                     onChange={(v) => update("postalCode", v)}
                     placeholder="우편번호"
                     className="w-[120px]"
+                    readOnly
                   />
                   <button
                     type="button"
-                    onClick={() => alert("주소 검색은 추후 연동 예정입니다.")}
+                    onClick={() => setPostcodeOpen(true)}
                     className="h-10 px-3 text-[12px] border border-black bg-white hover:bg-gray-50 cursor-pointer"
                   >
                     주소 검색
@@ -242,6 +255,7 @@ export function OrderClient() {
                 value={form.address}
                 onChange={(v) => update("address", v)}
                 placeholder="기본 주소"
+                readOnly
               />
               <TextInput
                 value={form.addressDetail}
@@ -356,6 +370,7 @@ export function OrderClient() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -400,12 +415,14 @@ function TextInput({
   placeholder,
   type = "text",
   className = "",
+  readOnly = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: "text" | "email" | "tel";
   className?: string;
+  readOnly?: boolean;
 }) {
   return (
     <input
@@ -413,7 +430,8 @@ function TextInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none ${className}`}
+      readOnly={readOnly}
+      className={`h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none ${readOnly ? "bg-gray-50 cursor-default" : ""} ${className}`}
     />
   );
 }

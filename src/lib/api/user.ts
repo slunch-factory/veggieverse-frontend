@@ -11,7 +11,7 @@ export interface UserProfile {
 
 export async function getUserProfile(): Promise<UserProfile | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggiverse/users/profile`, {
+    const res = await fetch(`${API_BASE}/api/v1/veggiverse/users/profile?userId=46`, {
       headers: { Accept: "application/json" },
     });
     if (!res.ok) {
