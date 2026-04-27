@@ -9,6 +9,7 @@ import {
   getServerOrderSnapshot,
   subscribeOrderStore,
 } from "../../_data/order";
+import { getUserProfile } from "@/lib/api/user";
 import { OrderSummaryCard } from "./OrderSummaryCard";
 
 interface FormState {
@@ -77,6 +78,21 @@ export function OrderClient() {
       router.replace("/subscribe");
     }
   }, [order, router]);
+
+  useEffect(() => {
+    getUserProfile().then((profile) => {
+      if (!profile) return;
+      setForm((prev) => ({
+        ...prev,
+        ...(profile.name && { customerName: profile.name }),
+        ...(profile.phone && { customerPhone: profile.phone }),
+        ...(profile.email && { customerEmail: profile.email }),
+        ...(profile.postalCode && { postalCode: profile.postalCode }),
+        ...(profile.address && { address: profile.address }),
+        ...(profile.addressDetail && { addressDetail: profile.addressDetail }),
+      }));
+    });
+  }, []);
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));

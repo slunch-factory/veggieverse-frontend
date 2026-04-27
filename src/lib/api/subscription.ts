@@ -1,6 +1,6 @@
 import type { ExcludeCategory, MenuCategory, MenuData } from "@/app/subscribe/_data/subscription";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "https://api.slunch.co.kr";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
 const NAME_TO_IMAGE: Record<string, string> = {
   "로스티드 비트 카르파초":    "/images/menus/01_roasted_beet_carpaccio.png",
@@ -38,8 +38,8 @@ const NAME_TO_IMAGE: Record<string, string> = {
   "참치 샐러드 랩":            "/images/menus/33_tuna_salad_wrap.png",
 };
 
-// GET /api/v1/veggiverse/products 실제 응답 스키마
-interface ProductItem {
+// GET /api/v1/veggiverse/products
+export interface ProductItem {
   id: number;
   name: string;
   price: number;
@@ -55,13 +55,13 @@ interface ProductItem {
 
 const ALLERGEN_MAP: Record<string, ExcludeCategory> = {
   tree_nuts: "nuts",
-  peanuts: "nuts",
-  dairy: "dairy",
+  peanuts:   "nuts",
+  dairy:     "dairy",
   shellfish: "shellfish",
-  fish: "fish",
-  chicken: "chicken",
-  egg: "egg",
-  gluten: "gluten",
+  fish:      "fish",
+  chicken:   "chicken",
+  egg:       "egg",
+  gluten:    "gluten",
 };
 
 function resolveImageUrl(imageUrl: string | undefined, name: string): string {
@@ -72,7 +72,7 @@ function resolveImageUrl(imageUrl: string | undefined, name: string): string {
   return NAME_TO_IMAGE[name] ?? "/images/menus/example.png";
 }
 
-function mapToMenuData(p: ProductItem): MenuData {
+export function mapToMenuData(p: ProductItem): MenuData {
   const excludable: ExcludeCategory[] = [
     ...new Set(
       p.spirit.allergens
@@ -98,9 +98,33 @@ function mapToMenuData(p: ProductItem): MenuData {
   };
 }
 
+export async function getCustomedPlan(planId: string): Promise<MenuData[]> {
+  const url = `${API_BASE}/api/v1/veggiverse/customedPlan?planId=${encodeURIComponent(planId)}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      console.error("[getCustomedPlan] HTTP error:", res.status, res.statusText);
+      return [];
+    }
+    const data: ProductItem[] = await res.json();
+    const list = Array.isArray(data) ? data : [];
+    console.log(
+      "%c[getCustomedPlan] ✅ 확정 플랜 조회 성공",
+      "color: #4A7F52; font-weight: bold;",
+      list.length,
+      "개",
+    );
+    return list.map(mapToMenuData);
+  } catch (err) {
+    console.error("[getCustomedPlan] fetch failed:", err);
+    return [];
+  }
+}
+
 export async function getMenus(): Promise<MenuData[]> {
   const url = `${API_BASE}/api/v1/veggiverse/products`;
-  console.log("[getMenus] fetching:", url);
   try {
     const res = await fetch(url, {
       cache: "no-store",
@@ -115,7 +139,6 @@ export async function getMenus(): Promise<MenuData[]> {
     }
     const data: ProductItem[] = await res.json();
     const list = Array.isArray(data) ? data : [];
-    console.log("[getMenus] menu count:", list.length);
     return list.map(mapToMenuData);
   } catch (err) {
     console.error("[getMenus] fetch failed:", err);

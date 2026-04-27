@@ -412,6 +412,48 @@
       .cal-scroll::-webkit-scrollbar { width: 6px; }
       .cal-scroll::-webkit-scrollbar-thumb { background: var(--placeholder-2); }
 
+      .cal-footer {
+        flex-shrink: 0;
+        border-top: 1px solid var(--black);
+        padding: 16px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .cal-footer .cf-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        color: var(--warm-gray);
+      }
+      .cal-footer .cf-total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .cal-footer .cf-total-label { font-size: 14px; }
+      .cal-footer .cf-total-amount {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .cal-footer .cf-pay-btn {
+        width: 100%;
+        height: 48px;
+        background: var(--black);
+        color: #fff;
+        border-radius: 8px;
+        font-size: 15px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .cal-footer .cf-pay-btn:hover { background: var(--brown); }
+
       .cal-title-row {
         height: 62px;
         padding: 0 24px;
@@ -1859,6 +1901,18 @@
           </div>
         </div>
 
+        <!-- 총액 + 결제 -->
+        <div class="cal-footer">
+          <div class="cf-summary">
+            <span id="cfMeals">0끼 선택</span>
+          </div>
+          <div class="cf-total-row">
+            <span class="cf-total-label">총 금액</span>
+            <span class="cf-total-amount" id="cfTotal">0원</span>
+          </div>
+          <button type="button" class="cf-pay-btn" id="cfPayBtn">결제하기</button>
+        </div>
+
       </aside>
     </main>
 
@@ -2294,16 +2348,23 @@
         if (typeof renderMiniCal === "function") renderMiniCal();
       }
 
-      // ═══ 모바일 바텀 바 — 현재 window 총 끼/금액 업데이트 ═══
+      // ═══ 모바일 바텀 바 + 데스크톱 푸터 — 총 끼/금액 업데이트 ═══
       function updateMobileFab() {
-        const mealsEl = document.getElementById("mbbMeals");
-        const totalEl = document.getElementById("mbbTotal");
-        if (!mealsEl || !totalEl) return;
         const days = currentDays();
         const meals = days.reduce((s, d) => s + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0), 0);
         const total = days.reduce((s, d) => s + dayTotal(d), 0);
-        mealsEl.textContent = `${meals}끼`;
-        totalEl.textContent = fmtKRW(total);
+
+        // 모바일 바텀 바
+        const mealsEl = document.getElementById("mbbMeals");
+        const totalEl = document.getElementById("mbbTotal");
+        if (mealsEl) mealsEl.textContent = `${meals}끼`;
+        if (totalEl) totalEl.textContent = fmtKRW(total);
+
+        // 데스크톱 푸터
+        const cfMeals = document.getElementById("cfMeals");
+        const cfTotal = document.getElementById("cfTotal");
+        if (cfMeals) cfMeals.textContent = `${meals}끼 선택`;
+        if (cfTotal) cfTotal.textContent = fmtKRW(total);
       }
 
       // ═══ Layer 1·2·3 — Spirit guidance helpers ═══
@@ -2692,6 +2753,19 @@
           alert("결제 페이지로 이동합니다 (데모).");
         });
       }
+      const cfPayBtn = document.getElementById("cfPayBtn");
+      if (cfPayBtn) {
+        cfPayBtn.addEventListener("click", () => {
+          const days = currentDays();
+          const meals = days.reduce((s, d) => s + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0), 0);
+          if (meals === 0) {
+            alert("식단을 먼저 구성해주세요.");
+            return;
+          }
+          alert("결제 페이지로 이동합니다 (데모).");
+        });
+      }
+
       mobileBackdropEl.addEventListener("click", closeCatalogSheet);
       catalogCloseEl.addEventListener("click", closeCatalogSheet);
       document.addEventListener("keydown", (e) => {

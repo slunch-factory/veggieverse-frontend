@@ -5,7 +5,6 @@ import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import type {
   DayPlan,
   DisplayMenuData,
-  DurationType,
   MenuCategory,
   PlanType,
 } from "../_data/subscription";
@@ -16,7 +15,6 @@ import { MealHoverTooltip, type HoveredMealState } from "./MealHoverTooltip";
 import { MobileMealPreview, type MobilePreviewState } from "./MobileMealPreview";
 
 interface PlannerColumnProps {
-  duration: DurationType;
   startDate: Date;
   earliestStart: Date;
   allDays: DayPlan[];
@@ -28,7 +26,6 @@ interface PlannerColumnProps {
   draggingMealId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
-  onDurationChange: (d: DurationType) => void;
   onStartDateChange: (d: Date) => void;
   onSelectSlot: (slotId: string) => void;
   onRemoveMeal: (slotId: string, e: React.MouseEvent) => void;
@@ -40,7 +37,6 @@ interface PlannerColumnProps {
 const stripTime = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 export function PlannerColumn({
-  duration,
   startDate,
   earliestStart,
   allDays,
@@ -51,7 +47,6 @@ export function PlannerColumn({
   draggingMealId,
   dragOverDayKey,
   listScrollRef,
-  onDurationChange,
   onStartDateChange,
   onSelectSlot,
   onRemoveMeal,
@@ -81,24 +76,6 @@ export function PlannerColumn({
       {/* 타이틀 (데스크탑 전용 — 좌측 MenuLibrary 타이틀과 높이 매칭) */}
       <div className="hidden lg:block shrink-0 border-b border-black bg-white px-6 pt-5 pb-4">
         <h2 className="text-[18px] leading-normal tracking-tight text-black">배송 일정</h2>
-      </div>
-
-      {/* 기간 탭 */}
-      <div className="shrink-0 flex items-stretch justify-center gap-10 border-b border-black bg-white h-11">
-        {([1, 2] as DurationType[]).map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => onDurationChange(d)}
-            className={`flex items-center justify-center bg-transparent px-2 text-[14px] whitespace-nowrap transition-colors underline-offset-4 cursor-pointer ${
-              duration === d
-                ? "text-[#8C451D] underline"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {d}주 · {d * 14}끼
-          </button>
-        ))}
       </div>
 
       {/* 배송 시작일 헤더 */}

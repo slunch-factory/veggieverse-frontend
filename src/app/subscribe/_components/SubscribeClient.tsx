@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { PLAN_TYPES, type MenuData } from "../_data/subscription";
+import { type MenuData } from "../_data/subscription";
+import { getCustomedPlan } from "@/lib/api/subscription";
 import { saveOrder } from "../_data/order";
 import { useSubscribePlanner } from "../_hooks/useSubscribePlanner";
 import { SubscribeShell } from "./SubscribeShell";
-import { PlanTabs } from "./PlanTabs";
 import { MenuLibrary } from "./MenuLibrary";
 import { PlannerColumn } from "./PlannerColumn";
 import { CheckoutBar } from "./CheckoutBar";
@@ -20,14 +20,9 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
   const router = useRouter();
   const p = useSubscribePlanner(menus);
 
-  const selectedPlan = useMemo(
-    () => (p.selectedPlanType ? PLAN_TYPES.find((pl) => pl.id === p.selectedPlanType) ?? null : null),
-    [p.selectedPlanType],
-  );
-
-  const handleOrderSubmit = useCallback(() => {
+  const handleOrderSubmit = useCallback(async () => {
     saveOrder({
-      duration: p.duration,
+      duration: 1,
       startDateISO: p.startDate.toISOString(),
       mealPlan: p.mealPlan,
       purchaseType: p.purchaseType,
@@ -35,9 +30,12 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       packComposition: p.packComposition,
       totalPrice: p.totalPrice,
     });
+    const planId = sessionStorage.getItem("spirit-plan-id");
+    if (planId) {
+      await getCustomedPlan(planId);
+    }
     router.push("/subscribe/order");
   }, [
-    p.duration,
     p.startDate,
     p.mealPlan,
     p.purchaseType,
@@ -49,18 +47,10 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
 
   return (
     <SubscribeShell
-      mobilePlanTabs={
-        <PlanTabs
-          plans={PLAN_TYPES}
-          selectedPlanType={p.selectedPlanType}
-          onSelect={p.selectPlanType}
-          variant="mobile"
-        />
-      }
       mobileWheel={
         <MobileMealWheel
           filteredMeals={p.filteredMeals}
-          selectedPlanType={p.selectedPlanType}
+          selectedPlanType={null}
           draggingMealId={p.draggingMealId}
           onAddMeal={p.addMeal}
           onDragStartMeal={p.startDragMeal}
@@ -69,13 +59,9 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       }
       menuColumn={
         <MenuLibrary
-          selectedPlanType={p.selectedPlanType}
-          selectedPlan={selectedPlan}
           selectedExcludes={p.selectedExcludes}
-          planMeals={p.planMeals}
           filteredMeals={p.filteredMeals}
           draggingMealId={p.draggingMealId}
-          onPlanTypeSelect={p.selectPlanType}
           onToggleExclude={p.toggleExclude}
           onResetExcludes={p.resetExcludes}
           onAddMeal={p.addMeal}
@@ -85,19 +71,17 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       }
       plannerTopColumn={
         <PlannerColumn
-          duration={p.duration}
           startDate={p.startDate}
           earliestStart={p.earliestStart}
           allDays={p.allDays}
           mealPlan={p.mealPlan}
           selectedSlotId={p.selectedSlotId}
-          selectedPlan={selectedPlan}
-          selectedPlanType={p.selectedPlanType}
+          selectedPlan={null}
+          selectedPlanType={null}
           filledSlots={p.filledSlots}
           draggingMealId={p.draggingMealId}
           dragOverDayKey={p.dragOverDayKey}
           listScrollRef={p.listScrollRef}
-          onDurationChange={p.setDuration}
           onStartDateChange={p.setStartDate}
           onSelectSlot={p.selectSlot}
           onRemoveMeal={p.removeMeal}
@@ -108,15 +92,8 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       }
       plannerBottomColumn={
         <CheckoutBar
-          purchaseType={p.purchaseType}
-          deliveryCycle={p.deliveryCycle}
-          packComposition={p.packComposition}
           totalPrice={p.totalPrice}
           filledSlots={p.filledSlots}
-          totalSlots={p.totalSlots}
-          onChangePurchaseType={p.setPurchaseType}
-          onChangeDeliveryCycle={p.setDeliveryCycle}
-          onChangePackComposition={p.setPackComposition}
           onSubmit={handleOrderSubmit}
         />
       }

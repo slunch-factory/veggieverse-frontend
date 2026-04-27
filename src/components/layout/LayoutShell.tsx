@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { TopBanner } from "./TopBanner";
-import { ChatWidget } from "../common/ChatWidget";
 import { ScrollToTop } from "./ScrollToTop";
 
 export function LayoutShell({ children }: { children: ReactNode }) {
@@ -50,7 +49,6 @@ export function LayoutShell({ children }: { children: ReactNode }) {
         </main>
 
         {shouldShowFooter && <Footer />}
-        <ChatWidget />
       </div>
     </>
   );
