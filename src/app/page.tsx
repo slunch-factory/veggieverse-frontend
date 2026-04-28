@@ -329,7 +329,7 @@ export default function HomePage() {
 
                 {/* 스피릿 찾기 버튼 */}
                 <Link
-                  href="/spirit/step"
+                  href="/spirit"
                   onClick={() => {
                     localStorage.setItem("spirit-finder-selected-items", JSON.stringify(selectedItems));
                   }}

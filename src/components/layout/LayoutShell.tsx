@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { TopBanner } from "./TopBanner";
-import { ChatWidget } from "../common/ChatWidget";
 import { ScrollToTop } from "./ScrollToTop";
 
 export function LayoutShell({ children }: { children: ReactNode }) {
@@ -13,6 +12,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
   const [showTopBanner, setShowTopBanner] = useState(true);
 
   const shouldShowFooter = true;
+  const isSubscribePlannerPage = pathname === "/subscribe";
 
   const headerAreaStyle = {
     "--header-area-h": showTopBanner
@@ -39,7 +39,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
 
         {/* Page Content */}
         <main
-          className="flex-1 flex flex-col z-0 overflow-visible"
+          className={`${isSubscribePlannerPage ? "shrink-0" : "flex-1"} flex flex-col z-0 overflow-visible`}
           style={{
             paddingTop: showTopBanner
               ? "calc(var(--promo-h) + var(--header-h))"
@@ -50,7 +50,6 @@ export function LayoutShell({ children }: { children: ReactNode }) {
         </main>
 
         {shouldShowFooter && <Footer />}
-        <ChatWidget />
       </div>
     </>
   );

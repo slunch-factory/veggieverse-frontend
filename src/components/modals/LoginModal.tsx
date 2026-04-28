@@ -23,7 +23,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     onClose();
   };
 
-  const handleSocialLogin = (provider: "kakao" | "naver" | "google" | "apple") => {
+  const handleSocialLogin = () => {
     // TODO: 소셜 로그인 API 연동
     onLoginSuccess?.();
     onClose();
@@ -123,23 +123,12 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
 
         {/* 소셜 로그인 버튼 */}
         <div className="flex flex-col gap-2">
-          {(["kakao", "naver", "google", "apple"] as const).map((provider) => {
-            const labels: Record<string, string> = {
-              kakao: "Kakao로 로그인",
-              naver: "NAVER로 로그인",
-              google: "Google로 로그인",
-              apple: "Apple로 로그인",
-            };
-            return (
-              <button
-                key={provider}
-                onClick={() => handleSocialLogin(provider)}
-                className="w-full h-12 flex items-center justify-center gap-2 bg-transparent border border-black rounded-lg text-[14px] text-black cursor-pointer"
-              >
-                <span>{labels[provider]}</span>
-              </button>
-            );
-          })}
+          <button
+            onClick={handleSocialLogin}
+            className="w-full h-12 flex items-center justify-center gap-2 bg-transparent border border-black rounded-lg text-[14px] text-black cursor-pointer"
+          >
+            NAVER로 로그인
+          </button>
         </div>
       </div>
     </div>

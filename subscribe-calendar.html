@@ -1,0 +1,2934 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Subscribe · Calendar Redesign — 슬런치 팩토리</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --lime: #dcfd4a;
+        --brown: #8c451d;
+        --brown-dark: #6f3617;
+        --cream: #ffffff;
+        --eggshell: #f7f4ef;
+        --placeholder: #e8e4df;
+        --placeholder-2: #d4cfc7;
+        --charcoal: #3d3d3d;
+        --warm-gray: #6b6b6b;
+        --muted: #a0a0a0;
+        --line: #e5e2dc;
+        --black: #000;
+        --red: #e05858;
+        --blue: #4a7ac8;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        background: #ffffff;
+        color: var(--charcoal);
+        font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 400;
+        font-size: 14px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      img { display: block; max-width: 100%; }
+      button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+      a { color: inherit; text-decoration: none; }
+
+      .promo {
+        height: 32px;
+        background: var(--brown);
+        color: var(--lime);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px;
+      }
+      .header {
+        height: 64px;
+        background: var(--lime);
+        border-bottom: 1px solid var(--black);
+        position: relative;
+        padding: 0 16px;
+      }
+      .header .inner {
+        max-width: 1440px;
+        margin: 0 auto;
+        height: 100%;
+        display: flex; align-items: center; justify-content: space-between;
+        position: relative;
+      }
+      .header .hamburger {
+        width: 40px; height: 40px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: 0; padding: 0;
+      }
+      .header .logo-center {
+        position: absolute;
+        left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .header .logo-center img {
+        height: 36px;
+        display: block;
+      }
+      .header .utility {
+        display: flex; align-items: center; gap: 4px;
+      }
+      .header .utility .cart {
+        padding: 0 6px;
+        font-size: 13px;
+        color: var(--black);
+        text-decoration: none;
+      }
+      .header .utility .avatar {
+        width: 28px; height: 28px;
+        border-radius: 999px;
+        background: #e5e5e5;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--warm-gray);
+        font-size: 12px;
+        margin-left: 4px;
+      }
+
+      .page {
+        display: grid;
+        grid-template-columns: 1fr 480px;
+        border-bottom: 1px solid var(--black);
+        align-items: stretch;
+      }
+
+      /* ═══════════════════════════════════════════
+         LEFT: Menu catalog — matches project image 6
+         ═══════════════════════════════════════════ */
+      .menu-catalog {
+        border-right: 1px solid var(--black);
+        display: flex;
+        flex-direction: column;
+        background: var(--cream);
+      }
+      /* 타이틀(히어로) + 스피릿 안내 + 다시 찾기 — C 버전
+         높이 110px로 고정 → 우측 cal-title-row(62) + cal-controls(48) 하단 라인과 정렬 */
+      .catalog-header {
+        height: 110px;
+        padding: 0 32px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--black);
+      }
+      .catalog-header h1 {
+        font-size: 30px;
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+      .catalog-header .sub-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .catalog-header .ci-msg {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        line-height: 1.65;
+        color: var(--warm-gray);
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .catalog-header .ci-msg .name-pill {
+        display: inline-block;
+        padding: 1px 7px;
+        background: var(--black);
+        color: var(--lime);
+        font-size: 12px;
+        letter-spacing: -0.005em;
+      }
+      .catalog-header .ci-msg strong { font-weight: 400; color: var(--charcoal); }
+      .catalog-header .ci-again {
+        flex-shrink: 0;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        font-size: 12px;
+        color: var(--warm-gray);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .catalog-header .ci-again:hover { color: var(--brown); }
+
+      /* Undo snackbar */
+      .snackbar {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(8px);
+        z-index: 70;
+        background: var(--black);
+        color: var(--cream);
+        border: 1px solid var(--black);
+        padding: 12px 14px 12px 18px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 13px;
+        min-width: 320px;
+        max-width: 560px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+      }
+      .snackbar.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+      }
+      .snackbar .sb-msg { flex: 1; }
+      .snackbar .sb-undo {
+        color: var(--lime);
+        font-size: 13px;
+        padding: 4px 10px;
+        border: 1px solid var(--lime);
+      }
+      .snackbar .sb-undo:hover { background: var(--lime); color: var(--black); }
+      .snackbar .sb-close {
+        width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--cream);
+        opacity: 0.7;
+        font-size: 16px;
+      }
+      .snackbar .sb-close:hover { opacity: 1; }
+      .snackbar.info .sb-undo { display: none; }   /* 정보용 스낵바는 undo 없음 */
+      /* 모바일: 바텀바 위에 띄움 */
+      @media (max-width: 1100px) {
+        .snackbar {
+          bottom: 84px;
+          left: 12px;
+          right: 12px;
+          transform: translateY(8px);
+          min-width: 0;
+          max-width: none;
+        }
+        .snackbar.show {
+          transform: translateY(0);
+        }
+      }
+
+      /* 알러지 제외 (C 버전 — border-only chip + text 리셋 우측) */
+      .allergy-row {
+        height: 50px;          /* = date-nav */
+        display: flex; align-items: center; gap: 10px;
+        padding: 0 32px;
+        border-bottom: 1px solid var(--black);
+      }
+      /* 데스크톱: 래퍼를 투명 처리해 flex 단일 row 유지 */
+      .allergy-row .al-head,
+      .allergy-row .al-chips {
+        display: contents;
+      }
+      /* DOM 순서: trigger → chips → label → reset.
+         데스크톱 visual 순서: label(-1) → chips(0) → reset(2) */
+      .allergy-row .al-head .allergy-label { order: -1; }
+      .allergy-row .al-head .reset { order: 2; }
+      /* 트리거는 모바일 전용 — 데스크톱에서 숨김 */
+      .allergy-row .al-trigger { display: none; }
+      /* 선택된 알러지 preview — 모바일에서만 노출 */
+      .allergy-row .al-active-preview { display: none; }
+      .allergy-row .allergy-label {
+        font-size: 13px;
+        color: var(--charcoal);
+        padding-right: 20px;
+        flex-shrink: 0;
+      }
+      .allergy-row button[data-allergy] {
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        background: transparent;
+        font-size: 12px;
+        color: var(--charcoal);
+        flex-shrink: 0;
+        transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+      }
+      .allergy-row button[data-allergy]:hover {
+        border-color: var(--charcoal);
+      }
+      .allergy-row button[data-allergy].active {
+        background: var(--eggshell);
+        color: var(--muted);
+        border-color: var(--line);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+      }
+      .allergy-row .reset {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--warm-gray);
+        padding: 4px 2px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .allergy-row .reset:hover { color: var(--brown); }
+
+      .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+      }
+      .menu-card {
+        padding: 20px 16px 24px;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: var(--cream);
+        cursor: pointer;
+      }
+      /* 마지막 열 border 제거는 각 레이아웃별 media query에서 처리 */
+      .menu-card .thumb {
+        width: 100%; aspect-ratio: 1/1; background: var(--placeholder);
+        position: relative; overflow: hidden;
+      }
+      .menu-card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .menu-card .thumb .allergy-tag {
+        position: absolute; bottom: 8px; right: 8px;
+        background: rgba(0,0,0,0.55); color: var(--cream);
+        padding: 3px 7px; font-size: 10px; letter-spacing: 0.04em;
+      }
+      .menu-card .thumb .match-tag {
+        position: absolute; top: 8px; left: 8px;
+        background: var(--lime); color: var(--black);
+        padding: 3px 7px; font-size: 10px; letter-spacing: 0.08em;
+      }
+      .menu-card .name { font-size: 15px; margin-top: 14px; letter-spacing: -0.005em; }
+      .menu-card .desc { font-size: 12px; color: var(--warm-gray); margin-top: 4px; }
+      .menu-card .card-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+        gap: 10px;
+      }
+      .menu-card .card-foot .price { font-size: 15px; }
+
+      /* 필터로 메뉴가 모두 사라졌을 때 */
+      .menu-empty {
+        grid-column: 1 / -1;
+        padding: 48px 32px;
+        text-align: center;
+        color: var(--warm-gray);
+        font-size: 13px;
+      }
+      .menu-empty p { margin-bottom: 14px; }
+      .menu-empty .reset-inline {
+        padding: 8px 16px;
+        border: 1px solid var(--black);
+        background: transparent;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+      }
+      .menu-empty .reset-inline:hover { background: var(--black); color: var(--lime); }
+      .menu-card .detail-btn {
+        width: 22px; height: 22px;
+        display: flex; align-items: center; justify-content: center;
+        border: 1px solid var(--black);
+        background: var(--cream);
+        color: var(--charcoal);
+        font-size: 11px; line-height: 1;
+        flex-shrink: 0;
+        transition: background 0.15s, color 0.15s;
+      }
+      .menu-card .detail-btn:hover {
+        background: var(--black);
+        color: var(--lime);
+      }
+      .menu-card:hover .thumb::after {
+        content: "+ 식단에 추가";
+        position: absolute;
+        left: 10px; bottom: 10px;
+        background: var(--black);
+        color: var(--lime);
+        padding: 4px 8px;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+      }
+      .menu-card.flashed .thumb {
+        outline: 3px solid var(--lime);
+        outline-offset: -3px;
+      }
+      .menu-card.flashed .thumb::before {
+        content: "✓ 식단에 추가됨";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(220, 253, 74, 0.88);
+        color: var(--black);
+        font-size: 14px;
+        letter-spacing: 0.04em;
+        z-index: 2;
+        animation: flashFade 0.6s ease-out;
+      }
+      @keyframes flashFade {
+        0%   { opacity: 0; }
+        20%  { opacity: 1; }
+        100% { opacity: 0; }
+      }
+
+      /* ═══════════════════════════════════════════
+         RIGHT: Calendar panel
+         ═══════════════════════════════════════════ */
+      .calendar-panel {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--cream);
+      }
+      .cal-sticky {
+        flex-shrink: 0;
+        background: var(--cream);
+        z-index: 5;
+      }
+      .cal-scroll {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        scrollbar-width: thin;
+      }
+      .cal-scroll::-webkit-scrollbar { width: 6px; }
+      .cal-scroll::-webkit-scrollbar-thumb { background: var(--placeholder-2); }
+
+      .cal-footer {
+        flex-shrink: 0;
+        border-top: 1px solid var(--black);
+        padding: 16px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .cal-footer .cf-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        color: var(--warm-gray);
+      }
+      .cal-footer .cf-total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .cal-footer .cf-total-label { font-size: 14px; }
+      .cal-footer .cf-total-amount {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .cal-footer .cf-pay-btn {
+        width: 100%;
+        height: 48px;
+        background: var(--black);
+        color: #fff;
+        border-radius: 8px;
+        font-size: 15px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .cal-footer .cf-pay-btn:hover { background: var(--brown); }
+
+      .cal-title-row {
+        height: 62px;
+        padding: 0 24px;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .cal-title-row .title-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .cal-title-row h2 { font-size: 20px; letter-spacing: -0.01em; }
+      .cal-title-row .title-sub {
+        font-size: 11px;
+        color: var(--warm-gray);
+        letter-spacing: -0.005em;
+        margin: 0;
+      }
+      .month-select,
+      .date-picker { display: none; }  /* 데스크톱 숨김 (모바일에서만 활성) */
+      .mini-cal { display: none; }     /* 기본 숨김 — 데스크톱 media query에서 활성 */
+
+      .cal-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr);
+        border-top: 1px solid var(--black);
+        border-bottom: 1px solid var(--black);
+      }
+      .cal-controls .col {
+        height: 48px;
+        padding: 0 20px;
+        display: flex; align-items: center; gap: 14px;
+        border-right: 1px solid var(--black);
+        min-width: 0;
+      }
+      .cal-controls .col:last-child { border-right: 0; padding: 0 16px; }
+      .cal-controls .label {
+        font-size: 10px; letter-spacing: 0.14em;
+        text-transform: uppercase; color: var(--warm-gray);
+        flex-shrink: 0;
+      }
+      .cal-controls .opts { display: flex; gap: 14px; margin-left: auto; white-space: nowrap; }
+      .cal-controls .opts button { font-size: 13px; color: var(--muted); padding: 2px 0; }
+      .cal-controls .opts button.active {
+        color: var(--brown); border-bottom: 1px solid var(--brown);
+      }
+
+      .date-nav {
+        display: flex; align-items: center; justify-content: space-between;
+        height: 50px; padding: 0 16px;
+        border-bottom: 1px solid var(--black);
+        background: var(--cream);
+      }
+      .date-nav button {
+        width: 32px; height: 32px; border: 1px solid var(--black);
+        display: flex; align-items: center; justify-content: center;
+        background: var(--cream);
+      }
+      .date-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+      .date-nav button:hover:not(:disabled) { background: var(--eggshell); }
+      .date-nav .range { font-size: 14px; letter-spacing: -0.005em; text-align: center; }
+      .date-nav .range .sub { font-size: 11px; color: var(--warm-gray); margin-left: 6px; }
+
+      .view { display: none; }
+      .view.active { display: block; }
+
+      /* ═══ V1 Daily ═══ */
+      .v1-day-rail {
+        display: flex; align-items: center; gap: 6px;
+        padding: 12px 16px; overflow-x: auto;
+        scrollbar-width: none; border-bottom: 1px solid var(--line);
+        background: var(--cream);
+      }
+      .v1-day-rail::-webkit-scrollbar { display: none; }
+      .v1-day-rail .pill {
+        flex-shrink: 0; padding: 6px 10px; font-size: 13px;
+        color: var(--warm-gray); cursor: pointer;
+      }
+      .v1-day-rail .pill.active { color: var(--charcoal); }
+      .v1-day-rail .chip {
+        flex-shrink: 0; width: 46px; height: 56px;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 2px; cursor: pointer; border-radius: 999px;
+      }
+      .v1-day-rail .chip .w { font-size: 10px; color: var(--warm-gray); }
+      .v1-day-rail .chip .d { font-size: 15px; letter-spacing: -0.01em; }
+      .v1-day-rail .chip.sat .w, .v1-day-rail .chip.sat .d { color: var(--blue); }
+      .v1-day-rail .chip.sun .w, .v1-day-rail .chip.sun .d,
+      .v1-day-rail .chip.holiday .w, .v1-day-rail .chip.holiday .d { color: var(--red); }
+      .v1-day-rail .chip.rest {
+        background: #f7ecec;
+      }
+      .v1-day-rail .chip.active { background: var(--black); }
+      .v1-day-rail .chip.rest.active { background: var(--red); }
+      .v1-day-rail .chip.active .w,
+      .v1-day-rail .chip.active .d { color: var(--cream) !important; }
+
+      .v1-day-list { padding: 0 0 8px; }
+      .v1-day-group {
+        padding: 14px 22px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .v1-day-group .day-head {
+        display: flex; align-items: baseline; justify-content: space-between;
+        padding-bottom: 6px;
+      }
+      .v1-day-group .day-head .date { font-size: 15px; letter-spacing: -0.005em; }
+      .v1-day-group .day-head .date .sub {
+        color: var(--warm-gray); font-size: 12px; margin-left: 6px;
+      }
+      .v1-day-group.sat .day-head .date { color: var(--blue); }
+      .v1-day-group.sun .day-head .date,
+      .v1-day-group.holiday .day-head .date { color: var(--red); }
+      .v1-day-group .day-head .total { color: var(--warm-gray); font-size: 13px; }
+
+      .v1-meal-row {
+        display: grid; grid-template-columns: 72px 1fr auto auto;
+        gap: 14px; align-items: center; padding: 6px 0;
+      }
+      .v1-meal-row .delete-x {
+        width: 28px; height: 28px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--muted);
+        font-size: 18px; line-height: 1;
+        border-radius: 999px;
+      }
+      .v1-meal-row .delete-x:hover {
+        background: var(--eggshell);
+        color: var(--red);
+      }
+      .v1-meal-row + .v1-meal-row,
+      .v1-meal-row + .v1-add-slot,
+      .v1-add-slot + .v1-meal-row,
+      .v1-add-slot + .v1-add-slot { border-top: 1px solid var(--line); }
+
+      .v1-meal-row .thumb {
+        width: 72px; height: 72px; background: var(--placeholder); overflow: hidden;
+      }
+      .v1-meal-row .thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .v1-meal-row .info { display: flex; flex-direction: column; gap: 6px; }
+      .slot-badge {
+        display: inline-flex; align-items: center; width: fit-content;
+        padding: 2px 9px; background: var(--eggshell); color: var(--charcoal);
+        font-size: 11px; border-radius: 999px;
+      }
+      .slot-badge.dinner { background: #efe9df; }
+      .v1-meal-row .name { font-size: 13px; }
+      .v1-meal-row .price { font-size: 13px; color: var(--charcoal); }
+
+      .v1-add-slot {
+        padding: 12px 0; display: flex; align-items: center; justify-content: center;
+      }
+      .v1-add-slot button {
+        width: 100%;
+        border: 1px dashed var(--placeholder-2);
+        background: transparent;
+        padding: 14px; color: var(--muted); font-size: 13px;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+      }
+      .v1-add-slot button:hover { border-color: var(--brown); color: var(--brown); }
+      .v1-add-slot .plus {
+        width: 18px; height: 18px; border: 1px solid currentColor;
+        border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+        font-size: 12px; line-height: 1;
+      }
+
+      .v1-day-group.rest { background: #fbf2f2; }
+      .v1-day-group.rest .day-head .date { color: var(--red); }
+      .v1-day-group.rest .rest-note {
+        color: var(--red); font-size: 13px; padding: 6px 0 2px;
+        display: inline-flex; align-items: center; gap: 8px;
+      }
+      .v1-day-group.rest .rest-note::before {
+        content: "배송 없음";
+        display: inline-block;
+        padding: 2px 9px;
+        border: 1px solid var(--red);
+        border-radius: 999px;
+        font-size: 11px;
+      }
+
+      /* ═══ V1 Cycle ═══ */
+      .v1-weeks {
+        padding: 16px 16px 20px;
+        display: flex; flex-direction: column; gap: 16px;
+      }
+      .v1-week-card { border: 1px solid var(--black); background: var(--cream); }
+      .v1-week-card .wc-head {
+        display: flex; align-items: baseline; justify-content: space-between;
+        padding: 14px 16px; border-bottom: 1px solid var(--black);
+      }
+      .v1-week-card .wc-head .wk {
+        font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brown);
+      }
+      .v1-week-card .wc-head h3 { font-size: 14px; letter-spacing: -0.005em; margin-top: 2px; }
+      .v1-week-card .wc-head .wc-meta { text-align: right; font-size: 12px; color: var(--warm-gray); }
+      .v1-week-card .wc-meta strong {
+        display: block; font-weight: 400; color: var(--charcoal);
+        font-size: 15px; margin-top: 2px;
+      }
+      .v1-week-matrix { display: grid; grid-template-columns: 32px repeat(7, 1fr); }
+      .v1-week-matrix > div {
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        min-width: 0;
+      }
+      .v1-week-matrix > div:nth-child(8n) { border-right: 0; }
+      .v1-week-matrix .col-head {
+        padding: 6px 2px; text-align: center; font-size: 10px;
+        background: var(--eggshell);
+      }
+      .v1-week-matrix .col-head .w { color: var(--warm-gray); }
+      .v1-week-matrix .col-head.sat .w, .v1-week-matrix .col-head.sat .d { color: var(--blue); }
+      .v1-week-matrix .col-head.sun .w, .v1-week-matrix .col-head.sun .d,
+      .v1-week-matrix .col-head.holiday .w, .v1-week-matrix .col-head.holiday .d { color: var(--red); }
+      .v1-week-matrix .col-head .d { font-size: 11px; margin-top: 1px; }
+      .v1-week-matrix .row-head {
+        padding: 4px 2px; text-align: center; font-size: 9px;
+        color: var(--warm-gray); letter-spacing: 0.06em;
+        background: var(--eggshell);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .v1-week-matrix .cell {
+        padding: 2px;
+        aspect-ratio: 1 / 1; position: relative; overflow: hidden;
+      }
+      .v1-week-matrix .cell img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+      }
+      .v1-week-matrix .cell.empty {
+        background: repeating-linear-gradient(135deg,
+          var(--eggshell), var(--eggshell) 6px,
+          #ede9e1 6px, #ede9e1 12px);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .v1-week-matrix .cell.empty button {
+        width: 22px; height: 22px; border: 1px solid var(--muted); color: var(--muted);
+        border-radius: 999px; font-size: 12px; line-height: 1;
+      }
+      .v1-week-matrix .cell.empty button:hover { border-color: var(--brown); color: var(--brown); }
+      .v1-week-matrix .cell.rest {
+        background: #f3efe9;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .v1-week-matrix .cell .hover-name {
+        position: absolute; left: 2px; right: 2px; bottom: 2px;
+        background: rgba(0,0,0,0.65); color: #fff;
+        padding: 3px 5px; font-size: 10px; line-height: 1.25;
+        opacity: 0; transition: opacity 0.15s ease; pointer-events: none;
+      }
+      .v1-week-matrix .cell:hover .hover-name { opacity: 1; }
+      .v1-week-matrix .cell .cell-remove {
+        position: absolute;
+        top: 4px; right: 4px;
+        width: 18px; height: 18px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border-radius: 999px;
+        font-size: 11px; line-height: 1;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0;
+        transition: opacity 0.15s ease, background 0.15s ease;
+        z-index: 2;
+      }
+      .v1-week-matrix .cell:hover .cell-remove { opacity: 1; }
+      .v1-week-matrix .cell .cell-remove:hover { background: var(--red); }
+      .v1-week-card .wc-foot {
+        padding: 10px 16px;
+        border-top: 1px solid var(--line);
+        font-size: 12px; color: var(--warm-gray);
+        display: flex; justify-content: space-between; align-items: center;
+      }
+      .v1-week-card .wc-foot .expand {
+        color: var(--brown); border-bottom: 1px solid var(--brown); padding-bottom: 1px;
+      }
+
+      /* ═══════════════════════════════════════════
+         Menu detail modal
+         ═══════════════════════════════════════════ */
+      .menu-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 120;          /* catalog sheet(100) + backdrop(99) 위에 표시 */
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .menu-modal.open { display: flex; }
+      .menu-modal .dialog {
+        background: var(--cream);
+        border: 1px solid var(--black);
+        width: 100%;
+        max-width: 760px;
+        max-height: 90vh;
+        overflow: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        position: relative;
+        box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+      }
+      .menu-modal .dialog .close-btn {
+        position: absolute;
+        top: 12px; right: 12px;
+        width: 32px; height: 32px;
+        background: var(--cream);
+        border: 1px solid var(--black);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; line-height: 1;
+        z-index: 3;
+      }
+      .menu-modal .dialog .close-btn:hover {
+        background: var(--black);
+        color: var(--lime);
+      }
+
+      .menu-modal .media {
+        background: var(--placeholder);
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        position: relative;
+      }
+      .menu-modal .media img {
+        width: 100%; height: 100%; object-fit: cover;
+      }
+
+      .menu-modal .body {
+        padding: 32px 32px 26px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        border-left: 1px solid var(--black);
+      }
+      .menu-modal .eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--brown);
+      }
+      .menu-modal h3 {
+        font-size: 22px;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+      }
+      .menu-modal .tagline {
+        font-size: 13px;
+        color: var(--warm-gray);
+        line-height: 1.7;
+      }
+      .menu-modal .meta-tags {
+        display: flex; gap: 6px; flex-wrap: wrap;
+      }
+      .menu-modal .meta-tags span {
+        padding: 3px 10px;
+        border: 1px solid var(--black);
+        font-size: 11px;
+      }
+      .menu-modal .meta-tags .allergy {
+        background: #fbf2f2;
+        color: var(--red);
+        border-color: var(--red);
+      }
+      .menu-modal .price {
+        font-size: 22px;
+        letter-spacing: -0.01em;
+      }
+      .menu-modal .divider {
+        height: 1px;
+        background: var(--line);
+        margin: 2px 0 4px;
+      }
+      .menu-modal .section h4 {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--brown);
+        margin-bottom: 6px;
+      }
+      .menu-modal .ingredients {
+        font-size: 13px;
+        color: var(--charcoal);
+        line-height: 1.8;
+        list-style: none;
+        padding: 0;
+      }
+      .menu-modal .ingredients li {
+        display: flex;
+        justify-content: space-between;
+        padding: 2px 0;
+        font-size: 13px;
+      }
+      .menu-modal .ingredients li .ing-amount { color: var(--warm-gray); }
+      .menu-modal .nutrition {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .menu-modal .nutrition .nut {
+        border: 1px solid var(--line);
+        padding: 8px 4px 6px;
+        text-align: center;
+      }
+      .menu-modal .nutrition .nut strong {
+        display: block;
+        font-size: 15px;
+        font-weight: 400;
+        color: var(--charcoal);
+        letter-spacing: -0.005em;
+      }
+      .menu-modal .nutrition .nut span {
+        color: var(--warm-gray);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+      }
+      .menu-modal .actions {
+        margin-top: auto;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 8px;
+        padding-top: 8px;
+      }
+      .menu-modal .actions button {
+        padding: 12px;
+        font-size: 13px;
+        letter-spacing: 0.06em;
+      }
+      .menu-modal .actions .cancel {
+        border: 1px solid var(--black);
+        background: transparent;
+      }
+      .menu-modal .actions .cancel:hover { background: var(--eggshell); }
+      .menu-modal .actions .add-cta {
+        background: var(--black);
+        color: var(--lime);
+      }
+      .menu-modal .actions .add-cta:hover { background: var(--brown); }
+
+      @media (max-width: 1100px) {
+        /* 모바일 모달 = 바텀시트 (아래에서 슬라이드 업, 85vh) */
+        .menu-modal {
+          padding: 0;
+          align-items: flex-end;         /* 하단 정렬 */
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.4);
+        }
+        .menu-modal .dialog {
+          display: flex;
+          flex-direction: column;
+          grid-template-columns: none;
+          grid-template-rows: none;
+          width: 100vw;
+          max-width: 100vw;
+          height: 88vh;                   /* 카탈로그 시트와 동일 */
+          max-height: 88vh;
+          border: 0;
+          border-top: 1px solid var(--black);
+          overflow: hidden;
+          box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.18);
+        }
+        .menu-modal.open .dialog {
+          animation: modalSlideUp 0.28s ease;
+        }
+        @keyframes modalSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .menu-modal .media {
+          flex-shrink: 0;
+          aspect-ratio: auto;
+          height: 26vh;                   /* 조금 축소 */
+          max-height: 240px;
+        }
+        .menu-modal .body {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          border-left: 0;
+          border-top: 1px solid var(--black);
+          padding: 18px 18px 16px;
+          gap: 10px;
+        }
+        .menu-modal h3 { font-size: 18px; }
+        .menu-modal .tagline { font-size: 12px; line-height: 1.6; }
+        .menu-modal .price { font-size: 18px; }
+        .menu-modal .eyebrow { font-size: 9px; }
+        .menu-modal .meta-tags span { font-size: 10px; padding: 2px 8px; }
+        .menu-modal .section h4 { font-size: 9px; }
+        .menu-modal .ingredients,
+        .menu-modal .ingredients li { font-size: 12px; }
+        .menu-modal .nutrition .nut { padding: 6px 2px 4px; }
+        .menu-modal .nutrition .nut strong { font-size: 13px; }
+        .menu-modal .nutrition .nut span { font-size: 9px; }
+        .menu-modal .actions {
+          grid-template-columns: 1fr 2fr;
+          gap: 6px;
+          padding-top: 4px;
+        }
+        .menu-modal .actions button {
+          padding: 12px;
+          font-size: 12px;
+          letter-spacing: 0.04em;
+        }
+        .menu-modal .dialog .close-btn {
+          top: 12px; right: 12px;
+          width: 32px; height: 32px;
+          font-size: 16px;
+        }
+      }
+
+      /* Footer (lime) */
+      .footer {
+        background: var(--lime);
+        border-top: 1px solid var(--black);
+        padding: 24px 32px; font-size: 12px; color: var(--black);
+        display: flex; justify-content: space-between;
+      }
+
+      /* Mobile drawer (off by default on desktop) */
+      .mobile-fab { display: none; }
+      .mobile-bottom-bar { display: none; }
+      .mobile-backdrop { display: none; }
+      .mobile-close { display: none; }
+
+      /* ═══════════════════════════════════════════
+         Responsive — schedule 메인, 메뉴 카탈로그는 bottom sheet
+         ═══════════════════════════════════════════ */
+      @media (max-width: 1100px) {
+        .page { display: block; }
+
+        /* ── Calendar panel = main full-width view ── */
+        .calendar-panel {
+          position: static;
+          width: 100%;
+          height: auto;
+          max-height: none;
+          border: 0;
+          box-shadow: none;
+          transform: none;
+          z-index: auto;
+        }
+        .cal-scroll { overflow-y: visible; }
+
+        /* Sticky header — 페이지 스크롤 시 상단 고정 */
+        .cal-sticky {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background: var(--cream);
+        }
+
+        /* Compact title row — min-height 70px */
+        .cal-title-row {
+          height: 70px;
+          min-height: 70px;
+          padding: 0 16px;
+          gap: 10px;
+        }
+        .cal-title-row h2 { font-size: 17px; line-height: 1.3; }
+        .cal-title-row .title-sub {
+          font-size: 10px;
+          line-height: 1.3;
+          margin: 0;
+        }
+
+        /* ── cal-controls 재구성: [월 선택] 좌측, [1주/2주] 우측 ── */
+        .cal-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          height: 40px;
+          padding: 0 16px;
+          border-top: 1px solid var(--line);
+          border-bottom: 1px solid var(--black);
+        }
+        .cal-controls .date-picker {
+          display: inline-block;
+          appearance: none;
+          -webkit-appearance: none;
+          padding: 4px 10px;
+          border: 1px solid var(--line);
+          background-color: var(--cream);
+          font-size: 12px;
+          color: var(--charcoal);
+          letter-spacing: -0.005em;
+          font-family: inherit;
+          cursor: pointer;
+          min-height: 28px;
+        }
+        .cal-controls .date-picker::-webkit-calendar-picker-indicator {
+          opacity: 0.6;
+          cursor: pointer;
+        }
+        .cal-controls .col:nth-of-type(1) {   /* Duration */
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          height: auto;
+          padding: 0;
+          border-right: 0;
+        }
+        .cal-controls .col:nth-of-type(1) .label { display: none; }
+        .cal-controls .col:nth-of-type(1) .opts { gap: 10px; margin-left: 0; }
+        .cal-controls .col:nth-of-type(1) .opts button { font-size: 12px; }
+        .cal-controls .col:nth-of-type(2) { display: none; }  /* View 숨김 */
+        .date-nav { display: none; }
+
+        /* ── Day rail: 전체 일자 swipeable, tap-to-select ── */
+        .v1-day-rail {
+          position: sticky;
+          top: 96px;                           /* cal-title-row(56 min) + cal-controls(40) */
+          z-index: 9;
+          display: flex;
+          gap: 4px;
+          padding: 8px 14px;
+          overflow-x: auto;
+          scroll-snap-type: x proximity;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          background: var(--cream);
+          border-bottom: 1px solid var(--black);
+        }
+        .v1-day-rail::-webkit-scrollbar { display: none; }
+        .v1-day-rail .pill { display: none; }  /* 전체 pill 제거 (새 모델) */
+        .v1-day-rail .chip {
+          width: 48px;
+          height: 52px;
+          flex-shrink: 0;
+          border-radius: 4px;
+          scroll-snap-align: center;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+        /* 선택된 7일 윈도우: anchor 이외의 in-window day */
+        .v1-day-rail .chip.in-window:not(.active) {
+          background: var(--eggshell);
+        }
+        .v1-day-rail .chip.active {
+          background: var(--black);
+        }
+        .v1-day-rail .chip.active .w,
+        .v1-day-rail .chip.active .d {
+          color: var(--cream) !important;
+        }
+        /* 지난 날짜: 흐리게 + 클릭 비활성 */
+        .v1-day-rail .chip.disabled {
+          opacity: 0.3;
+          pointer-events: none;
+          cursor: not-allowed;
+        }
+        .v1-day-rail .chip.disabled .w,
+        .v1-day-rail .chip.disabled .d {
+          color: var(--muted) !important;
+        }
+
+        /* 일별만 노출 */
+        .v1-cycle { display: none !important; }
+
+        /* ── Menu catalog = bottom sheet ── */
+        .menu-catalog {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          max-height: 88vh;
+          background: var(--cream);
+          z-index: 100;
+          transform: translateY(100%);
+          transition: transform 0.28s ease;
+          box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.18);
+          border: 0;
+          border-top: 1px solid var(--black);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .menu-catalog.open { transform: translateY(0); }
+
+        /* 모바일 카탈로그 헤더: 닫기 X 버튼만 노출 */
+        .menu-catalog .catalog-header {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          padding: 10px 16px;
+          height: auto;
+          border-bottom: 0;
+        }
+        .menu-catalog .catalog-header h1,
+        .menu-catalog .catalog-header .sub-row { display: none; }
+        .menu-catalog .catalog-header .mobile-close {
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--black);
+          background: var(--cream);
+          color: var(--charcoal);
+          font-size: 15px;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .menu-catalog .catalog-header .mobile-close:hover {
+          background: var(--black);
+          color: var(--lime);
+        }
+
+        /* 모바일: 접이식 chip 필터 (헤더 상시, chips 토글) */
+        .menu-catalog .allergy-row {
+          display: flex;
+          flex-direction: column;
+          height: auto;
+          padding: 10px 20px;
+          overflow: visible;
+          border-bottom: 1px solid var(--black);
+        }
+        /* 드롭다운 트리거 숨김 */
+        .menu-catalog .allergy-row .al-trigger { display: none; }
+
+        /* 헤더 (order 1): 라벨 ▾  선택한 알러지 미리보기  초기화 */
+        .menu-catalog .allergy-row .al-head {
+          order: 1;
+          display: flex;
+          width: 100%;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          padding: 4px 0;
+          user-select: none;
+        }
+        .menu-catalog .allergy-row .al-head .allergy-label {
+          display: inline;
+          order: 0;
+          font-size: 12px;
+          color: var(--charcoal);
+          letter-spacing: -0.005em;
+          padding: 0;
+          border: 0;
+          text-transform: none;
+          flex-shrink: 0;
+        }
+        .menu-catalog .allergy-row .al-head::after {
+          content: "▾";
+          order: 1;
+          font-size: 10px;
+          color: var(--muted);
+          transition: transform 0.18s ease, color 0.15s ease;
+          flex-shrink: 0;
+        }
+        .menu-catalog .allergy-row.open .al-head::after {
+          transform: rotate(180deg);
+          color: var(--brown);
+        }
+        .menu-catalog .allergy-row .al-head .al-active-preview {
+          display: block;
+          order: 2;
+          flex: 1;
+          min-width: 0;
+          margin-left: 4px;
+          font-size: 10px;
+          color: var(--warm-gray);
+          letter-spacing: -0.005em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .menu-catalog .allergy-row .al-head .reset {
+          order: 3;
+          margin: 0;
+          font-size: 11px;
+          padding: 0;
+          flex-shrink: 0;
+        }
+
+        /* chip 그리드 (order 2): 접힘 기본 / 펼침 시 4 × 2 */
+        .menu-catalog .allergy-row .al-chips {
+          order: 2;
+          display: none;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 6px;
+          width: 100%;
+          padding-top: 10px;
+        }
+        .menu-catalog .allergy-row.open .al-chips {
+          display: grid;
+          animation: alSlideIn 0.18s ease;
+        }
+        @keyframes alSlideIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .menu-catalog .allergy-row .al-chips button[data-allergy] {
+          padding: 9px 4px;
+          font-size: 12px;
+          border: 1px solid var(--line);
+          background: var(--cream);
+          color: var(--charcoal);
+          text-align: center;
+          transition: all 0.15s ease;
+          text-decoration: none;
+        }
+        .menu-catalog .allergy-row .al-chips button[data-allergy]:hover {
+          border-color: var(--charcoal);
+        }
+        .menu-catalog .allergy-row .al-chips button[data-allergy].active {
+          background: var(--black);
+          color: var(--lime);
+          border-color: var(--black);
+          text-decoration: none;
+        }
+
+        .menu-grid {
+          grid-template-columns: repeat(2, 1fr);
+          overflow-y: auto;
+          flex: 1;
+        }
+        .menu-card { border-right: 1px solid var(--line); }
+        .menu-card:nth-child(2n) { border-right: 0; }
+
+        /* 바텀시트 내 메뉴 카드 — 컴팩트 */
+        .menu-catalog .menu-card {
+          padding: 10px 10px 14px;
+        }
+        .menu-catalog .menu-card .thumb {
+          aspect-ratio: 4 / 3;      /* 1/1 → 4/3 (높이 축소) */
+        }
+        .menu-catalog .menu-card .thumb .allergy-tag {
+          font-size: 9px;
+          padding: 2px 6px;
+          bottom: 6px; right: 6px;
+        }
+        .menu-catalog .menu-card .name {
+          font-size: 13px;
+          margin-top: 8px;
+        }
+        .menu-catalog .menu-card .desc {
+          font-size: 11px;
+          margin-top: 2px;
+        }
+        .menu-catalog .menu-card .card-foot {
+          margin-top: 8px;
+        }
+        .menu-catalog .menu-card .card-foot .price { font-size: 13px; }
+        .menu-catalog .menu-card .detail-btn {
+          width: 20px; height: 20px; font-size: 12px;
+        }
+
+        /* ── Backdrop (for catalog sheet) ── */
+        .mobile-backdrop {
+          display: block;
+          position: fixed;
+          inset: 0;
+          z-index: 99;
+          background: rgba(0, 0, 0, 0.45);
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.28s ease, visibility 0.28s;
+        }
+        .mobile-backdrop.open {
+          opacity: 1;
+          visibility: visible;
+        }
+
+        /* ── Close button (inside catalog sheet) ── */
+        .mobile-close {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border: 1px solid var(--black);
+          background: var(--cream);
+          font-size: 18px;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .mobile-close:hover {
+          background: var(--black);
+          color: var(--lime);
+        }
+
+        /* ── 바텀 바: 총액 + 메뉴 추가 + 결제하기 ── */
+        .mobile-bottom-bar {
+          display: flex;
+          position: fixed;
+          left: 0; right: 0; bottom: 0;
+          z-index: 115;        /* catalog sheet(100) + backdrop(99) 위, modal(120) 아래 */
+          background: var(--cream);
+          border-top: 1px solid var(--black);
+          padding: 10px 14px;
+          gap: 10px;
+          align-items: center;
+          box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.1);
+        }
+        .mobile-bottom-bar.hidden {
+          transform: translateY(100%);
+          opacity: 0;
+          pointer-events: none;
+          transition: transform 0.25s ease, opacity 0.25s;
+        }
+        .mobile-bottom-bar .mbb-summary {
+          flex: 1;
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+          min-width: 0;
+          font-size: 14px;
+          color: var(--charcoal);
+          letter-spacing: -0.005em;
+        }
+        .mobile-bottom-bar .mbb-summary .mbb-meals {
+          font-size: 12px;
+          color: var(--warm-gray);
+        }
+        .mobile-bottom-bar .mbb-summary .mbb-divider {
+          color: var(--muted);
+          font-size: 12px;
+        }
+        .mobile-bottom-bar .mbb-summary .mbb-total {
+          font-size: 15px;
+          letter-spacing: -0.01em;
+        }
+        .mobile-bottom-bar .mbb-menu-btn {
+          width: 40px;
+          height: 40px;
+          border: 1px solid var(--black);
+          background: var(--cream);
+          color: var(--charcoal);
+          font-size: 18px;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .mobile-bottom-bar .mbb-menu-btn:hover,
+        .mobile-bottom-bar .mbb-menu-btn:active {
+          background: var(--black);
+          color: var(--lime);
+        }
+        .mobile-bottom-bar .mbb-cta {
+          padding: 10px 18px;
+          background: var(--black);
+          color: var(--lime);
+          font-size: 14px;
+          letter-spacing: 0.02em;
+          border: 1px solid var(--black);
+          min-height: 40px;
+          flex-shrink: 0;
+        }
+        .mobile-bottom-bar .mbb-cta:hover,
+        .mobile-bottom-bar .mbb-cta:active { background: var(--brown); }
+
+        /* 마지막 식단이 바텀바에 가려지지 않도록 하단 여유 */
+        .v1-day-list { padding-bottom: 80px; }
+
+        /* ── 식단 리스트 각 일자 영역 — 컴팩트 (이전 행 레이아웃) ── */
+        .v1-day-group {
+          padding: 10px 16px 8px;
+        }
+        .v1-day-group .day-head {
+          padding-bottom: 4px;
+        }
+        .v1-day-group .day-head .date { font-size: 14px; }
+        .v1-day-group .day-head .date .sub { font-size: 11px; margin-left: 5px; }
+        .v1-day-group .day-head .total { font-size: 12px; }
+
+        .v1-meal-row {
+          grid-template-columns: 56px 1fr auto auto;
+          gap: 10px;
+          padding: 4px 0;
+        }
+        .v1-meal-row .thumb {
+          width: 56px; height: 56px;
+        }
+        .v1-meal-row .info { gap: 4px; }
+        .v1-meal-row .name { font-size: 12px; }
+        .v1-meal-row .price { font-size: 12px; }
+        .slot-badge { font-size: 10px; padding: 1px 7px; }
+        .v1-meal-row .delete-x {
+          width: 24px; height: 24px; font-size: 16px;
+        }
+
+        .v1-add-slot { padding: 8px 0; }
+        .v1-add-slot button {
+          padding: 10px;
+          font-size: 12px;
+        }
+        .v1-add-slot .plus {
+          width: 16px; height: 16px; font-size: 11px;
+        }
+      }
+
+      /* ═══════════════════════════════════════════════════════
+         데스크톱(>1100px) 전용 — 상/하 레이아웃 + 7-col 스케줄
+         ═══════════════════════════════════════════════════════ */
+      @media (min-width: 1101px) {
+        /* ── 페이지: 좌/우 → 상/하 ── */
+        .page {
+          display: flex;
+          flex-direction: column;
+          grid-template-columns: none;
+        }
+        .calendar-panel {
+          position: static;
+          height: auto;
+          min-height: 0;
+          width: 100%;
+          align-self: stretch;
+          order: 1;
+          border-right: 0;
+          border-bottom: 0;              /* 하단 굵은 라인 제거 */
+        }
+        .cal-sticky { position: static; }
+        .cal-scroll { overflow: visible; }
+        .menu-catalog {
+          order: 2;
+          border-right: 0;
+        }
+
+        /* ── cal-controls 전체 숨김 (Duration hidden + View 제거) ── */
+        .cal-controls { display: none; }
+
+        /* ── 양 섹션 타이틀 통일 (식단 일정 / 메뉴 고르기) ── */
+        .cal-title-row { height: 56px; padding: 0 24px; }
+        .cal-title-row h2 { font-size: 18px; }
+        .cal-title-row .title-sub { font-size: 11px; color: var(--warm-gray); }
+
+        /* 카탈로그 헤더도 같은 톤으로 통일 */
+        .menu-catalog .catalog-header {
+          height: 56px;
+          padding: 0 24px;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          border-bottom: 1px solid var(--line);
+          display: flex;
+        }
+        .menu-catalog .catalog-header h1 {
+          font-size: 18px;
+          font-weight: 400;
+          letter-spacing: -0.005em;
+          line-height: 1.2;
+          margin-bottom: 0;
+          flex-shrink: 0;
+        }
+        .menu-catalog .catalog-header .sub-row {
+          display: flex;
+          flex: 1;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 14px;
+          flex-wrap: nowrap;
+        }
+        .menu-catalog .catalog-header .ci-msg {
+          font-size: 11px;
+          color: var(--warm-gray);
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          line-height: 1.5;
+        }
+        .menu-catalog .catalog-header .ci-again { font-size: 11px; }
+
+        /* ── date-nav 전체 숨김 — 네비게이션은 mini-cal로 통합 ── */
+        .date-nav { display: none; }
+
+        /* ── day rail 숨김 ── */
+        .v1-day-rail { display: none; }
+
+        /* v1-daily를 좌(mini-cal) + 우(day-list) flex로 */
+        .view.v1-daily {
+          width: 100%;
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+          border-top: 0;
+          padding: 15px 0;               /* 식단표 상하 15px */
+        }
+        .mini-cal {
+          display: flex;
+          flex-direction: column;
+          flex: 0 0 280px;
+          padding: 10px 14px;
+          border-right: 1px solid var(--line);
+          background: var(--cream);
+        }
+        .mini-cal .mc-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-bottom: 8px;
+        }
+        .mini-cal .mc-nav {
+          width: 22px; height: 22px;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--warm-gray);
+          font-size: 14px;
+          line-height: 1;
+        }
+        .mini-cal .mc-nav:hover { color: var(--brown); }
+        .mini-cal .mc-title {
+          font-size: 12px;
+          color: var(--charcoal);
+          letter-spacing: -0.005em;
+        }
+        .mini-cal .mc-wdays {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          padding: 4px 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .mini-cal .mc-wday {
+          font-size: 10px;
+          color: var(--warm-gray);
+          text-align: center;
+        }
+        .mini-cal .mc-wday.sun { color: var(--red); }
+        .mini-cal .mc-wday.sat { color: var(--blue); }
+        .mini-cal .mc-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          grid-auto-rows: 1fr;           /* 행이 세로 공간 균등 배분 → 빈 여백 없음 */
+          gap: 2px;
+          padding-top: 6px;
+          flex: 1;                        /* 남은 공간 채움 */
+          min-height: 0;
+        }
+        .mini-cal .mc-cell {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          color: var(--charcoal);
+          border-radius: 4px;
+          min-height: 28px;
+        }
+        .mini-cal .mc-cell.empty { visibility: hidden; }
+        .mini-cal .mc-cell.past {
+          color: var(--muted);
+          opacity: 0.4;
+          pointer-events: none;
+        }
+        .mini-cal .mc-cell.sun:not(.past) { color: var(--red); }
+        .mini-cal .mc-cell.sat:not(.past) { color: var(--blue); }
+        .mini-cal .mc-cell.selectable { cursor: pointer; }
+        .mini-cal .mc-cell.selectable:hover { background: var(--eggshell); }
+        .mini-cal .mc-cell.today {
+          outline: 1px solid var(--brown);
+          outline-offset: -1px;
+        }
+        .mini-cal .mc-cell.in-window {
+          background: var(--eggshell);
+        }
+        .mini-cal .mc-cell.anchor,
+        .mini-cal .mc-cell.end {
+          background: var(--black) !important;
+          color: var(--cream) !important;
+        }
+
+        /* ── 스케줄 = 7일 가로 그리드 (컴팩트) ── */
+        .v1-day-list {
+          flex: 1;
+          min-width: 0;
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          padding: 0;
+          border-top: 0;
+        }
+        .v1-day-group {
+          padding: 6px 6px 8px;
+          border-right: 0;          /* 양옆 그리드 제거 */
+          border-bottom: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        /* day-head: 날짜 + 요일 스택 중앙 표시 */
+        .v1-day-group .day-head {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
+          padding: 4px 0 6px;
+          border-bottom: 1px solid var(--line);
+          flex-direction: column;
+        }
+        .v1-day-group .day-head .date {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1px;
+          letter-spacing: -0.005em;
+        }
+        .v1-day-group .day-head .date-num {
+          display: block;
+          font-size: 11px;
+          color: var(--warm-gray);
+        }
+        .v1-day-group .day-head .date .sub {
+          display: block;
+          margin-left: 0;
+          font-size: 13px;
+          color: var(--charcoal);
+          line-height: 1;
+        }
+        .v1-day-group .day-head .sub-count { display: none; }
+        .v1-day-group .day-head .total { display: none; }
+        /* 토/일 색상 */
+        .v1-day-group.sat .day-head .date-num,
+        .v1-day-group.sat .day-head .sub-wday { color: var(--blue); }
+        .v1-day-group.sun .day-head .date-num,
+        .v1-day-group.sun .day-head .sub-wday,
+        .v1-day-group.holiday .day-head .date-num,
+        .v1-day-group.holiday .day-head .sub-wday { color: var(--red); }
+
+        /* meal-row = 세로 카드 (이미지 + 이름만) — 고정 높이로 삭제 시 위치 유지 */
+        .v1-day-group .v1-meal-row {
+          display: flex;
+          flex-direction: column;
+          grid-template-columns: none;
+          position: relative;
+          padding: 0;
+          gap: 0;
+          border: 1px solid var(--line);
+          background: var(--cream);
+          overflow: hidden;
+          height: 130px;                /* 고정 높이 */
+        }
+        .v1-day-group .v1-meal-row + .v1-meal-row,
+        .v1-day-group .v1-meal-row + .v1-add-slot,
+        .v1-day-group .v1-add-slot + .v1-meal-row,
+        .v1-day-group .v1-add-slot + .v1-add-slot {
+          border-top: 1px solid var(--line);
+        }
+        .v1-day-group .v1-meal-row .thumb {
+          width: 100%;
+          flex: 1;                       /* 남은 공간 채움 (고정 높이에 맞춰) */
+          min-height: 0;
+          aspect-ratio: auto;
+        }
+        .v1-day-group .v1-meal-row .info {
+          padding: 4px 6px 0;
+          gap: 0;
+        }
+        /* slot-badge(점심/저녁) 숨김 — 이미지 + 이름 + 가격만 */
+        .v1-day-group .v1-meal-row .slot-badge { display: none; }
+        .v1-day-group .v1-meal-row .name {
+          font-size: 10px;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: normal;
+        }
+        /* 가격 숨김 — 이미지 + 이름만 */
+        .v1-day-group .v1-meal-row .price { display: none; }
+        /* 카드 하단 여백 확보 (price가 숨겨졌으니) */
+        .v1-day-group .v1-meal-row .info { padding-bottom: 6px; }
+        .v1-day-group .v1-meal-row .delete-x {
+          position: absolute;
+          top: 3px; right: 3px;
+          width: 18px; height: 18px;
+          background: rgba(0, 0, 0, 0.55);
+          color: #fff;
+          border-radius: 999px;
+          font-size: 10px;
+          line-height: 1;
+        }
+        .v1-day-group .v1-meal-row .delete-x:hover {
+          background: var(--red);
+        }
+
+        /* add-slot: meal-row와 동일한 고정 높이 (삭제 시 위치 유지) */
+        .v1-day-group .v1-add-slot {
+          padding: 0;
+          height: 130px;
+        }
+        .v1-day-group .v1-add-slot button {
+          width: 100%;
+          height: 100%;
+          border: 1px dashed var(--placeholder-2);
+          padding: 8px 4px;
+          font-size: 9px;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .v1-day-group .v1-add-slot .plus {
+          width: 14px; height: 14px; font-size: 10px;
+        }
+
+        /* ── 메뉴 고르기 하단: 5-col 그리드 + menu-card 컴팩트 ── */
+        .menu-catalog .menu-card {
+          padding: 12px 10px 14px;
+        }
+        .menu-catalog .menu-card:nth-child(5n) { border-right: 0; }
+        .menu-catalog .menu-card .thumb {
+          aspect-ratio: 4 / 3;        /* 1:1 → 4:3 */
+        }
+        .menu-catalog .menu-card .name {
+          font-size: 13px;
+          margin-top: 8px;
+        }
+        .menu-catalog .menu-card .desc {
+          font-size: 11px;
+          margin-top: 2px;
+        }
+        .menu-catalog .menu-card .card-foot {
+          margin-top: 8px;
+        }
+        .menu-catalog .menu-card .card-foot .price {
+          font-size: 13px;
+        }
+        .menu-catalog .menu-card .detail-btn {
+          width: 20px; height: 20px; font-size: 12px;
+        }
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="promo">🎁 슬런치가 처음이신 고객님은 지금 가입하고 할인쿠폰 받아가세요!</div>
+
+    <header class="header">
+      <div class="inner">
+        <button class="hamburger" aria-label="메뉴 열기" type="button">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <a class="logo-center" href="/" aria-label="Slunch Factory">
+          <img src="./public/common/logo.png" alt="SLUNCH FACTORY" />
+        </a>
+        <div class="utility">
+          <a class="cart" href="#" aria-label="장바구니">(0)</a>
+          <span class="avatar" aria-label="프로필">U</span>
+        </div>
+      </div>
+    </header>
+
+
+    <main class="page">
+      <!-- ───── LEFT: Menu Catalog ───── -->
+      <section class="menu-catalog" id="menuCatalog">
+        <div class="catalog-header">
+          <h1>메뉴 고르기</h1>
+          <button type="button" class="mobile-close" id="catalogClose" aria-label="메뉴 닫기">×</button>
+          <div class="sub-row">
+            <p class="ci-msg">
+              <span class="name-pill"><span id="introName">guest1</span></span> 님을 위한 맞춤형 식단을 구성했어요.
+              자유롭게 메뉴를 바꿀 수 있어요.
+            </p>
+            <button type="button" class="ci-again" id="ciAgain">스피릿 다시 찾기 →</button>
+          </div>
+        </div>
+
+        <!-- 알러지 제외 (데스크톱: 나열 / 모바일: 드롭다운) -->
+        <div class="allergy-row" id="allergyRow">
+          <!-- 모바일 전용 트리거 -->
+          <button type="button" class="al-trigger" id="allergyTrigger" aria-expanded="false" aria-controls="allergyPanel">
+            <svg class="al-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M1 2h12M3 7h8M5 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span class="al-trigger-label">알러지 필터</span>
+            <span class="al-count" id="allergyCount"></span>
+            <span class="al-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="al-chips" id="allergyPanel">
+            <button type="button" data-allergy="유제품">유제품</button>
+            <button type="button" data-allergy="갑각류">갑각류</button>
+            <button type="button" data-allergy="생선">생선</button>
+            <button type="button" data-allergy="견과류">견과류</button>
+            <button type="button" data-allergy="닭고기">닭고기</button>
+            <button type="button" data-allergy="계란">계란</button>
+            <button type="button" data-allergy="글루텐">글루텐</button>
+            <button type="button" data-allergy="매운맛">매운맛</button>
+          </div>
+          <div class="al-head">
+            <span class="allergy-label">알러지 필터</span>
+            <span class="al-active-preview" id="alActivePreview"></span>
+            <button type="button" class="reset" id="allergyReset" title="필터 초기화">초기화</button>
+          </div>
+        </div>
+
+        <div class="menu-grid" id="menuGrid"></div>
+      </section>
+
+      <!-- ───── RIGHT: Calendar panel ───── -->
+      <aside class="calendar-panel">
+        <div class="cal-sticky">
+          <div class="cal-title-row">
+            <div class="title-left">
+              <h2>식단 일정</h2>
+              <p class="title-sub">스피릿 분석으로 찾은 당신만의 맞춤 식단</p>
+            </div>
+          </div>
+          <div class="cal-controls">
+            <input type="date" class="date-picker" id="datePicker" aria-label="시작일 선택" />
+            <div class="col">
+              <span class="label">Duration</span>
+              <div class="opts">
+                <button class="active" data-dur="1w">1주 · 14끼</button>
+                <button data-dur="2w">2주 · 28끼</button>
+              </div>
+            </div>
+          </div>
+          <div class="date-nav">
+            <button id="navPrev" aria-label="이전 기간">‹</button>
+            <div class="range">
+              <span id="rangeLabel">4/22 (수) — 4/28 (화)</span>
+              <span class="sub" id="rangeSub">WEEK 01 / 08</span>
+            </div>
+            <button id="navNext" aria-label="다음 기간">›</button>
+          </div>
+        </div>
+
+        <div class="cal-scroll">
+          <!-- V1 -->
+          <div class="view-group">
+            <div class="view v1-daily active" data-view-name="daily">
+              <div class="v1-day-rail" id="v1DayRail"></div>
+              <div class="mini-cal" id="miniCal" aria-label="달력 날짜 선택">
+                <div class="mc-head">
+                  <button type="button" class="mc-nav" id="mcPrev" aria-label="이전 달">‹</button>
+                  <span class="mc-title" id="mcTitle"></span>
+                  <button type="button" class="mc-nav" id="mcNext" aria-label="다음 달">›</button>
+                </div>
+                <div class="mc-wdays">
+                  <span class="mc-wday sun">일</span><span class="mc-wday">월</span><span class="mc-wday">화</span><span class="mc-wday">수</span><span class="mc-wday">목</span><span class="mc-wday">금</span><span class="mc-wday sat">토</span>
+                </div>
+                <div class="mc-grid" id="mcGrid"></div>
+              </div>
+              <div class="v1-day-list" id="v1DayList"></div>
+            </div>
+            <div class="view v1-cycle" data-view-name="cycle">
+              <div class="v1-weeks" id="v1Weeks"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 총액 + 결제 -->
+        <div class="cal-footer">
+          <div class="cf-summary">
+            <span id="cfMeals">0끼 선택</span>
+          </div>
+          <div class="cf-total-row">
+            <span class="cf-total-label">총 금액</span>
+            <span class="cf-total-amount" id="cfTotal">0원</span>
+          </div>
+          <button type="button" class="cf-pay-btn" id="cfPayBtn">결제하기</button>
+        </div>
+
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span>© 2026 Slunch Factory · 부천</span>
+      <span>Subscribe · Calendar Redesign</span>
+    </footer>
+
+    <!-- ═══════════════ Mobile bottom bar + backdrop ═══════════════ -->
+    <div class="mobile-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
+    <div class="mobile-bottom-bar" id="mobileBottomBar">
+      <div class="mbb-summary">
+        <span class="mbb-meals" id="mbbMeals">14끼</span>
+        <span class="mbb-divider">·</span>
+        <span class="mbb-total" id="mbbTotal">101,900원</span>
+      </div>
+      <button type="button" class="mbb-menu-btn" id="mobileFab"
+              aria-label="메뉴 추가" aria-controls="menuCatalog" aria-expanded="false">
+        <span aria-hidden="true">+</span>
+      </button>
+      <button type="button" class="mbb-cta" id="mbbCta">결제하기</button>
+    </div>
+
+    <!-- ═══════════════ Undo snackbar ═══════════════ -->
+    <div class="snackbar" id="snackbar" role="status" aria-live="polite">
+      <span class="sb-msg" id="sbMsg"></span>
+      <button type="button" class="sb-undo" id="sbUndo">되돌리기 ↩</button>
+      <button type="button" class="sb-close" id="sbClose" aria-label="닫기">×</button>
+    </div>
+
+    <!-- ═══════════════ Menu detail modal ═══════════════ -->
+    <div class="menu-modal" id="menuModal" role="dialog" aria-modal="true" aria-labelledby="mmName">
+      <div class="dialog">
+        <button type="button" class="close-btn" id="menuModalClose" aria-label="닫기">×</button>
+        <div class="media">
+          <img id="mmImg" src="" alt="" />
+        </div>
+        <div class="body">
+          <h3 id="mmName">메뉴 이름</h3>
+          <p class="tagline" id="mmDesc">설명</p>
+          <div class="meta-tags" id="mmTags"></div>
+          <div class="price" id="mmPrice">7,500원</div>
+
+          <div class="divider"></div>
+
+          <div class="section">
+            <h4>Ingredients</h4>
+            <ul class="ingredients" id="mmIngredients"></ul>
+          </div>
+
+          <div class="section">
+            <h4>Nutrition</h4>
+            <div class="nutrition" id="mmNutrition"></div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="cancel" id="mmCancel">닫기</button>
+            <button type="button" class="add-cta" id="mmAdd">식단에 추가하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ═══ Menu data (allergies는 배열, 매운맛 포함) ═══
+      const MENUS = {
+        S01: { name: "로스티드 비트 카르파초", desc: "구운 비트의 선명한 맛",     price: 7500, cat: "slim",    allergies: ["견과류", "유제품"], img: "./public/images/menus/01_roasted_beet_carpaccio.png" },
+        S02: { name: "케일 월도프 샐러드",    desc: "아삭한 케일과 사과의 월도프", price: 7200, cat: "slim",    allergies: ["견과류", "유제품"], img: "./public/images/menus/04_kale_waldorf_salad.png" },
+        S03: { name: "지중해식 퀴노아 샐러드", desc: "올리브와 허브의 지중해 샐러드", price: 7500, cat: "slim",   allergies: [], img: "./public/images/menus/05_mediterranean_quinoa_salad.png" },
+        S04: { name: "지중해 후무스 랩",      desc: "후무스와 신선한 채소의 랩",   price: 6900, cat: "slim",   allergies: ["글루텐"], img: "./public/images/menus/16_mediterranean_hummus_wrap.png" },
+        S05: { name: "버섯 잡채",           desc: "담백한 버섯 잡채",         price: 7100, cat: "slim",   allergies: [], img: "./public/images/menus/18_mushroom_japchae.png" },
+        S06: { name: "스파이시 콜리플라워 타코", desc: "훈제 파프리카 콜리플라워",  price: 7300, cat: "slim",   allergies: ["글루텐", "매운맛"], img: "./public/images/menus/19_spicy_cauliflower_tacos.png" },
+        S07: { name: "지중해 채소 파스타",    desc: "가지·주키니 올리브오일 파스타", price: 7500, cat: "slim",   allergies: ["글루텐"], img: "./public/images/menus/20_mediterranean_vegetable_pasta.png" },
+        S08: { name: "칠리 두부 스크램블",    desc: "가벼운 두부 스크램블",     price: 6900, cat: "slim",   allergies: ["매운맛"], img: "./public/images/menus/21_chili_tofu_scramble.png" },
+        S09: { name: "아보카도 스시 볼",      desc: "아보카도와 에다마메 볼",    price: 7400, cat: "slim",   allergies: [], img: "./public/images/menus/22_avocado_sushi_bowl.png" },
+        S10: { name: "케일 시저 샐러드",      desc: "비건 시저 드레싱의 케일",   price: 6900, cat: "slim",   allergies: ["글루텐", "유제품"], img: "./public/images/menus/23_kale_caesar_salad.png" },
+        S11: { name: "퓨전 콩나물 비빔면",    desc: "매콤 콩나물 비빔면",       price: 7000, cat: "slim",   allergies: ["글루텐", "매운맛"], img: "./public/images/menus/26_fusion_bean_sprout_noodles.png" },
+        S12: { name: "구운 채소 퀴노아 샐러드", desc: "단호박과 아루굴라 퀴노아", price: 7400, cat: "slim",   allergies: [], img: "./public/images/menus/27_roasted_vegetable_quinoa_salad.png" },
+        S13: { name: "지중해 채소 구이 랩",   desc: "가지·주키니 구이 랩",      price: 6900, cat: "slim",   allergies: ["글루텐"], img: "./public/images/menus/30_mediterranean_grilled_veg_wrap.png" },
+        P01: { name: "렌틸 볼로네제",         desc: "고단백 렌틸 토마토 파스타", price: 7900, cat: "protein", allergies: ["글루텐"], img: "./public/images/menus/02_lentil_bolognese.png" },
+        P02: { name: "크리스피 두부 스테이크", desc: "바삭한 두부 스테이크",    price: 6900, cat: "protein", allergies: [], img: "./public/images/menus/07_crispy_tofu_steak.png" },
+        P03: { name: "해바라기씨 페스토 파스타", desc: "해바라기씨 페스토 파스타", price: 7900, cat: "protein", allergies: ["견과류", "글루텐"], img: "./public/images/menus/03_sunflower_seed_pesto_pasta.png" },
+        P04: { name: "아시안 피넛 누들",      desc: "땅콩 소스 쌀국수",        price: 7800, cat: "protein", allergies: ["견과류", "매운맛"], img: "./public/images/menus/06_asian_peanut_noodles.png" },
+        P05: { name: "구운 채소 라자냐",      desc: "채소와 캐슈넛 리코타 라자냐", price: 8500, cat: "protein", allergies: ["견과류", "글루텐", "유제품"], img: "./public/images/menus/08_roasted_vegetable_lasagna.png" },
+        P13: { name: "마라 두부 볶음",        desc: "마라 소스 두부 볶음",     price: 7100, cat: "protein", allergies: ["견과류", "매운맛"], img: "./public/images/menus/17_mala_tofu_stir_fry.png" },
+      };
+      const MENU_POOL = Object.keys(MENUS);
+
+      const CUSTOM_PICKS = ["S01","S03","S05","S09","P02","P04","S12","S13"];
+
+      const WEEKDAY_KO = ["일","월","화","수","목","금","토"];
+
+      const TOTAL_WEEKS = 26;   // 약 6개월 (4월 ~ 10월) 분량
+      function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+      function isHolidayDate(d) {
+        const m = d.getMonth()+1, day = d.getDate();
+        if (m===5 && day===5) return "어린이날";
+        if (m===6 && day===6) return "현충일";
+        return null;
+      }
+      function buildSchedule() {
+        const out = [];
+        const cursor = new Date(2026, 3, 22);
+        for (let i = 0; i < TOTAL_WEEKS * 7; i++) {
+          const hol = isHolidayDate(cursor);
+          // 공휴일에도 배송 가능 (rest 제거)
+          out.push({
+            date: ymd(new Date(cursor)),
+            lunch:  MENU_POOL[(i * 2) % MENU_POOL.length],
+            dinner: MENU_POOL[(i * 2 + 1) % MENU_POOL.length],
+            holiday: hol || undefined,
+            rest: false,
+          });
+          cursor.setDate(cursor.getDate() + 1);
+        }
+        return out;
+      }
+      const SCHEDULE = buildSchedule();
+      // 스피릿 추천 원본 스냅샷 — "맞춤형으로 재구성" 버튼이 이 상태로 복원
+      const INITIAL_SCHEDULE = SCHEDULE.map((d) => ({ ...d }));
+
+      // ═══ 사용자 + 스피릿 결과 (가상 데이터 — 실제로는 /me 응답) ═══
+      const USER = { nickname: "guest1" };
+      const SPIRIT = {
+        name: "Mindgrower",
+        description: "조용히 생각이 많은 타입. 내 기준이 확실해요.",
+        traits: ["저칼로리", "순한맛", "견과류 제외"],
+        shortTraits: "저칼로리·순한맛",
+      };
+
+      // 오늘 날짜 (자정 기준, YYYY-MM-DD)
+      const TODAY_STR = (() => {
+        const n = new Date(); n.setHours(0,0,0,0);
+        return ymd(n);
+      })();
+      // 오늘 이후(포함) 첫 SCHEDULE 인덱스 — 지난 날짜 스킵
+      const FIRST_SELECTABLE_IDX = Math.max(0, SCHEDULE.findIndex(d => d.date >= TODAY_STR));
+
+      const state = {
+        view: "daily",
+        duration: "1w",
+        startIndex: FIRST_SELECTABLE_IDX,
+        v1DayFilter: null,
+        manualMods: 0,            // 스피릿 추천 이후 사용자가 수정한 끼 수
+        allergyFilters: [],       // 활성 알러지 필터 (예: ["견과류", "글루텐"])
+      };
+
+      const fmtKRW = (n) => n.toLocaleString("ko-KR") + "원";
+      const parseDate = (s) => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+      const dateKey = (d) => `${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+      const weekLen = () => {
+        // 데스크톱: 항상 7일 (1주/2주 토글 제거, 7-col 그리드 고정)
+        if (window.matchMedia("(min-width: 1101px)").matches) return 7;
+        return state.duration === "1w" ? 7 : 14;
+      };
+      const totalPeriods = () => Math.floor(SCHEDULE.length / weekLen());
+      const maxStartIndex = () => Math.max(0, SCHEDULE.length - weekLen());
+      const navStep = () => state.view === "daily" ? 1 : weekLen();
+      const currentPeriodIndex = () => Math.floor(state.startIndex / weekLen());
+      function currentDays() {
+        const len = weekLen();
+        return SCHEDULE.slice(state.startIndex, state.startIndex + len);
+      }
+      function dayTotal(day) {
+        let t = 0;
+        if (day.lunch) t += MENUS[day.lunch].price;
+        if (day.dinner) t += MENUS[day.dinner].price;
+        return t;
+      }
+      function mealCount(day) { return (day.lunch?1:0) + (day.dinner?1:0); }
+      function dowClass(date, day) {
+        const dow = date.getDay();
+        const cls = [];
+        if (day && day.holiday) cls.push("holiday");
+        else if (dow === 0) cls.push("sun");
+        else if (dow === 6) cls.push("sat");
+        return cls.join(" ");
+      }
+
+      // ═══ Menu catalog rendering ═══
+      function renderMenuGrid() {
+        const allPicks = CUSTOM_PICKS;
+
+        // 알러지 필터 적용 — 선택한 알러지 카테고리에 해당하는 메뉴는 제외
+        const picks = allPicks.filter((id) => {
+          const m = MENUS[id];
+          if (!m.allergies || m.allergies.length === 0) return true;
+          return !m.allergies.some((a) => state.allergyFilters.includes(a));
+        });
+
+        const root = document.getElementById("menuGrid");
+
+        if (picks.length === 0) {
+          root.innerHTML = `<div class="menu-empty">
+            <p>선택한 조건에 맞는 메뉴가 없어요.</p>
+            <button type="button" id="emptyReset" class="reset-inline">알러지 필터 초기화</button>
+          </div>`;
+          const rb = document.getElementById("emptyReset");
+          if (rb) rb.addEventListener("click", resetAllergyFilters);
+          return;
+        }
+
+        root.innerHTML = picks.map((id) => {
+          const m = MENUS[id];
+          const hasAllergy = m.allergies && m.allergies.length > 0;
+          return `<div class="menu-card" data-menu-id="${id}" role="button" tabindex="0" aria-label="${m.name} 식단에 추가">
+            <div class="thumb">
+              <img src="${m.img}" alt="${m.name}" />
+              ${hasAllergy ? `<span class="allergy-tag">Allergy: ${m.allergies.join(", ")}</span>` : ""}
+            </div>
+            <div class="name">${m.name}</div>
+            <div class="desc">${m.desc}</div>
+            <div class="card-foot">
+              <div class="price">${fmtKRW(m.price)}</div>
+              <button type="button" class="detail-btn" data-detail="${id}" aria-label="${m.name} 상세 정보" title="상세 정보 보기">→</button>
+            </div>
+          </div>`;
+        }).join("");
+      }
+
+      function resetAllergyFilters() {
+        state.allergyFilters = [];
+        document.querySelectorAll(".allergy-row [data-allergy]").forEach((b) => b.classList.remove("active"));
+        updateAllergyCount();
+        renderMenuGrid();
+      }
+
+      function updateAllergyCount() {
+        const preview = document.getElementById("alActivePreview");
+        if (!preview) return;
+        preview.textContent = state.allergyFilters.length > 0
+          ? state.allergyFilters.join(", ")
+          : "";
+      }
+
+      // ═══ Calendar rendering ═══
+      function updateDateNav() {
+        const days = currentDays();
+        if (days.length === 0) return;
+        const start = parseDate(days[0].date);
+        const end = parseDate(days[days.length-1].date);
+        document.getElementById("rangeLabel").textContent =
+          `${dateKey(start)} (${WEEKDAY_KO[start.getDay()]}) — ${dateKey(end)} (${WEEKDAY_KO[end.getDay()]})`;
+
+        let subLabel;
+        if (state.view === "daily") {
+          // 일별 모드: Day N / Total 형식
+          subLabel = `DAY ${String(state.startIndex+1).padStart(2,"0")} / ${String(SCHEDULE.length).padStart(2,"0")}`;
+        } else {
+          const total = totalPeriods();
+          const p = currentPeriodIndex() + 1;
+          subLabel = state.duration === "1w"
+            ? `WEEK ${String(p).padStart(2,"0")} / ${String(total).padStart(2,"0")}`
+            : `BI-WEEK ${String(p).padStart(2,"0")} / ${String(total).padStart(2,"0")}`;
+        }
+        document.getElementById("rangeSub").textContent = subLabel;
+        document.getElementById("navPrev").disabled = state.startIndex <= 0;
+        document.getElementById("navNext").disabled = state.startIndex >= maxStartIndex();
+      }
+
+      function renderV1Daily() {
+        const isMobile = window.matchMedia("(max-width: 1100px)").matches;
+        const days = currentDays();
+        const rail = document.getElementById("v1DayRail");
+        const list = document.getElementById("v1DayList");
+
+        if (isMobile) {
+          // ─ 모바일: 전체 SCHEDULE 노출 + tap-to-anchor ─
+          const startIdx = state.startIndex;
+          const endIdx = state.startIndex + weekLen() - 1;
+          // 재렌더 전 스크롤 위치 보존
+          const prevScroll = rail.scrollLeft;
+          rail.innerHTML = SCHEDULE.map((d, idx) => {
+            const date = parseDate(d.date);
+            const w = WEEKDAY_KO[date.getDay()];
+            const isPast = d.date < TODAY_STR;                  // 지난 날짜
+            const isEdge = !isPast && (idx === startIdx || idx === endIdx);
+            const inWindow = !isPast && idx > startIdx && idx < endIdx;
+            const classes = [
+              "chip",
+              isPast ? "disabled" : "",
+              isEdge ? "active" : "",
+              inWindow ? "in-window" : "",
+              dowClass(date, d),
+              d.rest ? "rest" : "",
+            ].filter(Boolean).join(" ");
+            const attrs = isPast
+              ? `class="${classes}" aria-disabled="true"`
+              : `class="${classes}" data-start="${idx}"`;
+            return `<div ${attrs}>
+              <span class="w">${w}</span><span class="d">${date.getDate()}</span>
+            </div>`;
+          }).join("");
+
+          list.innerHTML = days.map((d) => v1DayGroup(d)).join("");
+
+          rail.querySelectorAll("[data-start]").forEach((el) => {
+            el.addEventListener("click", () => {
+              const idx = parseInt(el.dataset.start, 10);
+              state.startIndex = Math.min(idx, maxStartIndex());
+              state.v1DayFilter = null;
+              renderAll();
+              // 탭한 chip을 중앙으로 smooth 스크롤
+              scrollRailChipToSecond(idx);
+            });
+          });
+
+          // 기본: 스크롤 위치 복원 (재렌더 후 scrollLeft 기본 0으로 리셋되므로)
+          rail.scrollLeft = prevScroll;
+        } else {
+          // ─ 데스크톱: 기존 7일 필터 동작 유지 ─
+          rail.innerHTML =
+            `<span class="pill ${!state.v1DayFilter?'active':''}" data-filter="all">전체</span>` +
+            days.map((d) => {
+              const date = parseDate(d.date);
+              const w = WEEKDAY_KO[date.getDay()];
+              const isActive = state.v1DayFilter === d.date;
+              return `<div class="chip ${isActive?'active':''} ${dowClass(date, d)} ${d.rest?'rest':''}" data-filter="${d.date}">
+                <span class="w">${w}</span><span class="d">${date.getDate()}</span>
+              </div>`;
+            }).join("");
+
+          const filtered = state.v1DayFilter ? days.filter((d) => d.date === state.v1DayFilter) : days;
+          list.innerHTML = filtered.map((d) => v1DayGroup(d)).join("");
+
+          rail.querySelectorAll("[data-filter]").forEach((el) => {
+            el.addEventListener("click", () => {
+              const f = el.dataset.filter;
+              state.v1DayFilter = f === "all" ? null : f;
+              renderV1Daily();
+            });
+          });
+        }
+      }
+      function v1DayGroup(d) {
+        const date = parseDate(d.date);
+        const w = WEEKDAY_KO[date.getDay()];
+        const count = mealCount(d);
+        const dc = dowClass(date, d);
+        if (d.rest) {
+          return `<div class="v1-day-group rest ${dc}">
+            <div class="day-head">
+              <div class="date">${dateKey(date)} <span class="sub">${w} · 배송 없음${d.holiday?' · '+d.holiday:''}</span></div>
+              <div class="total">-</div>
+            </div>
+            <div class="rest-note">${d.holiday ? `${d.holiday} · 배송 휴무` : '일요일은 배송 휴무일이에요.'}</div>
+          </div>`;
+        }
+        const blocks = [];
+        blocks.push(d.lunch ? mealRow("lunch", d.lunch, d.date) : addSlot("lunch", d.date));
+        blocks.push(d.dinner ? mealRow("dinner", d.dinner, d.date) : addSlot("dinner", d.date));
+        return `<div class="v1-day-group ${dc}">
+          <div class="day-head">
+            <div class="date"><span class="date-num">${dateKey(date)}</span> <span class="sub"><span class="sub-wday">${w}</span><span class="sub-count"> · ${count}끼</span></span></div>
+          </div>
+          ${blocks.join("")}
+        </div>`;
+      }
+      function mealRow(slot, menuId, date) {
+        const m = MENUS[menuId];
+        return `<div class="v1-meal-row">
+          <div class="thumb"><img src="${m.img}" alt="${m.name}" /></div>
+          <div class="info">
+            <span class="slot-badge ${slot==='dinner'?'dinner':''}">${slot==='dinner'?'저녁':'점심'}</span>
+            <span class="name">${m.name}</span>
+          </div>
+          <div class="price">${fmtKRW(m.price)}</div>
+          <button type="button" class="delete-x" data-remove="${date}|${slot}" title="메뉴 삭제" aria-label="메뉴 삭제">×</button>
+        </div>`;
+      }
+      function addSlot(slot, date) {
+        return `<div class="v1-add-slot">
+          <button type="button" data-add="${date}|${slot}">
+            <span class="plus">+</span>
+            ${slot==='dinner'?'저녁':'점심'} 메뉴 추가하기
+          </button>
+        </div>`;
+      }
+
+      function renderV1Cycle() {
+        const days = currentDays();
+        const root = document.getElementById("v1Weeks");
+        const weekCount = Math.ceil(days.length / 7);
+        root.innerHTML = Array.from({length: weekCount}, (_, wi) => {
+          const wd = days.slice(wi*7, wi*7 + 7);
+          const total = wd.reduce((s, d) => s + dayTotal(d), 0);
+          const meals = wd.reduce((s, d) => s + mealCount(d), 0);
+          const start = parseDate(wd[0].date);
+          const end = parseDate(wd[wd.length-1].date);
+          const heads = wd.map((d) => {
+            const date = parseDate(d.date);
+            return `<div class="col-head ${dowClass(date, d)}">
+              <div class="w">${WEEKDAY_KO[date.getDay()]}</div>
+              <div class="d">${date.getDate()}</div>
+            </div>`;
+          }).join("");
+          const rowCells = (slot) => wd.map((d) => {
+            if (d.rest) return `<div class="cell rest"></div>`;
+            const menuId = d[slot];
+            if (!menuId) return `<div class="cell empty"><button type="button" data-add="${d.date}|${slot}" title="${slot==='dinner'?'저녁':'점심'} 메뉴 추가">+</button></div>`;
+            const m = MENUS[menuId];
+            return `<div class="cell">
+              <img src="${m.img}" alt="${m.name}" />
+              <div class="hover-name">${m.name}<br/>${fmtKRW(m.price)}</div>
+              <button type="button" class="cell-remove" data-remove="${d.date}|${slot}" title="메뉴 삭제" aria-label="메뉴 삭제">×</button>
+            </div>`;
+          }).join("");
+          const globalWeek = Math.floor(state.startIndex / 7) + wi + 1;
+          return `<div class="v1-week-card">
+            <div class="wc-head">
+              <div>
+                <div class="wk">WEEK ${String(globalWeek).padStart(2,'0')}</div>
+                <h3>${dateKey(start)} (${WEEKDAY_KO[start.getDay()]}) — ${dateKey(end)} (${WEEKDAY_KO[end.getDay()]})</h3>
+              </div>
+              <div class="wc-meta">${meals}끼<strong>${fmtKRW(total)}</strong></div>
+            </div>
+            <div class="v1-week-matrix">
+              <div class="row-head"></div>${heads}
+              <div class="row-head">점심</div>${rowCells("lunch")}
+              <div class="row-head">저녁</div>${rowCells("dinner")}
+            </div>
+          </div>`;
+        }).join("");
+      }
+
+      function renderAll() {
+        updateDateNav();
+        renderV1Daily();
+        renderV1Cycle();
+        updateSpiritBadge();
+        updateMobileFab();
+        if (typeof syncMonthSelect === "function") syncMonthSelect();
+        if (typeof renderMiniCal === "function") renderMiniCal();
+      }
+
+      // ═══ 모바일 바텀 바 + 데스크톱 푸터 — 총 끼/금액 업데이트 ═══
+      function updateMobileFab() {
+        const days = currentDays();
+        const meals = days.reduce((s, d) => s + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0), 0);
+        const total = days.reduce((s, d) => s + dayTotal(d), 0);
+
+        // 모바일 바텀 바
+        const mealsEl = document.getElementById("mbbMeals");
+        const totalEl = document.getElementById("mbbTotal");
+        if (mealsEl) mealsEl.textContent = `${meals}끼`;
+        if (totalEl) totalEl.textContent = fmtKRW(total);
+
+        // 데스크톱 푸터
+        const cfMeals = document.getElementById("cfMeals");
+        const cfTotal = document.getElementById("cfTotal");
+        if (cfMeals) cfMeals.textContent = `${meals}끼 선택`;
+        if (cfTotal) cfTotal.textContent = fmtKRW(total);
+      }
+
+      // ═══ Layer 1·2·3 — Spirit guidance helpers ═══
+      function hydrateSpiritStrings() {
+        // 카탈로그 인트로의 사용자 안내 문구를 채움
+        document.getElementById("introName").textContent = USER.nickname;
+      }
+
+      function updateSpiritBadge() {
+        // 배지 제거됨 — no-op (기존 renderAll 파이프라인 호환 목적으로 유지)
+      }
+
+      // ═══ Wire up ═══
+      document.querySelectorAll("[data-dur]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("[data-dur]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          state.duration = btn.dataset.dur;
+          // 기간 변경 시 startIndex 재조정 + 주기별이면 주 경계로 스냅
+          state.startIndex = Math.min(state.startIndex, maxStartIndex());
+          if (state.view === "cycle") {
+            state.startIndex = Math.floor(state.startIndex / weekLen()) * weekLen();
+          }
+          state.v1DayFilter = null;
+          renderAll();
+          showFillNotice();                    // 기간 변경 시 안내 다시 표시
+        });
+      });
+      document.querySelectorAll("[data-view]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("[data-view]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          state.view = btn.dataset.view;
+          // 주기별로 전환 시 현재 startIndex를 주 경계로 스냅
+          if (state.view === "cycle") {
+            state.startIndex = Math.floor(state.startIndex / weekLen()) * weekLen();
+          }
+          document.querySelectorAll(".view").forEach((el) => {
+            el.classList.toggle("active", el.dataset.viewName === state.view);
+          });
+          renderAll();
+        });
+      });
+      // ═══ 알러지 필터 (카탈로그에서 해당 알러지 포함 메뉴 제외) ═══
+      document.querySelectorAll(".allergy-row [data-allergy]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const a = btn.dataset.allergy;
+          const idx = state.allergyFilters.indexOf(a);
+          if (idx >= 0) {
+            state.allergyFilters.splice(idx, 1);
+            btn.classList.remove("active");
+          } else {
+            state.allergyFilters.push(a);
+            btn.classList.add("active");
+          }
+          updateAllergyCount();
+          renderMenuGrid();
+        });
+      });
+      document.getElementById("allergyReset").addEventListener("click", (e) => {
+        e.stopPropagation();   // al-head 토글 방지
+        resetAllergyFilters();
+      });
+
+      // ═══ 알러지 필터 접이식 토글 (al-head 클릭) ═══
+      (() => {
+        const row = document.getElementById("allergyRow");
+        const head = row.querySelector(".al-head");
+        if (head) {
+          head.addEventListener("click", () => {
+            row.classList.toggle("open");
+          });
+        }
+      })();
+
+      document.getElementById("navPrev").addEventListener("click", () => {
+        // 일별 모드: 1일 단위, 주기별 모드: 주/2주 단위
+        const step = navStep();
+        const next = Math.max(0, state.startIndex - step);
+        if (next !== state.startIndex) {
+          state.startIndex = next;
+          state.v1DayFilter = null;
+          renderAll();
+        }
+      });
+      document.getElementById("navNext").addEventListener("click", () => {
+        const step = navStep();
+        const next = Math.min(maxStartIndex(), state.startIndex + step);
+        if (next !== state.startIndex) {
+          state.startIndex = next;
+          state.v1DayFilter = null;
+          renderAll();
+        }
+      });
+
+      // Add menu to empty slot (demo)
+      document.addEventListener("click", (e) => {
+        const t = e.target.closest("[data-add]");
+        if (!t) return;
+        const [date, slot] = t.dataset.add.split("|");
+        const idx = SCHEDULE.findIndex((d) => d.date === date);
+        if (idx < 0) return;
+        const pick = MENU_POOL[Math.floor(Math.random() * MENU_POOL.length)];
+        SCHEDULE[idx][slot] = pick;
+        state.manualMods++;
+        renderAll();
+      });
+
+      // Remove menu from a slot → 빈 슬롯으로 바뀌며 바로 "+ 메뉴 추가" 버튼이 노출됨
+      document.addEventListener("click", (e) => {
+        const t = e.target.closest("[data-remove]");
+        if (!t) return;
+        e.stopPropagation();
+        const [date, slot] = t.dataset.remove.split("|");
+        const idx = SCHEDULE.findIndex((d) => d.date === date);
+        if (idx < 0) return;
+        SCHEDULE[idx][slot] = null;
+        state.manualMods++;
+        renderAll();
+      });
+
+      // ═══ Undo 스낵바 ═══
+      let undoSnapshot = null;   // {days: [{date, lunch, dinner}], mods: number}
+      let snackbarTimer = null;
+      function snapshotCurrentPeriod() {
+        return {
+          days: currentDays().map((d) => ({ date: d.date, lunch: d.lunch, dinner: d.dinner })),
+          mods: state.manualMods,
+        };
+      }
+      function showUndoSnackbar(snapshot, message) {
+        undoSnapshot = snapshot;
+        const sb = document.getElementById("snackbar");
+        sb.classList.remove("info");
+        document.getElementById("sbMsg").textContent = message;
+        sb.classList.add("show");
+        clearTimeout(snackbarTimer);
+        snackbarTimer = setTimeout(hideSnackbar, 5000);
+      }
+      function showInfoSnackbar(message, duration = 6000) {
+        const sb = document.getElementById("snackbar");
+        sb.classList.add("info");              // undo 버튼 숨김
+        document.getElementById("sbMsg").textContent = message;
+        sb.classList.add("show");
+        clearTimeout(snackbarTimer);
+        snackbarTimer = setTimeout(hideSnackbar, duration);
+      }
+      function hideSnackbar() {
+        const sb = document.getElementById("snackbar");
+        sb.classList.remove("show");
+        clearTimeout(snackbarTimer);
+        // 스냅샷은 약간 늦게 해제해서 되돌리기 클릭이 transition 중에도 동작
+        setTimeout(() => {
+          undoSnapshot = null;
+          sb.classList.remove("info");
+        }, 220);
+      }
+
+      // ═══ 스피릿 추천 끼수 - 부족분을 인기 메뉴로 채움 안내 ═══
+      const SPIRIT_RECOMMENDED_MEALS = 10;
+      function showFillNotice() {
+        const totalMeals = weekLen() * 2;
+        const remaining = totalMeals - SPIRIT_RECOMMENDED_MEALS;
+        if (remaining <= 0) return;
+        showInfoSnackbar(
+          `스피릿 추천 ${SPIRIT_RECOMMENDED_MEALS}끼 외 남은 ${remaining}끼는 이번 주 인기 메뉴로 채워드렸어요.`
+        );
+      }
+      function undoLast() {
+        if (!undoSnapshot) return;
+        undoSnapshot.days.forEach((s) => {
+          const day = SCHEDULE.find((d) => d.date === s.date);
+          if (day) { day.lunch = s.lunch; day.dinner = s.dinner; }
+        });
+        state.manualMods = undoSnapshot.mods;
+        hideSnackbar();
+        renderAll();
+      }
+      document.getElementById("sbUndo").addEventListener("click", undoLast);
+      document.getElementById("sbClose").addEventListener("click", hideSnackbar);
+
+      // ═══ 식단 재구성/비우기 로직 (배너 공용) ═══
+      function restoreToSpirit() {
+        // 현재 기간을 INITIAL_SCHEDULE 스냅샷(스피릿 매칭 원본)으로 복원
+        currentDays().forEach((d) => {
+          const src = INITIAL_SCHEDULE.find((i) => i.date === d.date);
+          if (!src || d.rest) return;
+          d.lunch = src.lunch;
+          d.dinner = src.dinner;
+        });
+        state.manualMods = 0;
+        renderAll();
+      }
+      function clearCurrentPeriod() {
+        currentDays().forEach((d) => {
+          if (!d.rest) { d.lunch = null; d.dinner = null; }
+        });
+        state.manualMods = 0;
+        renderAll();
+      }
+      function goToSpiritAgain() {
+        // 실서비스에서는 location.href = "/spirit" — 데모에서는 안내만
+        alert("스피릿 다시 찾기로 이동합니다 (데모).");
+      }
+
+      // 카탈로그 인트로 "스피릿 다시 찾기" 링크
+      document.getElementById("ciAgain").addEventListener("click", goToSpiritAgain);
+
+      // ═══════════════════════════════════════════
+      // Menu detail modal
+      // ═══════════════════════════════════════════
+      // 데모용 상세 데이터 생성 (dietary type과 메뉴 id 기반의 결정적 mock)
+      function getMenuDetails(menuId) {
+        const m = MENUS[menuId];
+        const isSlim = m.cat === "slim";
+        // menuId 기반 결정적 시드 → 같은 메뉴는 항상 같은 값
+        const seed = menuId.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+        const r = (o) => ((seed * 7 + o * 13) % 100) / 100;
+        const nutrition = isSlim
+          ? { kcal: Math.round(240 + r(1) * 100), protein: Math.round(5 + r(2) * 8), carb: Math.round(18 + r(3) * 14), fat: Math.round(8 + r(4) * 6) }
+          : { kcal: Math.round(360 + r(1) * 180), protein: Math.round(18 + r(2) * 14), carb: Math.round(22 + r(3) * 16), fat: Math.round(14 + r(4) * 10) };
+
+        // 메뉴 이름의 첫 단어를 주재료로 사용
+        const firstWord = m.name.split(" ")[0] || "주재료";
+        const ingredients = isSlim
+          ? [
+              { name: firstWord, amount: "80g" },
+              { name: "신선한 채소", amount: "60g" },
+              { name: "홈메이드 드레싱", amount: "15g" },
+              { name: "통곡물/씨앗", amount: "20g" },
+            ]
+          : [
+              { name: firstWord, amount: "100g" },
+              { name: "단백질 소스", amount: "40g" },
+              { name: "곡물 또는 면", amount: "80g" },
+              { name: "채소 믹스", amount: "50g" },
+            ];
+        return { nutrition, ingredients };
+      }
+
+      let currentModalMenuId = null;
+      function openMenuModal(menuId) {
+        const m = MENUS[menuId];
+        if (!m) return;
+        currentModalMenuId = menuId;
+        const det = getMenuDetails(menuId);
+
+        document.getElementById("mmImg").src = m.img;
+        document.getElementById("mmImg").alt = m.name;
+        document.getElementById("mmName").textContent = m.name;
+        document.getElementById("mmDesc").textContent = m.desc;
+        document.getElementById("mmPrice").textContent = fmtKRW(m.price);
+
+        // 태그: 카테고리 + 알러지
+        const tags = [];
+        if (m.cat === "slim") tags.push(`<span>저칼로리</span>`);
+        if (m.cat === "protein") tags.push(`<span>고단백</span>`);
+        (m.allergies || []).forEach((a) => {
+          tags.push(`<span class="allergy">Allergy · ${a}</span>`);
+        });
+        document.getElementById("mmTags").innerHTML = tags.join("");
+
+        // Ingredients
+        document.getElementById("mmIngredients").innerHTML = det.ingredients.map((i) =>
+          `<li><span>${i.name}</span><span class="ing-amount">${i.amount}</span></li>`
+        ).join("");
+
+        // Nutrition
+        const nu = det.nutrition;
+        document.getElementById("mmNutrition").innerHTML = `
+          <div class="nut"><strong>${nu.kcal}</strong><span>kcal</span></div>
+          <div class="nut"><strong>${nu.protein}g</strong><span>단백질</span></div>
+          <div class="nut"><strong>${nu.carb}g</strong><span>탄수화물</span></div>
+          <div class="nut"><strong>${nu.fat}g</strong><span>지방</span></div>
+        `;
+
+        document.getElementById("menuModal").classList.add("open");
+        document.body.style.overflow = "hidden";
+      }
+      function closeMenuModal() {
+        document.getElementById("menuModal").classList.remove("open");
+        document.body.style.overflow = "";
+        currentModalMenuId = null;
+      }
+
+      // ═══ 메뉴 → 식단 추가 공용 헬퍼 ═══
+      function addMenuToFirstEmptySlot(menuId) {
+        const days = currentDays();
+        for (const d of days) {
+          if (d.rest) continue;
+          if (!d.lunch) { d.lunch = menuId; state.manualMods++; flashCard(menuId); renderAll(); return true; }
+          if (!d.dinner) { d.dinner = menuId; state.manualMods++; flashCard(menuId); renderAll(); return true; }
+        }
+        alert("이번 기간은 이미 모든 슬롯이 채워져 있어요. 비우거나 다음 기간으로 이동해주세요.");
+        return false;
+      }
+      function flashCard(menuId) {
+        const card = document.querySelector(`.menu-card[data-menu-id="${menuId}"]`);
+        if (!card) return;
+        card.classList.remove("flashed");
+        // 재트리거를 위해 reflow 강제
+        void card.offsetWidth;
+        card.classList.add("flashed");
+        setTimeout(() => card.classList.remove("flashed"), 620);
+      }
+
+      // 메뉴 카드 클릭 → 식단에 추가 / → 버튼 클릭 → 상세 모달
+      document.getElementById("menuGrid").addEventListener("click", (e) => {
+        const detailBtn = e.target.closest("[data-detail]");
+        if (detailBtn) {
+          e.stopPropagation();
+          openMenuModal(detailBtn.dataset.detail);
+          return;
+        }
+        const card = e.target.closest("[data-menu-id]");
+        if (!card) return;
+        addMenuToFirstEmptySlot(card.dataset.menuId);
+      });
+
+      document.getElementById("menuGrid").addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const card = e.target.closest("[data-menu-id]");
+        if (!card) return;
+        e.preventDefault();
+        // 포커스가 → 버튼이면 모달, 아니면 추가
+        if (e.target.matches("[data-detail]")) {
+          openMenuModal(e.target.dataset.detail);
+        } else {
+          addMenuToFirstEmptySlot(card.dataset.menuId);
+        }
+      });
+
+      // 모달 닫기 (X / 닫기 / 백드롭 / Esc)
+      document.getElementById("menuModalClose").addEventListener("click", closeMenuModal);
+      document.getElementById("mmCancel").addEventListener("click", closeMenuModal);
+      document.getElementById("menuModal").addEventListener("click", (e) => {
+        if (e.target.id === "menuModal") closeMenuModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && document.getElementById("menuModal").classList.contains("open")) {
+          closeMenuModal();
+        }
+      });
+
+      // 모달의 "식단에 추가하기" — 공용 헬퍼 재사용
+      document.getElementById("mmAdd").addEventListener("click", () => {
+        if (!currentModalMenuId) return;
+        const id = currentModalMenuId;
+        const added = addMenuToFirstEmptySlot(id);
+        if (added) closeMenuModal();
+      });
+
+      // ═══ 모바일: 메뉴 카탈로그 bottom sheet ═══
+      const menuCatalogEl = document.getElementById("menuCatalog");
+      const mobileFabEl = document.getElementById("mobileFab");
+      const mobileBackdropEl = document.getElementById("mobileBackdrop");
+      const catalogCloseEl = document.getElementById("catalogClose");
+
+      const mobileBarEl = document.getElementById("mobileBottomBar");
+
+      function openCatalogSheet() {
+        menuCatalogEl.classList.add("open");
+        mobileBackdropEl.classList.add("open");
+        if (mobileBarEl) mobileBarEl.classList.add("hidden");
+        mobileFabEl.setAttribute("aria-expanded", "true");
+        document.body.style.overflow = "hidden";
+      }
+      function closeCatalogSheet() {
+        menuCatalogEl.classList.remove("open");
+        mobileBackdropEl.classList.remove("open");
+        if (mobileBarEl) mobileBarEl.classList.remove("hidden");
+        mobileFabEl.setAttribute("aria-expanded", "false");
+        document.body.style.overflow = "";
+      }
+
+      mobileFabEl.addEventListener("click", openCatalogSheet);
+      const mbbCta = document.getElementById("mbbCta");
+      if (mbbCta) {
+        mbbCta.addEventListener("click", () => {
+          const days = currentDays();
+          const meals = days.reduce((s, d) => s + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0), 0);
+          if (meals === 0) {
+            alert("식단을 먼저 구성해주세요.");
+            return;
+          }
+          alert("결제 페이지로 이동합니다 (데모).");
+        });
+      }
+      const cfPayBtn = document.getElementById("cfPayBtn");
+      if (cfPayBtn) {
+        cfPayBtn.addEventListener("click", () => {
+          const days = currentDays();
+          const meals = days.reduce((s, d) => s + (d.lunch ? 1 : 0) + (d.dinner ? 1 : 0), 0);
+          if (meals === 0) {
+            alert("식단을 먼저 구성해주세요.");
+            return;
+          }
+          alert("결제 페이지로 이동합니다 (데모).");
+        });
+      }
+
+      mobileBackdropEl.addEventListener("click", closeCatalogSheet);
+      catalogCloseEl.addEventListener("click", closeCatalogSheet);
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && menuCatalogEl.classList.contains("open")) {
+          closeCatalogSheet();
+        }
+      });
+
+      // ═══ 미니 캘린더 (데스크톱 전용) ═══
+      let mcCurrentMonth = null;
+      (function initMiniCal() {
+        const mc = document.getElementById("miniCal");
+        if (!mc) return;
+        // 초기: state.startIndex의 월
+        const cur = SCHEDULE[state.startIndex] || SCHEDULE[0];
+        const [y, m] = cur.date.split("-");
+        mcCurrentMonth = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+        renderMiniCal();
+        document.getElementById("mcPrev").addEventListener("click", () => {
+          mcCurrentMonth.setMonth(mcCurrentMonth.getMonth() - 1);
+          renderMiniCal();
+        });
+        document.getElementById("mcNext").addEventListener("click", () => {
+          mcCurrentMonth.setMonth(mcCurrentMonth.getMonth() + 1);
+          renderMiniCal();
+        });
+      })();
+
+      function renderMiniCal() {
+        const grid = document.getElementById("mcGrid");
+        const title = document.getElementById("mcTitle");
+        if (!grid || !title || !mcCurrentMonth) return;
+        const year = mcCurrentMonth.getFullYear();
+        const month = mcCurrentMonth.getMonth();
+        title.textContent = `${year}년 ${month + 1}월`;
+
+        const firstDay = new Date(year, month, 1);
+        const firstDow = firstDay.getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const startIdx = state.startIndex;
+        const endIdx = state.startIndex + weekLen() - 1;
+
+        const cells = [];
+        for (let i = 0; i < firstDow; i++) cells.push({ empty: true });
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const idx = SCHEDULE.findIndex(s => s.date === dateStr);
+          const dow = new Date(year, month, d).getDay();
+          const isPast = dateStr < TODAY_STR;
+          const isToday = dateStr === TODAY_STR;
+          const isAnchor = idx >= 0 && idx === startIdx;
+          const isEnd = idx >= 0 && idx === endIdx;
+          const isInWindow = idx >= 0 && idx > startIdx && idx < endIdx;
+          const selectable = !isPast && idx >= 0;
+          cells.push({
+            day: d, idx, dow, isPast, isToday,
+            isAnchor, isEnd, isInWindow, selectable,
+          });
+        }
+
+        grid.innerHTML = cells.map(c => {
+          if (c.empty) return `<div class="mc-cell empty"></div>`;
+          const classes = [
+            "mc-cell",
+            c.dow === 0 ? "sun" : "",
+            c.dow === 6 ? "sat" : "",
+            c.isPast ? "past" : "",
+            c.isToday ? "today" : "",
+            c.isAnchor ? "anchor" : "",
+            c.isEnd ? "end" : "",
+            c.isInWindow ? "in-window" : "",
+            c.selectable ? "selectable" : "",
+          ].filter(Boolean).join(" ");
+          const attrs = c.selectable ? ` data-start="${c.idx}"` : "";
+          return `<div class="${classes}"${attrs}>${c.day}</div>`;
+        }).join("");
+
+        grid.querySelectorAll("[data-start]").forEach(el => {
+          el.addEventListener("click", () => {
+            const idx = parseInt(el.dataset.start, 10);
+            state.startIndex = Math.min(idx, maxStartIndex());
+            state.v1DayFilter = null;
+            renderAll();
+          });
+        });
+      }
+
+      // ═══ 시작일 date picker (모바일 전용) ═══
+      (function initDatePicker() {
+        const dp = document.getElementById("datePicker");
+        if (!dp) return;
+        // SCHEDULE 범위 + 오늘 이후만 선택 가능
+        dp.min = SCHEDULE[0].date > TODAY_STR ? SCHEDULE[0].date : TODAY_STR;
+        dp.max = SCHEDULE[SCHEDULE.length - 1].date;
+        syncDatePicker();
+        dp.addEventListener("change", (e) => {
+          const picked = e.target.value;
+          const idx = SCHEDULE.findIndex((d) => d.date === picked);
+          if (idx < 0) return;
+          state.startIndex = Math.min(idx, maxStartIndex());
+          state.v1DayFilter = null;
+          renderAll();
+          scrollRailChipToSecond(state.startIndex);
+        });
+      })();
+
+      // cal-sticky의 실제 렌더 높이를 측정해 day rail sticky top을 동기화
+      // (CSS 고정값 mismatch로 인한 사이 갭/겹침 방지)
+      function syncDayRailStickyTop() {
+        const calSticky = document.querySelector(".cal-sticky");
+        const dayRail = document.getElementById("v1DayRail");
+        if (!calSticky || !dayRail) return;
+        if (!window.matchMedia("(max-width: 1100px)").matches) {
+          dayRail.style.top = "";
+          return;
+        }
+        const h = calSticky.getBoundingClientRect().height;
+        dayRail.style.top = `${Math.round(h)}px`;
+      }
+
+      // day rail에서 특정 chip을 좌측 2번째 위치로 스크롤 (앞에 1개 chip 여유)
+      function scrollRailChipToSecond(idx, smooth = true) {
+        requestAnimationFrame(() => {
+          const rail = document.getElementById("v1DayRail");
+          if (!rail) return;
+          const chip = rail.querySelector(`[data-start="${idx}"]`);
+          if (!chip) return;
+          const chipWidth = chip.offsetWidth;
+          const gap = 4;
+          // chip의 rail 내 offsetLeft에서 chip 한 칸 + gap만큼 빼면 두 번째 자리에 위치
+          const target = Math.max(0, chip.offsetLeft - chipWidth - gap);
+          rail.scrollTo({
+            left: target,
+            behavior: smooth ? "smooth" : "auto",
+          });
+        });
+      }
+
+      // renderAll 호출 시 date picker 값도 동기화
+      function syncDatePicker() {
+        const dp = document.getElementById("datePicker");
+        if (!dp) return;
+        const cur = SCHEDULE[state.startIndex];
+        if (cur) dp.value = cur.date;
+      }
+
+      // 기존 syncMonthSelect 호환 alias (renderAll 내부 호출 유지)
+      function syncMonthSelect() {
+        syncDatePicker();
+      }
+
+      hydrateSpiritStrings();
+      renderMenuGrid();
+      renderAll();
+      updateAllergyCount();
+      // 초기 로드: sticky top 동기화 + 선택일을 rail 2번째 위치로
+      syncDayRailStickyTop();
+      scrollRailChipToSecond(state.startIndex, false);
+      // 화면 회전/리사이즈 시 sticky top 재계산
+      window.addEventListener("resize", syncDayRailStickyTop);
+      // 초기 로드 시 인기 메뉴 fill 안내 (약간 delay로 로딩 후 자연스럽게)
+      setTimeout(showFillNotice, 600);
+    </script>
+  </body>
+</html>

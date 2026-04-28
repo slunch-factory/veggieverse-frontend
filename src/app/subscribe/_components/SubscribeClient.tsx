@@ -1,29 +1,45 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { PLAN_TYPES } from "../_data/subscription";
+import { type MenuData } from "../_data/subscription";
+import { postPlan } from "@/lib/api/subscription";
 import { saveOrder } from "../_data/order";
 import { useSubscribePlanner } from "../_hooks/useSubscribePlanner";
 import { SubscribeShell } from "./SubscribeShell";
-import { PlanTabs } from "./PlanTabs";
 import { MenuLibrary } from "./MenuLibrary";
 import { PlannerColumn } from "./PlannerColumn";
 import { CheckoutBar } from "./CheckoutBar";
-import { MobileMealWheel } from "./MobileMealWheel";
+import { MobileCheckoutBar } from "./MobileCheckoutBar";
+import { Snackbar } from "./Snackbar";
 
-export function SubscribeClient() {
+interface SubscribeClientProps {
+  menus: MenuData[];
+}
+
+export function SubscribeClient({ menus }: SubscribeClientProps) {
   const router = useRouter();
-  const p = useSubscribePlanner();
+  const p = useSubscribePlanner(menus);
 
-  const selectedPlan = useMemo(
-    () => (p.selectedPlanType ? PLAN_TYPES.find((pl) => pl.id === p.selectedPlanType) ?? null : null),
-    [p.selectedPlanType],
-  );
+  const handleOrderSubmit = useCallback(async () => {
+    // mealPlan → productId별 수량 집계
+    const itemMap: Record<number, number> = {};
+    for (const meal of Object.values(p.mealPlan)) {
+      const id = Number(meal.id);
+      itemMap[id] = (itemMap[id] ?? 0) + 1;
+    }
+    const items = Object.entries(itemMap).map(([id, quantity]) => ({
+      productId: Number(id),
+      quantity,
+    }));
 
-  const handleOrderSubmit = useCallback(() => {
+    const result = await postPlan(items);
+    if (result?.planId) {
+      sessionStorage.setItem("veggieverse-plan-id", result.planId);
+    }
+
     saveOrder({
-      duration: p.duration,
+      duration: 1,
       startDateISO: p.startDate.toISOString(),
       mealPlan: p.mealPlan,
       purchaseType: p.purchaseType,
@@ -33,7 +49,6 @@ export function SubscribeClient() {
     });
     router.push("/subscribe/order");
   }, [
-    p.duration,
     p.startDate,
     p.mealPlan,
     p.purchaseType,
@@ -43,79 +58,71 @@ export function SubscribeClient() {
     router,
   ]);
 
-  return (
-    <SubscribeShell
-      mobilePlanTabs={
-        <PlanTabs
-          plans={PLAN_TYPES}
-          selectedPlanType={p.selectedPlanType}
-          onSelect={p.selectPlanType}
-          variant="mobile"
-        />
-      }
-      mobileWheel={
-        <MobileMealWheel
-          filteredMeals={p.filteredMeals}
-          selectedPlanType={p.selectedPlanType}
-          draggingMealId={p.draggingMealId}
-          onAddMeal={p.addMeal}
-          onDragStartMeal={p.startDragMeal}
-          onDragEndMeal={p.endDragMeal}
-        />
-      }
-      menuColumn={
-        <MenuLibrary
-          selectedPlanType={p.selectedPlanType}
-          selectedPlan={selectedPlan}
-          selectedExcludes={p.selectedExcludes}
-          planMeals={p.planMeals}
-          filteredMeals={p.filteredMeals}
-          draggingMealId={p.draggingMealId}
-          onPlanTypeSelect={p.selectPlanType}
-          onToggleExclude={p.toggleExclude}
-          onResetExcludes={p.resetExcludes}
-          onAddMeal={p.addMeal}
-          onDragStartMeal={p.startDragMeal}
-          onDragEndMeal={p.endDragMeal}
-        />
-      }
-      plannerTopColumn={
-        <PlannerColumn
-          duration={p.duration}
-          startDate={p.startDate}
-          earliestStart={p.earliestStart}
-          allDays={p.allDays}
-          mealPlan={p.mealPlan}
-          selectedSlotId={p.selectedSlotId}
-          selectedPlan={selectedPlan}
-          selectedPlanType={p.selectedPlanType}
-          filledSlots={p.filledSlots}
-          draggingMealId={p.draggingMealId}
-          dragOverDayKey={p.dragOverDayKey}
-          listScrollRef={p.listScrollRef}
-          onDurationChange={p.setDuration}
-          onStartDateChange={p.setStartDate}
-          onSelectSlot={p.selectSlot}
-          onRemoveMeal={p.removeMeal}
-          onDragOverDay={p.setDragOverDay}
-          onDropMeal={p.dropMealOnDay}
-          onResetMealPlan={p.resetMealPlan}
-        />
-      }
-      plannerBottomColumn={
-        <CheckoutBar
-          purchaseType={p.purchaseType}
-          deliveryCycle={p.deliveryCycle}
-          packComposition={p.packComposition}
-          totalPrice={p.totalPrice}
-          filledSlots={p.filledSlots}
-          totalSlots={p.totalSlots}
-          onChangePurchaseType={p.setPurchaseType}
-          onChangeDeliveryCycle={p.setDeliveryCycle}
-          onChangePackComposition={p.setPackComposition}
-          onSubmit={handleOrderSubmit}
-        />
-      }
+  const menuColumn = (
+    <MenuLibrary
+      dietType={p.dietType}
+      nutritionGoals={p.nutritionGoals}
+      allergyFilters={p.allergyFilters}
+      spicyPreference={p.spicyPreference}
+      filteredMeals={p.filteredMeals}
+      draggingMealId={p.draggingMealId}
+      onDietTypeChange={p.setDietType}
+      onNutritionGoalToggle={p.toggleNutritionGoal}
+      onAllergyFilterToggle={p.toggleAllergyFilter}
+      onSpicyPreferenceChange={p.setSpicyPreference}
+      onResetFilters={p.resetAllFilters}
+      onAddMeal={p.addMeal}
+      onDragStartMeal={p.startDragMeal}
+      onDragEndMeal={p.endDragMeal}
     />
+  );
+
+  const plannerTopColumn = (
+    <PlannerColumn
+      startDate={p.startDate}
+      earliestStart={p.earliestStart}
+      allDays={p.allDays}
+      mealPlan={p.mealPlan}
+      selectedSlotId={p.selectedSlotId}
+      selectedPlan={null}
+      selectedPlanType={null}
+      filledSlots={p.filledSlots}
+      draggingMealId={p.draggingMealId}
+      dragOverDayKey={p.dragOverDayKey}
+      listScrollRef={p.listScrollRef}
+      onStartDateChange={p.setStartDate}
+      onSelectSlot={p.selectSlot}
+      onRemoveMeal={p.removeMeal}
+      onDragOverDay={p.setDragOverDay}
+      onDropMeal={p.dropMealOnDay}
+      onResetMealPlan={p.resetMealPlan}
+    />
+  );
+
+  const plannerBottomColumn = (
+    <CheckoutBar
+      totalPrice={p.totalPrice}
+      filledSlots={p.filledSlots}
+      onSubmit={handleOrderSubmit}
+    />
+  );
+
+  return (
+    <>
+      <SubscribeShell
+        menuColumn={menuColumn}
+        plannerTopColumn={plannerTopColumn}
+        plannerBottomColumn={plannerBottomColumn}
+        mobileBottomBar={(onOpenMenu) => (
+          <MobileCheckoutBar
+            totalPrice={p.totalPrice}
+            filledSlots={p.filledSlots}
+            onSubmit={handleOrderSubmit}
+            onOpenMenu={onOpenMenu}
+          />
+        )}
+      />
+      <Snackbar message={p.snackbarMsg} onClose={p.clearSnackbar} />
+    </>
   );
 }

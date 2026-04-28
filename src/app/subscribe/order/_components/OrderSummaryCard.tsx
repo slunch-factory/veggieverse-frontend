@@ -5,12 +5,10 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   DELIVERY_CYCLE_OPTIONS,
   PACK_COMPOSITION_OPTIONS,
-  PLAN_TYPES,
   SUBSCRIPTION_DISCOUNT_RATE,
   WEEKDAY_KO,
   formatPrice,
   type DisplayMenuData,
-  type MenuCategory,
 } from "../../_data/subscription";
 import type { OrderData } from "../../_data/order";
 
@@ -20,18 +18,19 @@ interface OrderSummaryCardProps {
   onSubmit: () => void;
 }
 
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, "0")}. ${String(
-    d.getDate(),
-  ).padStart(2, "0")} (${WEEKDAY_KO[d.getDay()]})`;
-};
+const formatShortDate = (d: Date) =>
+  `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]})`;
 
 export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCardProps) {
-  const [mealListOpen, setMealListOpen] = useState(false);
+  const [mealListOpen, setMealListOpen] = useState(true);
 
   const mealEntries = Object.entries(order.mealPlan).sort(([a], [b]) => a.localeCompare(b));
   const itemCount = mealEntries.length;
+
+  const startD = new Date(order.startDateISO);
+  const endD = new Date(startD);
+  endD.setDate(startD.getDate() + order.duration * 7 - 1);
+  const periodLabel = `${formatShortDate(startD)} ~ ${formatShortDate(endD)}`;
 
   /** 날짜별 그룹 — dateKey(YYYY-MM-DD) 기준 */
   const groupedByDate = (() => {
@@ -52,17 +51,6 @@ export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCar
   const cycleLabel = DELIVERY_CYCLE_OPTIONS.find((o) => o.value === order.deliveryCycle)?.label;
   const packLabel = PACK_COMPOSITION_OPTIONS.find((o) => o.value === order.packComposition)?.label;
 
-  const categoryCounts = mealEntries.reduce<Record<MenuCategory, number>>(
-    (acc, [, meal]) => {
-      acc[meal.category] = (acc[meal.category] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<MenuCategory, number>,
-  );
-  const planSummary = (Object.keys(categoryCounts) as MenuCategory[])
-    .map((cat) => `${PLAN_TYPES.find((p) => p.id === cat)?.name ?? cat} ${categoryCounts[cat]}끼`)
-    .join(" · ");
-
   const primaryLabel = order.purchaseType === "subscription" ? "정기배송 신청하기" : "결제하기";
 
   return (
@@ -75,20 +63,8 @@ export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCar
       <section className="px-6 py-4 border-b border-black space-y-1.5">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-[12px] text-gray-500">구독 기간</span>
-          <span className="text-[14px] text-black">
-            {order.duration}주 · {itemCount}끼
-          </span>
+          <span className="text-[14px] text-black">{periodLabel} · {itemCount}끼</span>
         </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[12px] text-gray-500">배송 시작일</span>
-          <span className="text-[14px] text-black">{formatDate(order.startDateISO)}</span>
-        </div>
-        {planSummary && (
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[12px] text-gray-500">식단 구성</span>
-            <span className="text-[13px] text-gray-700 text-right">{planSummary}</span>
-          </div>
-        )}
         {order.purchaseType === "subscription" && (
           <>
             {cycleLabel && (

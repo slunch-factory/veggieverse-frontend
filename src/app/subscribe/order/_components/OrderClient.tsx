@@ -9,21 +9,37 @@ import {
   getServerOrderSnapshot,
   subscribeOrderStore,
 } from "../../_data/order";
+import { getCustomedPlan, type CustomPlanResponse } from "@/lib/api/subscription";
+import { getUserProfile } from "@/lib/api/user";
+import {
+  postPayment,
+  mapDeliveryCycle,
+  FIXED_USER_ID,
+  PAYMENT_RESULT_KEY,
+} from "@/lib/api/payment";
 import { OrderSummaryCard } from "./OrderSummaryCard";
+import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 
 interface FormState {
+  // 주문자 정보
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  customerPostalCode: string;
+  customerAddress: string;
+  customerAddressDetail: string;
+  // 배송지
   sameAsCustomer: boolean;
   recipientName: string;
   recipientPhone: string;
-  postalCode: string;
-  address: string;
-  addressDetail: string;
+  recipientPostalCode: string;
+  recipientAddress: string;
+  recipientAddressDetail: string;
+  // 배송 메세지
   deliveryNote: string;
-  entryPassword: string;
-  paymentMethod: "card" | "kakaopay" | "naverpay" | "bank";
+  // 결제
+  paymentMethod: "card" | "toss";
+  // 약관
   agreeOrder: boolean;
   agreePrivacy: boolean;
   agreeThirdParty: boolean;
@@ -34,14 +50,16 @@ const INITIAL_FORM: FormState = {
   customerName: "",
   customerPhone: "",
   customerEmail: "",
+  customerPostalCode: "",
+  customerAddress: "",
+  customerAddressDetail: "",
   sameAsCustomer: true,
   recipientName: "",
   recipientPhone: "",
-  postalCode: "",
-  address: "",
-  addressDetail: "",
+  recipientPostalCode: "",
+  recipientAddress: "",
+  recipientAddressDetail: "",
   deliveryNote: "",
-  entryPassword: "",
   paymentMethod: "card",
   agreeOrder: false,
   agreePrivacy: false,
@@ -51,9 +69,7 @@ const INITIAL_FORM: FormState = {
 
 const PAYMENT_METHODS: { value: FormState["paymentMethod"]; label: string }[] = [
   { value: "card", label: "신용/체크카드" },
-  { value: "kakaopay", label: "카카오페이" },
-  { value: "naverpay", label: "네이버페이" },
-  { value: "bank", label: "계좌이체" },
+  { value: "toss", label: "토스 페이먼츠" },
 ];
 
 const DELIVERY_NOTE_PRESETS = [
@@ -71,12 +87,38 @@ export function OrderClient() {
     getServerOrderSnapshot,
   );
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [postcodeTarget, setPostcodeTarget] = useState<"recipient" | null>(null);
+  const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
+  const [confirmedPlan, setConfirmedPlan] = useState<CustomPlanResponse | null>(null);
 
   useEffect(() => {
     if (order === null || Object.keys(order.mealPlan).length === 0) {
       router.replace("/subscribe");
     }
   }, [order, router]);
+
+  useEffect(() => {
+    const planId = sessionStorage.getItem("veggieverse-plan-id");
+    if (!planId) return;
+    getCustomedPlan(planId).then((plan) => {
+      if (plan) setConfirmedPlan(plan);
+    });
+  }, []);
+
+  useEffect(() => {
+    getUserProfile().then((profile) => {
+      if (!profile) return;
+      setForm((prev) => ({
+        ...prev,
+        ...(profile.name && { customerName: profile.name }),
+        ...(profile.phone && { customerPhone: profile.phone }),
+        ...(profile.email && { customerEmail: profile.email }),
+        ...(profile.postalCode && { customerPostalCode: profile.postalCode }),
+        ...(profile.address && { customerAddress: profile.address }),
+        ...(profile.addressDetail && { customerAddressDetail: profile.addressDetail }),
+      }));
+    });
+  }, []);
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -95,29 +137,69 @@ export function OrderClient() {
     }));
   };
 
-  /** 필수 값 검증 */
   const canSubmit = useMemo(() => {
     if (!order) return false;
-    if (!form.customerName.trim() || !form.customerPhone.trim() || !form.customerEmail.trim())
-      return false;
+    if (
+      !form.customerName.trim() ||
+      !form.customerPhone.trim() ||
+      !form.customerEmail.trim()
+    ) return false;
     if (!form.sameAsCustomer) {
-      if (!form.recipientName.trim() || !form.recipientPhone.trim()) return false;
+      if (
+        !form.recipientName.trim() ||
+        !form.recipientPhone.trim() ||
+        !form.recipientPostalCode.trim() ||
+        !form.recipientAddress.trim()
+      ) return false;
     }
-    if (!form.postalCode.trim() || !form.address.trim()) return false;
-    const requiredTerms =
+    return (
       form.agreeOrder &&
       form.agreePrivacy &&
-      (order.purchaseType === "subscription" ? form.agreeThirdParty : true);
-    return requiredTerms;
+      (order.purchaseType === "subscription" ? form.agreeThirdParty : true)
+    );
   }, [form, order]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!order || !canSubmit) return;
-    const label = order.purchaseType === "subscription" ? "정기배송 신청" : "주문";
-    alert(`${label}이 완료되었습니다.\n입력하신 정보로 곧 연락드릴게요.`);
-    clearOrder();
-    router.push("/");
-  }, [order, canSubmit, router]);
+
+    const planId = sessionStorage.getItem("veggieverse-plan-id") ?? "";
+
+    const startD = new Date(order.startDateISO);
+    const endD = new Date(startD);
+    endD.setDate(startD.getDate() + order.duration * 7 - 1);
+    const toDateStr = (d: Date) => d.toISOString().split("T")[0];
+
+    const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
+
+    const rawAddr = form.sameAsCustomer
+      ? { zipCode: form.customerPostalCode, street: form.customerAddress, detail: form.customerAddressDetail }
+      : { zipCode: form.recipientPostalCode, street: form.recipientAddress, detail: form.recipientAddressDetail };
+
+    const addr = {
+      zipCode: toStr(rawAddr.zipCode),
+      street: toStr(rawAddr.street),
+      detail: toStr(rawAddr.detail),
+    };
+
+    const deliveryCycle = "WEEKLY";
+
+    const result = await postPayment({
+      userId: FIXED_USER_ID,
+      planId,
+      subscriptionStartDate: toDateStr(startD),
+      subscriptionEndDate: toDateStr(endD),
+      deliveryCycle,
+      deliveryAddress: addr,
+    });
+
+    if (!result) {
+      alert("결제 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      return;
+    }
+
+    sessionStorage.setItem(PAYMENT_RESULT_KEY, JSON.stringify(result));
+    router.push("/subscribe/order/complete");
+  }, [order, canSubmit, form, router]);
 
   if (!order) {
     return (
@@ -128,218 +210,275 @@ export function OrderClient() {
   }
 
   return (
-    <div className="bg-white min-h-screen pb-24 lg:pb-8">
-      <div className="max-w-[1280px] mx-auto lg:px-6 lg:pt-6">
-        {/* Top header */}
-        <header className="flex items-center px-5 py-4 lg:px-6 lg:py-0 lg:mb-5 bg-white lg:bg-transparent border-b border-black lg:border-b-0">
-          <button
-            type="button"
-            onClick={() => router.push("/subscribe")}
-            className="inline-flex items-center gap-1.5 bg-transparent text-gray-600 hover:text-black cursor-pointer text-[12px] lg:text-[13px] leading-normal"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            <span>구독 식단으로 돌아가기</span>
-          </button>
-        </header>
+    <>
+      <KakaoPostcodeModal
+        isOpen={postcodeTarget !== null}
+        onClose={() => setPostcodeTarget(null)}
+        onSelect={({ postalCode, address }) => {
+          update("recipientPostalCode", postalCode);
+          update("recipientAddress", address);
+          update("recipientAddressDetail", "");
+        }}
+      />
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:gap-6">
-          {/* 좌: 폼 */}
-          <div className="flex flex-col">
-            {/* 주문자 정보 */}
-            <FormSection title="주문자 정보">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <FormField label="이름" required>
-                  <TextInput
-                    value={form.customerName}
-                    onChange={(v) => update("customerName", v)}
-                    placeholder="홍길동"
-                  />
-                </FormField>
-                <FormField label="연락처" required>
-                  <TextInput
-                    type="tel"
-                    value={form.customerPhone}
-                    onChange={(v) => update("customerPhone", v)}
-                    placeholder="010-0000-0000"
-                  />
-                </FormField>
-              </div>
-              <FormField label="이메일" required>
-                <TextInput
-                  type="email"
-                  value={form.customerEmail}
-                  onChange={(v) => update("customerEmail", v)}
-                  placeholder="order@example.com"
-                />
-              </FormField>
-            </FormSection>
+      <div className="bg-white min-h-screen pb-24 lg:pb-8">
+        <div className="max-w-[1280px] mx-auto lg:px-6 lg:pt-6">
+          {/* 헤더 */}
+          <header className="flex items-center px-5 py-4 lg:px-6 lg:py-0 lg:mb-5 bg-white lg:bg-transparent border-b border-black lg:border-b-0">
+            <button
+              type="button"
+              onClick={() => router.push("/subscribe")}
+              className="inline-flex items-center gap-1.5 bg-transparent text-gray-600 hover:text-black cursor-pointer text-[12px] lg:text-[13px] leading-normal"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>구독 식단으로 돌아가기</span>
+            </button>
+          </header>
 
-            {/* 배송지 */}
-            <FormSection title="배송지">
-              <label className="flex items-center gap-2 cursor-pointer select-none mb-2">
-                <input
-                  type="checkbox"
-                  checked={form.sameAsCustomer}
-                  onChange={(e) => update("sameAsCustomer", e.target.checked)}
-                  className="sr-only"
-                />
-                <CheckBox checked={form.sameAsCustomer} />
-                <span className="text-[13px] text-black">주문자 정보와 동일</span>
-              </label>
-              {!form.sameAsCustomer && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
-                  <FormField label="받는 분" required>
+          <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:gap-6">
+            {/* 좌: 폼 */}
+            <div className="flex flex-col">
+
+              {/* 주문자 정보 */}
+              <FormSection title="주문자 정보">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <FormField label="이름" required>
                     <TextInput
-                      value={form.recipientName}
-                      onChange={(v) => update("recipientName", v)}
-                      placeholder="받는 사람 이름"
+                      value={form.customerName}
+                      onChange={(v) => update("customerName", v)}
+                      placeholder="홍길동"
                     />
                   </FormField>
-                  <FormField label="연락처" required>
+                  <FormField label="휴대전화" required>
                     <TextInput
                       type="tel"
-                      value={form.recipientPhone}
-                      onChange={(v) => update("recipientPhone", v)}
+                      value={form.customerPhone}
+                      onChange={(v) => update("customerPhone", v)}
                       placeholder="010-0000-0000"
                     />
                   </FormField>
                 </div>
-              )}
-              <FormField label="주소" required>
-                <div className="flex gap-2">
+                <FormField label="이메일" required>
                   <TextInput
-                    value={form.postalCode}
-                    onChange={(v) => update("postalCode", v)}
-                    placeholder="우편번호"
-                    className="w-[120px]"
+                    type="email"
+                    value={form.customerEmail}
+                    onChange={(v) => update("customerEmail", v)}
+                    placeholder="order@example.com"
                   />
-                  <button
-                    type="button"
-                    onClick={() => alert("주소 검색은 추후 연동 예정입니다.")}
-                    className="h-10 px-3 text-[12px] border border-black bg-white hover:bg-gray-50 cursor-pointer"
-                  >
-                    주소 검색
-                  </button>
-                </div>
-              </FormField>
-              <TextInput
-                value={form.address}
-                onChange={(v) => update("address", v)}
-                placeholder="기본 주소"
-              />
-              <TextInput
-                value={form.addressDetail}
-                onChange={(v) => update("addressDetail", v)}
-                placeholder="상세 주소 (동/호수)"
-              />
-              <FormField label="배송 요청사항">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {DELIVERY_NOTE_PRESETS.map((preset) => (
+                </FormField>
+                <FormField label="주소">
+                  <div className="flex gap-2">
+                    <TextInput
+                      value={form.customerPostalCode}
+                      onChange={() => {}}
+                      placeholder="우편번호"
+                      className="w-[120px]"
+                      readOnly
+                    />
+                  </div>
+                  <TextInput
+                    value={form.customerAddress}
+                    onChange={() => {}}
+                    placeholder="기본 주소"
+                    readOnly
+                  />
+                  <TextInput
+                    value={form.customerAddressDetail}
+                    onChange={() => {}}
+                    placeholder="상세 주소 (동/호수)"
+                    readOnly
+                  />
+                </FormField>
+              </FormSection>
+
+              {/* 배송지 */}
+              <FormSection title="배송지">
+                {/* 탭 버튼 */}
+                <div className="flex border border-black overflow-hidden mb-1">
+                  {(
+                    [
+                      { value: true, label: "주문자 정보와 동일" },
+                      { value: false, label: "새로운 배송지" },
+                    ] as const
+                  ).map(({ value, label }, idx) => (
                     <button
-                      key={preset}
+                      key={label}
                       type="button"
-                      onClick={() => update("deliveryNote", preset)}
-                      className={`px-2.5 py-1 text-[11px] border transition-colors cursor-pointer ${
-                        form.deliveryNote === preset
-                          ? "border-[#8C451D] bg-[#FDEEE8] text-[#8C451D]"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-black"
+                      onClick={() => update("sameAsCustomer", value)}
+                      className={`flex-1 h-10 text-[13px] cursor-pointer transition-colors select-none ${
+                        idx === 0 ? "" : "border-l border-black"
+                      } ${
+                        form.sameAsCustomer === value
+                          ? "bg-black text-white"
+                          : "bg-white text-black hover:bg-gray-50"
                       }`}
                     >
-                      {preset}
+                      {label}
                     </button>
                   ))}
                 </div>
-                <TextInput
-                  value={form.deliveryNote}
-                  onChange={(v) => update("deliveryNote", v)}
-                  placeholder="직접 입력"
-                />
-              </FormField>
-              <FormField label="공동현관 출입 (선택)">
-                <TextInput
-                  value={form.entryPassword}
-                  onChange={(v) => update("entryPassword", v)}
-                  placeholder="예: #1234, 자유출입"
-                />
-              </FormField>
-            </FormSection>
 
-            {/* 결제 수단 */}
-            <FormSection title="결제 수단">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {PAYMENT_METHODS.map((opt) => {
-                  const active = form.paymentMethod === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => update("paymentMethod", opt.value)}
-                      aria-pressed={active}
-                      className={`h-12 text-[13px] border transition-colors cursor-pointer ${
-                        active
-                          ? "border-[#8C451D] bg-[#FDEEE8] text-[#8C451D]"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-black"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
+                {/* 새로운 배송지 선택 시에만 필드 노출 */}
+                {!form.sameAsCustomer && (
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <FormField label="받으시는 분" required>
+                        <TextInput
+                          value={form.recipientName}
+                          onChange={(v) => update("recipientName", v)}
+                          placeholder="받으시는 분 이름"
+                        />
+                      </FormField>
+                      <FormField label="휴대전화" required>
+                        <TextInput
+                          type="tel"
+                          value={form.recipientPhone}
+                          onChange={(v) => update("recipientPhone", v)}
+                          placeholder="010-0000-0000"
+                        />
+                      </FormField>
+                    </div>
+
+                    <FormField label="주소" required>
+                      <div className="flex gap-2">
+                        <TextInput
+                          value={form.recipientPostalCode}
+                          onChange={() => {}}
+                          placeholder="우편번호"
+                          className="w-[120px]"
+                          readOnly
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPostcodeTarget("recipient")}
+                          className="h-10 px-3 text-[12px] border border-black bg-white hover:bg-gray-50 cursor-pointer"
+                        >
+                          주소 검색
+                        </button>
+                      </div>
+                      <TextInput
+                        value={form.recipientAddress}
+                        onChange={() => {}}
+                        placeholder="기본 주소"
+                        readOnly
+                      />
+                      <TextInput
+                        value={form.recipientAddressDetail}
+                        onChange={(v) => update("recipientAddressDetail", v)}
+                        placeholder="상세 주소 (동/호수)"
+                      />
+                    </FormField>
+
+                    <FormField label="배송 메세지">
+                      <select
+                        value={deliveryNoteCustom ? "기타" : form.deliveryNote}
+                        onChange={(e) => {
+                          if (e.target.value === "기타") {
+                            setDeliveryNoteCustom(true);
+                            update("deliveryNote", "");
+                          } else {
+                            setDeliveryNoteCustom(false);
+                            update("deliveryNote", e.target.value);
+                          }
+                        }}
+                        className="h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none w-full cursor-pointer"
+                      >
+                        <option value="">배송 메세지를 선택해 주세요</option>
+                        {DELIVERY_NOTE_PRESETS.map((preset) => (
+                          <option key={preset} value={preset}>{preset}</option>
+                        ))}
+                        <option value="기타">기타 (직접 입력)</option>
+                      </select>
+                      {deliveryNoteCustom && (
+                        <TextInput
+                          value={form.deliveryNote}
+                          onChange={(v) => update("deliveryNote", v)}
+                          placeholder="배송 메세지를 입력해 주세요"
+                          className="mt-2"
+                        />
+                      )}
+                    </FormField>
+                  </div>
+                )}
+              </FormSection>
+
+              {/* 결제 수단 */}
+              <FormSection title="결제 수단">
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYMENT_METHODS.map((opt) => {
+                    const active = form.paymentMethod === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => update("paymentMethod", opt.value)}
+                        aria-pressed={active}
+                        className={`h-12 text-[13px] border transition-colors cursor-pointer ${
+                          active
+                            ? "border-[#8C451D] bg-[#FDEEE8] text-[#8C451D]"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-black"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </FormSection>
+
+              {/* 약관 */}
+              <FormSection title="이용약관 동의">
+                <label className="flex items-center gap-2 cursor-pointer select-none pb-2 border-b border-gray-200 mb-2">
+                  <input
+                    type="checkbox"
+                    checked={allTermsChecked}
+                    onChange={(e) => toggleAllTerms(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <CheckBox checked={allTermsChecked} />
+                  <span className="text-[14px] text-black">전체 동의</span>
+                </label>
+                <TermsRow
+                  checked={form.agreeOrder}
+                  onChange={(v) => update("agreeOrder", v)}
+                  label="주문 상품 정보 확인"
+                  required
+                />
+                <TermsRow
+                  checked={form.agreePrivacy}
+                  onChange={(v) => update("agreePrivacy", v)}
+                  label="개인정보 수집·이용 동의"
+                  required
+                />
+                <TermsRow
+                  checked={form.agreeThirdParty}
+                  onChange={(v) => update("agreeThirdParty", v)}
+                  label="개인정보 제3자 제공 동의"
+                  required={order.purchaseType === "subscription"}
+                />
+                <TermsRow
+                  checked={form.agreeMarketing}
+                  onChange={(v) => update("agreeMarketing", v)}
+                  label="마케팅 정보 수신 동의"
+                />
+              </FormSection>
+            </div>
+
+            {/* 우: 요약 (데스크탑) */}
+            <div className="hidden lg:block">
+              <div className="sticky top-6">
+                <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} />
               </div>
-            </FormSection>
+            </div>
 
-            {/* 약관 */}
-            <FormSection title="이용약관 동의">
-              <label className="flex items-center gap-2 cursor-pointer select-none pb-2 border-b border-gray-200 mb-2">
-                <input
-                  type="checkbox"
-                  checked={allTermsChecked}
-                  onChange={(e) => toggleAllTerms(e.target.checked)}
-                  className="sr-only"
-                />
-                <CheckBox checked={allTermsChecked} />
-                <span className="text-[14px] text-black">전체 동의</span>
-              </label>
-              <TermsRow
-                checked={form.agreeOrder}
-                onChange={(v) => update("agreeOrder", v)}
-                label="주문 상품 정보 확인"
-                required
-              />
-              <TermsRow
-                checked={form.agreePrivacy}
-                onChange={(v) => update("agreePrivacy", v)}
-                label="개인정보 수집·이용 동의"
-                required
-              />
-              <TermsRow
-                checked={form.agreeThirdParty}
-                onChange={(v) => update("agreeThirdParty", v)}
-                label="개인정보 제3자 제공 동의"
-                required={order.purchaseType === "subscription"}
-              />
-              <TermsRow
-                checked={form.agreeMarketing}
-                onChange={(v) => update("agreeMarketing", v)}
-                label="마케팅 정보 수신 동의"
-              />
-            </FormSection>
-          </div>
-
-          {/* 우: 요약 */}
-          <div className="hidden lg:block">
-            <div className="sticky top-6">
+            {/* 모바일: 요약 카드 하단 */}
+            <div className="lg:hidden px-4 pt-4">
               <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} />
             </div>
           </div>
-
-          {/* 모바일: 요약 카드 하단에 */}
-          <div className="lg:hidden px-4 pt-4">
-            <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} />
-          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -384,12 +523,16 @@ function TextInput({
   placeholder,
   type = "text",
   className = "",
+  readOnly = false,
+  disabled = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: "text" | "email" | "tel";
   className?: string;
+  readOnly?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <input
@@ -397,7 +540,12 @@ function TextInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none ${className}`}
+      readOnly={readOnly}
+      disabled={disabled}
+      className={`h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none
+        ${readOnly ? "bg-gray-50 cursor-default" : ""}
+        ${disabled ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""}
+        ${className}`}
     />
   );
 }
