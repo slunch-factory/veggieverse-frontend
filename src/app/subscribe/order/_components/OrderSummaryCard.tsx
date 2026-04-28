@@ -22,7 +22,7 @@ const formatShortDate = (d: Date) =>
   `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]})`;
 
 export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCardProps) {
-  const [mealListOpen, setMealListOpen] = useState(false);
+  const [mealListOpen, setMealListOpen] = useState(true);
 
   const mealEntries = Object.entries(order.mealPlan).sort(([a], [b]) => a.localeCompare(b));
   const itemCount = mealEntries.length;

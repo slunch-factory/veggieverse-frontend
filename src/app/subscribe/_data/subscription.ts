@@ -1,9 +1,25 @@
 export type DurationType = 1 | 2;
 export type ExcludeCategory = "dairy" | "shellfish" | "fish" | "nuts" | "chicken" | "egg" | "gluten" | "spicy";
 export type MenuCategory = "slim" | "protein";
+export type DietType = "vegan" | "pesco" | "pollo";
+export type NutritionGoal = "plant-based" | "low-carb" | "low-calorie" | "high-protein" | "low-sodium";
+export type AllergyFilter = "nuts" | "peanut" | "dairy" | "none";
+export type SpicyPreference = "include" | "exclude";
 export type PurchaseType = "once" | "subscription";
 export type DeliveryCycle = "1month" | "2month";
 export type PackComposition = "14day" | "14day+random7" | "14day+random14" | "14day+random21";
+
+export interface MenuIngredient {
+  name: string;
+  amountG: number;
+}
+
+export interface MenuNutrition {
+  kcal?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
 
 export interface MenuData {
   id: string;
@@ -14,6 +30,8 @@ export interface MenuData {
   image: string;
   description: string;
   excludable: ExcludeCategory[];
+  ingredients?: MenuIngredient[];
+  nutrition?: MenuNutrition;
 }
 
 export interface DisplayMenuData extends MenuData {
@@ -40,6 +58,32 @@ export interface PlanType {
   accent: string;
   filterTags: string[];
 }
+
+export const DIET_TYPE_OPTIONS: { value: DietType; label: string }[] = [
+  { value: "vegan", label: "비건" },
+  { value: "pesco", label: "페스코" },
+  { value: "pollo", label: "폴로" },
+];
+
+export const NUTRITION_GOAL_OPTIONS: { value: NutritionGoal; label: string }[] = [
+  { value: "plant-based", label: "플랜트 베이스드" },
+  { value: "low-carb", label: "저탄수화물" },
+  { value: "low-calorie", label: "저칼로리" },
+  { value: "high-protein", label: "고단백" },
+  { value: "low-sodium", label: "저나트륨" },
+];
+
+export const ALLERGY_FILTER_OPTIONS: { value: AllergyFilter; label: string }[] = [
+  { value: "nuts", label: "견과류" },
+  { value: "peanut", label: "땅콩" },
+  { value: "dairy", label: "유제품" },
+  { value: "none", label: "해당 없음" },
+];
+
+export const SPICY_PREFERENCE_OPTIONS: { value: SpicyPreference; label: string }[] = [
+  { value: "include", label: "포함" },
+  { value: "exclude", label: "제외" },
+];
 
 export const SUBSCRIPTION_DISCOUNT_RATE = 0.1;
 

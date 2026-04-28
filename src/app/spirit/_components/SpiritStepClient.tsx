@@ -74,13 +74,13 @@ export function SpiritStepClient({ questions }: SpiritStepClientProps) {
       setCurrentStep((s) => s + 1);
     } else {
       setIsPreparingPlan(true);
-      const [planId, recommended] = await Promise.all([
-        savePlan(answers).catch(() => null),
-        getAutoPlan(answers).catch(() => []),
-      ]);
-      if (planId) sessionStorage.setItem("spirit-plan-id", planId);
+      // autoPlan 먼저 → 그 product ID로 plan 저장 (순차 호출)
+      const recommended = await getAutoPlan(answers).catch(() => []);
       if (recommended.length > 0) {
         sessionStorage.setItem("spirit-auto-plan", JSON.stringify(recommended));
+        const items = recommended.map((m) => ({ productId: Number(m.id), quantity: 1 }));
+        const planResult = await savePlan(items).catch(() => null);
+        if (planResult?.planId) sessionStorage.setItem("spirit-plan-id", planResult.planId);
       }
     }
   };

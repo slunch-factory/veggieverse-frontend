@@ -1,4 +1,4 @@
-import type { ExcludeCategory, MenuCategory, MenuData } from "@/app/subscribe/_data/subscription";
+import type { ExcludeCategory, MenuCategory, MenuData, MenuNutrition } from "@/app/subscribe/_data/subscription";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
@@ -38,7 +38,6 @@ const NAME_TO_IMAGE: Record<string, string> = {
   "참치 샐러드 랩":            "/images/menus/33_tuna_salad_wrap.png",
 };
 
-// GET /api/v1/veggiverse/products
 export interface ProductItem {
   id: number;
   name: string;
@@ -49,8 +48,20 @@ export interface ProductItem {
   spirit: {
     healthGoals: string[];
     allergens: string[];
-    spicy: boolean;
+    /** 실제 API 응답은 isSpicy, Swagger 스펙은 spicy — 두 필드 모두 지원 */
+    isSpicy?: boolean;
+    spicy?: boolean;
   };
+}
+
+export interface PlanItem {
+  productId: number;
+  quantity: number;
+}
+
+export interface CustomPlanResponse {
+  planId: string;
+  items: PlanItem[];
 }
 
 const ALLERGEN_MAP: Record<string, ExcludeCategory> = {
@@ -72,6 +83,19 @@ function resolveImageUrl(imageUrl: string | undefined, name: string): string {
   return NAME_TO_IMAGE[name] ?? "/images/menus/example.png";
 }
 
+function mapNutrition(raw: Record<string, unknown> | undefined): MenuNutrition | undefined {
+  if (!raw) return undefined;
+  const n = raw as Record<string, number>;
+  const result: MenuNutrition = {
+    kcal: n.calories ?? n.kcal ?? n.calorie,
+    protein: n.protein,
+    carbs: n.carbohydrate ?? n.carbs ?? n.carb,
+    fat: n.fat,
+  };
+  const hasAny = Object.values(result).some((v) => v != null);
+  return hasAny ? result : undefined;
+}
+
 export function mapToMenuData(p: ProductItem): MenuData {
   const excludable: ExcludeCategory[] = [
     ...new Set(
@@ -80,7 +104,8 @@ export function mapToMenuData(p: ProductItem): MenuData {
         .filter((a): a is ExcludeCategory => Boolean(a)),
     ),
   ];
-  if (p.spirit.spicy) excludable.push("spicy");
+  // 실제 API는 isSpicy, Swagger 스펙은 spicy — 둘 다 체크
+  if (p.spirit.isSpicy ?? p.spirit.spicy) excludable.push("spicy");
 
   const category: MenuCategory = p.spirit.healthGoals.includes("high_protein")
     ? "protein"
@@ -95,36 +120,55 @@ export function mapToMenuData(p: ProductItem): MenuData {
     image: resolveImageUrl(p.imageUrl, p.name),
     description: "",
     excludable,
+    ingredients: p.ingredients,
+    nutrition: mapNutrition(p.nutritionInfo),
   };
 }
 
-export async function getCustomedPlan(planId: string): Promise<MenuData[]> {
-  const url = `${API_BASE}/api/v1/veggiverse/customedPlan?planId=${encodeURIComponent(planId)}`;
+export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
+  const url = `${API_BASE}/api/v1/veggieverse/plan`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    if (!res.ok) {
+      console.error("[postPlan] HTTP error:", res.status, res.statusText);
+      return null;
+    }
+    return await res.json() as CustomPlanResponse;
+  } catch (err) {
+    console.error("[postPlan] fetch failed:", err);
+    return null;
+  }
+}
+
+export async function getCustomedPlan(planId: string): Promise<CustomPlanResponse | null> {
+  const url = `${API_BASE}/api/v1/veggieverse/customedPlan?planId=${encodeURIComponent(planId)}`;
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
     });
     if (!res.ok) {
       console.error("[getCustomedPlan] HTTP error:", res.status, res.statusText);
-      return [];
+      return null;
     }
-    const data: ProductItem[] = await res.json();
-    const list = Array.isArray(data) ? data : [];
+    const data: CustomPlanResponse = await res.json();
     console.log(
       "%c[getCustomedPlan] ✅ 확정 플랜 조회 성공",
       "color: #4A7F52; font-weight: bold;",
-      list.length,
-      "개",
+      data,
     );
-    return list.map(mapToMenuData);
+    return data;
   } catch (err) {
     console.error("[getCustomedPlan] fetch failed:", err);
-    return [];
+    return null;
   }
 }
 
 export async function getMenus(): Promise<MenuData[]> {
-  const url = `${API_BASE}/api/v1/veggiverse/products`;
+  const url = `${API_BASE}/api/v1/veggieverse/products`;
   try {
     const res = await fetch(url, {
       cache: "no-store",

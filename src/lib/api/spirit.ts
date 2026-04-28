@@ -1,6 +1,6 @@
 import type { SurveyAnswers } from "@/app/spirit/_types";
 import type { MenuData } from "@/app/subscribe/_data/subscription";
-import { type ProductItem, mapToMenuData } from "@/lib/api/subscription";
+import { type ProductItem, type PlanItem, type CustomPlanResponse, mapToMenuData } from "@/lib/api/subscription";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
@@ -18,14 +18,14 @@ const ALLERGEN_MAP: Record<string, string> = {
   "dairy":     "dairy",
 };
 
-export interface SavePlanBody {
+export interface AutoPlanBody {
   dietaryType: string;
   nutritionGoals: string[];
   allergens: string[];
   spicePreference: "spicy" | "mild";
 }
 
-function buildPlanBody(answers: SurveyAnswers): SavePlanBody {
+function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
   return {
     dietaryType: (answers[1] as string) ?? "vegan",
     nutritionGoals: ((answers[2] as string[]) ?? []).map((g) => NUTRITION_GOAL_MAP[g] ?? g),
@@ -36,8 +36,9 @@ function buildPlanBody(answers: SurveyAnswers): SavePlanBody {
   };
 }
 
+/** POST /api/v1/veggieverse/autoPlan — 설문 기반 추천 메뉴 조회 */
 export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
-  const body = buildPlanBody(answers);
+  const body = buildAutoPlanBody(answers);
   if (body.nutritionGoals.length < 2) {
     const defaults = ["plant_based", "low_calorie"].filter(
       (g) => !body.nutritionGoals.includes(g),
@@ -46,7 +47,7 @@ export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
   }
   console.log("[getAutoPlan] request:", body);
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggiverse/autoPlan`, {
+    const res = await fetch(`${API_BASE}/api/v1/veggieverse/autoPlan`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
@@ -65,22 +66,22 @@ export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
   }
 }
 
-export async function savePlan(answers: SurveyAnswers): Promise<string | null> {
-  const body = buildPlanBody(answers);
-  console.log("[savePlan] request:", body);
+/** POST /api/v1/veggieverse/plan — 선택한 상품 목록으로 플랜 저장 */
+export async function savePlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
+  console.log("[savePlan] request:", { items });
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggiverse/plan`, {
+    const res = await fetch(`${API_BASE}/api/v1/veggieverse/plan`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ items }),
     });
     if (!res.ok) {
       console.error("[savePlan] HTTP error:", res.status, res.statusText);
       return null;
     }
-    const data: Record<string, string> = await res.json();
+    const data: CustomPlanResponse = await res.json();
     console.log("%c[savePlan] ✅ 플랜 저장 성공", "color: #4A7F52; font-weight: bold;", data);
-    return data.planId ?? null;
+    return data;
   } catch (err) {
     console.error("[savePlan] fetch failed:", err);
     return null;

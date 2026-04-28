@@ -9,20 +9,16 @@ export interface UserProfile {
   addressDetail?: string;
 }
 
+const FIXED_USER_ID = 52;
+
 export async function getUserProfile(): Promise<UserProfile | null> {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/veggiverse/users/profile?userId=46`, {
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) {
-      console.error("[getUserProfile] HTTP error:", res.status, res.statusText);
-      return null;
-    }
-    const data: UserProfile = await res.json();
-    console.log("%c[getUserProfile] ✅ 프로필 조회 성공", "color: #4A7F52; font-weight: bold;", data);
-    return data;
-  } catch (err) {
-    console.error("[getUserProfile] fetch failed:", err);
-    return null;
-  }
+  // TODO: 로그인 연동 후 API 호출로 교체 (userId: FIXED_USER_ID = 52)
+  return {
+    name: "testuser",
+    phone: "010-1111-1111",
+    email: "slunch@slunch.co.kr",
+    postalCode: "01234",
+    address: "서울특별시 xx구 xx동",
+    addressDetail: "101호",
+  };
 }

@@ -10,26 +10,32 @@ interface CheckoutBarProps {
 
 export function CheckoutBar({ totalPrice, filledSlots, onSubmit }: CheckoutBarProps) {
   const disabled = filledSlots === 0;
-  const label = disabled ? "식단을 먼저 구성해주세요" : "결제하기";
 
   return (
     <section
-      className="flex shrink-0 items-center gap-3 border-t border-gray-200 bg-white px-4 py-3"
+      className="flex shrink-0 flex-col gap-3 border-t border-black bg-white px-6 py-4"
       aria-label="결제"
     >
-      <p className="flex-1 text-[20px] leading-tight tracking-tight">
-        {formatPrice(totalPrice)}
-      </p>
+      <div className="flex items-center justify-between text-[13px] text-gray-400">
+        <span>{filledSlots}끼 선택</span>
+        <span>최대 14끼</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-[14px] text-black">총 금액</span>
+        <span className="text-[22px] font-bold tracking-tight text-black leading-none">
+          {formatPrice(totalPrice)}
+        </span>
+      </div>
       <button
         disabled={disabled}
         onClick={() => { if (!disabled) onSubmit(); }}
-        className={`h-10 shrink-0 px-4 text-[13px] transition-all ${
+        className={`w-full h-12 text-[14px] tracking-wide transition-colors rounded-lg ${
           disabled
             ? "cursor-not-allowed bg-gray-100 text-gray-300"
-            : "bg-black text-white hover:bg-gray-900"
+            : "bg-black text-white hover:bg-[#8C451D]"
         }`}
       >
-        {label}
+        {disabled ? "식단을 먼저 구성해주세요" : "결제하기"}
       </button>
     </section>
   );

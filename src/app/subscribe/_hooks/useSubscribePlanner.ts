@@ -2,20 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type AllergyFilter,
   type DayPlan,
   type DeliveryCycle,
+  type DietType,
   type DisplayMenuData,
   type ExcludeCategory,
   type MenuData,
+  type NutritionGoal,
   type PackComposition,
   type PurchaseType,
+  type SpicyPreference,
   generateWeekDays,
   getEarliestStartDate,
   isFlexibleToday,
 } from "../_data/subscription";
 
 export interface SubscribePlannerState {
-  selectedExcludes: ExcludeCategory[];
+  dietType: DietType | null;
+  nutritionGoals: NutritionGoal[];
+  allergyFilters: AllergyFilter[];
+  spicyPreference: SpicyPreference | null;
   selectedSlotId: string | null;
   mealPlan: Record<string, DisplayMenuData>;
   purchaseType: PurchaseType;
@@ -34,12 +41,16 @@ export interface SubscribePlannerState {
   draggingMealId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
+  snackbarMsg: string | null;
 }
 
 export interface SubscribePlannerActions {
   setStartDate: (d: Date) => void;
-  toggleExclude: (category: ExcludeCategory) => void;
-  resetExcludes: () => void;
+  setDietType: (v: DietType | null) => void;
+  toggleNutritionGoal: (v: NutritionGoal) => void;
+  toggleAllergyFilter: (v: AllergyFilter) => void;
+  setSpicyPreference: (v: SpicyPreference | null) => void;
+  resetAllFilters: () => void;
   selectSlot: (slotId: string) => void;
   addMeal: (meal: DisplayMenuData) => void;
   removeMeal: (slotId: string, e: React.MouseEvent) => void;
@@ -51,6 +62,7 @@ export interface SubscribePlannerActions {
   endDragMeal: () => void;
   setDragOverDay: (key: string | null) => void;
   dropMealOnDay: (dateKey: string, mealId: string) => void;
+  clearSnackbar: () => void;
 }
 
 export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState & SubscribePlannerActions {
@@ -58,9 +70,13 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     () => Object.fromEntries(menuList.map((m) => [m.id, m])),
     [menuList],
   );
-  const [selectedExcludes, setSelectedExcludes] = useState<ExcludeCategory[]>([]);
+
+  const [dietType, setDietTypeState] = useState<DietType | null>(null);
+  const [nutritionGoals, setNutritionGoals] = useState<NutritionGoal[]>([]);
+  const [allergyFilters, setAllergyFilters] = useState<AllergyFilter[]>([]);
+  const [spicyPreference, setSpicyPreferenceState] = useState<SpicyPreference | null>(null);
+
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  // Initialize empty — sessionStorage is read in useEffect to avoid SSR/client hydration mismatch
   const [mealPlan, setMealPlan] = useState<Record<string, DisplayMenuData>>({});
   const [spiritRecommended, setSpiritRecommended] = useState<MenuData[]>([]);
   const spiritAppliedRef = useRef(false);
@@ -69,6 +85,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   const [packComposition, setPackComposition] = useState<PackComposition | "">("");
   const [draggingMealId, setDraggingMealId] = useState<string | null>(null);
   const [dragOverDayKey, setDragOverDayKey] = useState<string | null>(null);
+  const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -81,7 +98,28 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
 
   const listScrollRef = useRef<HTMLDivElement | null>(null);
 
-  /** 제외 재료 변경 시 해당 메뉴 캘린더에서 제거 */
+  /** 새 필터 → ExcludeCategory 변환 (메뉴 제거 및 필터링에 사용) */
+  const selectedExcludes = useMemo<ExcludeCategory[]>(() => {
+    const excludes = new Set<ExcludeCategory>();
+
+    if (dietType === "vegan") {
+      (["shellfish", "fish", "chicken", "egg", "dairy"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
+    } else if (dietType === "pesco") {
+      (["chicken", "egg"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
+    }
+
+    const hasNoneAllergy = allergyFilters.includes("none");
+    if (!hasNoneAllergy) {
+      if (allergyFilters.includes("nuts") || allergyFilters.includes("peanut")) excludes.add("nuts");
+      if (allergyFilters.includes("dairy")) excludes.add("dairy");
+    }
+
+    if (spicyPreference === "exclude") excludes.add("spicy");
+
+    return Array.from(excludes);
+  }, [dietType, allergyFilters, spicyPreference]);
+
+  /** 필터 변경 시 해당 메뉴 캘린더에서 제거 */
   useEffect(() => {
     if (selectedExcludes.length === 0) return;
     setMealPlan((prev) => {
@@ -89,7 +127,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
       let changed = false;
       for (const slotId of Object.keys(prev)) {
         const meal = prev[slotId];
-        if (meal.excludable.some((e) => selectedExcludes.includes(e))) {
+        if (meal.excludable.some((e) => selectedExcludes.includes(e as ExcludeCategory))) {
           changed = true;
           continue;
         }
@@ -126,7 +164,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
 
   const allDays = useMemo(() => generateWeekDays(startDate), [startDate]);
 
-  /** 마운트 후 sessionStorage에서 저장된 식단 복원 */
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("subscribe-meal-plan");
@@ -136,7 +173,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
   }, []);
 
-  /** 마운트 후 스피릿 추천 메뉴 읽기 */
   useEffect(() => {
     const raw = sessionStorage.getItem("spirit-auto-plan");
     if (!raw) return;
@@ -151,7 +187,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
   }, []);
 
-  /** mealPlan 변경 시마다 sessionStorage에 저장 */
   useEffect(() => {
     if (Object.keys(mealPlan).length > 0) {
       sessionStorage.setItem("subscribe-meal-plan", JSON.stringify(mealPlan));
@@ -160,7 +195,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
   }, [mealPlan]);
 
-  /** 스피릿 추천 메뉴로 캘린더 자동 채우기 (최초 1회) */
   useEffect(() => {
     if (spiritAppliedRef.current) return;
     if (spiritRecommended.length === 0 || allDays.length === 0) return;
@@ -183,11 +217,33 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
       displayName: m.name,
       isVariation: false,
     }));
+
     if (selectedExcludes.length > 0) {
-      items = items.filter((m) => !m.excludable.some((e) => selectedExcludes.includes(e)));
+      items = items.filter((m) => !m.excludable.some((e) => selectedExcludes.includes(e as ExcludeCategory)));
     }
+
+    if (nutritionGoals.length > 0) {
+      const animalExcludes: ExcludeCategory[] = ["shellfish", "fish", "chicken", "egg"];
+      items = items.filter((m) =>
+        nutritionGoals.some((goal) => {
+          switch (goal) {
+            case "plant-based":
+              return !m.excludable.some((e) => animalExcludes.includes(e as ExcludeCategory));
+            case "low-carb":
+            case "low-calorie":
+            case "low-sodium":
+              return m.category === "slim";
+            case "high-protein":
+              return m.category === "protein";
+            default:
+              return true;
+          }
+        }),
+      );
+    }
+
     return items;
-  }, [menuList, selectedExcludes]);
+  }, [menuList, selectedExcludes, nutritionGoals]);
 
   const totalPrice = useMemo(
     () => Object.values(mealPlan).reduce((s, m) => s + m.price, 0),
@@ -202,17 +258,44 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
 
   const setStartDate = useCallback((d: Date) => setStartDateState(d), []);
 
-  const toggleExclude = useCallback((category: ExcludeCategory) => {
-    setSelectedExcludes((prev) =>
-      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category],
+  const setDietType = useCallback((v: DietType | null) => setDietTypeState(v), []);
+
+  const toggleNutritionGoal = useCallback((v: NutritionGoal) => {
+    setNutritionGoals((prev) =>
+      prev.includes(v) ? prev.filter((g) => g !== v) : [...prev, v],
     );
   }, []);
 
-  const resetExcludes = useCallback(() => setSelectedExcludes([]), []);
+  const toggleAllergyFilter = useCallback((v: AllergyFilter) => {
+    if (v === "none") {
+      setAllergyFilters((prev) => (prev.includes("none") ? [] : ["none"]));
+    } else {
+      setAllergyFilters((prev) => {
+        const without = prev.filter((a) => a !== "none");
+        return without.includes(v) ? without.filter((a) => a !== v) : [...without, v];
+      });
+    }
+  }, []);
+
+  const setSpicyPreference = useCallback(
+    (v: SpicyPreference | null) => setSpicyPreferenceState(v),
+    [],
+  );
+
+  const resetAllFilters = useCallback(() => {
+    setDietTypeState(null);
+    setNutritionGoals([]);
+    setAllergyFilters([]);
+    setSpicyPreferenceState(null);
+  }, []);
 
   const selectSlot = useCallback((slotId: string) => {
+    if (filteredMeals.length > 0) {
+      const random = filteredMeals[Math.floor(Math.random() * filteredMeals.length)];
+      setMealPlan((prev) => ({ ...prev, [slotId]: random }));
+    }
     setSelectedSlotId((prev) => (prev === slotId ? null : slotId));
-  }, []);
+  }, [filteredMeals]);
 
   const addMeal = useCallback(
     (meal: DisplayMenuData) => {
@@ -224,7 +307,11 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
         setSelectedSlotId(next?.slotId || null);
       } else {
         const first = allSlots.find((s) => !mealPlan[s.slotId]);
-        if (first) setMealPlan((prev) => ({ ...prev, [first.slotId]: meal }));
+        if (first) {
+          setMealPlan((prev) => ({ ...prev, [first.slotId]: meal }));
+        } else {
+          setSnackbarMsg("식단이 가득 찼어요. 기존 식단을 삭제하고 다시 추가해 보세요.");
+        }
       }
     },
     [allDays, mealPlan, selectedSlotId],
@@ -270,7 +357,10 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   );
 
   return {
-    selectedExcludes,
+    dietType,
+    nutritionGoals,
+    allergyFilters,
+    spicyPreference,
     selectedSlotId,
     mealPlan,
     purchaseType,
@@ -289,9 +379,13 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     draggingMealId,
     dragOverDayKey,
     listScrollRef,
+    snackbarMsg,
     setStartDate,
-    toggleExclude,
-    resetExcludes,
+    setDietType,
+    toggleNutritionGoal,
+    toggleAllergyFilter,
+    setSpicyPreference,
+    resetAllFilters,
     selectSlot,
     addMeal,
     removeMeal,
@@ -303,5 +397,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     endDragMeal,
     setDragOverDay,
     dropMealOnDay,
+    clearSnackbar: () => setSnackbarMsg(null),
   };
 }
