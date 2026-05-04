@@ -62,6 +62,7 @@ export interface SubscribePlannerActions {
   endDragMeal: () => void;
   setDragOverDay: (key: string | null) => void;
   dropMealOnDay: (dateKey: string, mealId: string) => void;
+  setMealToSlot: (slotId: string, meal: DisplayMenuData) => void;
   clearSnackbar: () => void;
 }
 
@@ -106,6 +107,9 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
       (["shellfish", "fish", "chicken", "egg", "dairy"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
     } else if (dietType === "pesco") {
       (["chicken", "egg"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
+    } else if (dietType === "pollo") {
+      // 폴로: 닭고기는 허용, 생선·갑각류는 제외
+      (["shellfish", "fish"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
     }
 
     const hasNoneAllergy = allergyFilters.includes("none");
@@ -147,8 +151,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
     if (prevStartRef.current === key) return;
     prevStartRef.current = key;
-    setMealPlan({});
-    setSelectedSlotId(null);
     listScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [startDate]);
 
@@ -223,7 +225,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
 
     if (nutritionGoals.length > 0) {
-      const animalExcludes: ExcludeCategory[] = ["shellfish", "fish", "chicken", "egg"];
+      const animalExcludes: ExcludeCategory[] = ["shellfish", "fish", "chicken", "egg", "dairy"];
       items = items.filter((m) =>
         nutritionGoals.some((goal) => {
           switch (goal) {
@@ -356,6 +358,10 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     [allDays, mealPlan, menusMap],
   );
 
+  const setMealToSlot = useCallback((slotId: string, meal: DisplayMenuData) => {
+    setMealPlan((prev) => ({ ...prev, [slotId]: meal }));
+  }, []);
+
   return {
     dietType,
     nutritionGoals,
@@ -397,6 +403,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     endDragMeal,
     setDragOverDay,
     dropMealOnDay,
+    setMealToSlot,
     clearSnackbar: () => setSnackbarMsg(null),
   };
 }

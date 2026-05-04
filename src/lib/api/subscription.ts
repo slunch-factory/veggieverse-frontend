@@ -55,8 +55,9 @@ export interface ProductItem {
 }
 
 export interface PlanItem {
-  productId: number;
-  quantity: number;
+  date: string;
+  lunch: number;
+  dinner: number;
 }
 
 export interface CustomPlanResponse {
@@ -186,6 +187,23 @@ export async function getMenus(): Promise<MenuData[]> {
     return list.map(mapToMenuData);
   } catch (err) {
     console.error("[getMenus] fetch failed:", err);
+    return [];
+  }
+}
+
+export async function getSlotRecommend(): Promise<MenuData[]> {
+  const url = `${API_BASE}/api/v1/veggieverse/products`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data: ProductItem[] = await res.json();
+    const list = Array.isArray(data) ? data : [];
+    const shuffled = [...list].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3).map(mapToMenuData);
+  } catch {
     return [];
   }
 }

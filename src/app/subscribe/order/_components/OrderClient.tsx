@@ -467,13 +467,13 @@ export function OrderClient() {
             {/* 우: 요약 (데스크탑) */}
             <div className="hidden lg:block">
               <div className="sticky top-6">
-                <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} />
+                <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} confirmedPlan={confirmedPlan} />
               </div>
             </div>
 
             {/* 모바일: 요약 카드 하단 */}
             <div className="lg:hidden px-4 pt-4">
-              <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} />
+              <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} confirmedPlan={confirmedPlan} />
             </div>
           </div>
         </div>

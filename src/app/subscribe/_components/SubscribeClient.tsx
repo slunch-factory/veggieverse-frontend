@@ -22,15 +22,10 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
   const p = useSubscribePlanner(menus);
 
   const handleOrderSubmit = useCallback(async () => {
-    // mealPlan → productId별 수량 집계
-    const itemMap: Record<number, number> = {};
-    for (const meal of Object.values(p.mealPlan)) {
-      const id = Number(meal.id);
-      itemMap[id] = (itemMap[id] ?? 0) + 1;
-    }
-    const items = Object.entries(itemMap).map(([id, quantity]) => ({
-      productId: Number(id),
-      quantity,
+    const items = p.allDays.map((day) => ({
+      date: day.dateKey,
+      lunch: p.mealPlan[`${day.dateKey}-0`] ? Number(p.mealPlan[`${day.dateKey}-0`].id) : 0,
+      dinner: p.mealPlan[`${day.dateKey}-1`] ? Number(p.mealPlan[`${day.dateKey}-1`].id) : 0,
     }));
 
     const result = await postPlan(items);
@@ -49,6 +44,7 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
     });
     router.push("/subscribe/order");
   }, [
+    p.allDays,
     p.startDate,
     p.mealPlan,
     p.purchaseType,
@@ -96,6 +92,7 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       onDragOverDay={p.setDragOverDay}
       onDropMeal={p.dropMealOnDay}
       onResetMealPlan={p.resetMealPlan}
+      onSetMeal={p.setMealToSlot}
     />
   );
 

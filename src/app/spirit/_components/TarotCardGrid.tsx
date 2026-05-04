@@ -48,30 +48,6 @@ export function TarotCardGrid({
   const [desktopMoreRight, setDesktopMoreRight] = useState(false);
   const [desktopMoreLeft, setDesktopMoreLeft] = useState(false);
   const [mobileMoreLeft, setMobileMoreLeft] = useState(false);
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragScrollLeft = useRef(0);
-
-  const handleMouseDown = (e: React.MouseEvent, ref: React.RefObject<HTMLDivElement | null>) => {
-    if (!ref.current) return;
-    isDragging.current = true;
-    dragStartX.current = e.pageX - ref.current.offsetLeft;
-    dragScrollLeft.current = ref.current.scrollLeft;
-    ref.current.style.cursor = "grabbing";
-  };
-
-  const handleMouseMove = (e: React.MouseEvent, ref: React.RefObject<HTMLDivElement | null>) => {
-    if (!isDragging.current || !ref.current) return;
-    e.preventDefault();
-    const x = e.pageX - ref.current.offsetLeft;
-    const walk = (x - dragStartX.current) * 1.5;
-    ref.current.scrollLeft = dragScrollLeft.current - walk;
-  };
-
-  const handleMouseUp = (ref: React.RefObject<HTMLDivElement | null>) => {
-    isDragging.current = false;
-    if (ref.current) ref.current.style.cursor = "grab";
-  };
 
   const isMulti = !!question.multiSelect;
   const isFirstStep = currentStep === 1;
@@ -122,7 +98,7 @@ export function TarotCardGrid({
           {/* 카드 이미지 */}
           <div
             className={`relative isolate rounded-xl overflow-hidden bg-[#E5E5E5] [backface-visibility:hidden] ${
-              isMobile ? "w-[calc((100vw-72px)/3)] aspect-[5/8]" : "w-[192px] h-[307px]"
+              isMobile ? "w-[calc((100vw-72px)/3)] aspect-[5/8]" : "w-[152px] h-[243px]"
             }`}
           >
             {option.tarot?.image ? (
@@ -155,7 +131,7 @@ export function TarotCardGrid({
             }`} />
           )}
         </div>
-        <div className={`text-center [word-break:keep-all] ${isMobile ? "mt-3 w-[calc((100vw-72px)/3)]" : "mt-5 w-[192px]"}`}>
+        <div className={`text-center [word-break:keep-all] ${isMobile ? "mt-3 w-[calc((100vw-72px)/3)]" : "mt-3 w-[152px]"}`}>
           <span className={isMobile ? "text-[10px] leading-tight text-stone-800" : "text-base text-stone-800"}>{option.label}</span>
           {option.description && (
             <div className={`mt-0.5 ${isMobile ? "leading-snug text-[10px] text-stone-500" : "leading-snug text-sm text-stone-500"}`}>
@@ -229,14 +205,14 @@ export function TarotCardGrid({
   return (
     <div className="min-h-screen bg-transparent">
       <div className="flex justify-center min-h-screen px-3 sm:px-4 md:px-6 bg-[#FCFBF7]">
-        <div className="py-5 sm:py-6 md:py-10 relative w-[1080px] max-w-full">
+        <div className="py-3 sm:py-4 md:py-5 relative w-[1080px] max-w-full">
           {/* <div className="sticky top-[70px] z-10 mb-6 md:mb-8 px-3 md:px-6 py-2">
             <p className="text-center text-2xl font-bold text-[#8C451D]">
               당신의 푸드 스피릿을 찾아드립니다
             </p>
           </div> */}
 
-          <div className="mb-7 md:mb-8 flex flex-col gap-4 md:gap-5">
+          <div className="mb-3 md:mb-4 flex flex-col gap-3 md:gap-4">
             <aside className="rounded-2xl border border-[#8C451D]/10 bg-white/45 p-4 md:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
               <div className="flex flex-col gap-3 sm:gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0 flex-1">
@@ -345,16 +321,12 @@ export function TarotCardGrid({
                 )}
               </div>
 
-              <div className="relative hidden md:block w-full min-h-[440px]">
+              <div className="relative hidden md:block w-full">
                 <div
                   ref={desktopScrollRef}
-                  className="overflow-x-auto no-scrollbar cursor-grab select-none"
-                  onMouseDown={(e) => handleMouseDown(e, desktopScrollRef)}
-                  onMouseMove={(e) => handleMouseMove(e, desktopScrollRef)}
-                  onMouseUp={() => handleMouseUp(desktopScrollRef)}
-                  onMouseLeave={() => handleMouseUp(desktopScrollRef)}
+                  className="overflow-x-auto no-scrollbar"
                 >
-                  <div className="mx-auto flex w-max flex-nowrap gap-10 p-2">
+                  <div className="mx-auto flex w-max flex-nowrap gap-6 p-2">
                     {question.options.map((option) => (
                       <div key={`single-row-desktop-${question.id}-${option.value}`}>
                         {renderCard(option, "desktop")}
@@ -371,7 +343,7 @@ export function TarotCardGrid({
                     <button
                       type="button"
                       onClick={() => scrollRowBy(desktopScrollRef.current, -300)}
-                      className="rounded-btn absolute -left-1 top-[170px] z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
+                      className="rounded-btn absolute -left-1 top-[120px] z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
                       aria-label="Scroll left"
                     >
                       <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
@@ -387,7 +359,7 @@ export function TarotCardGrid({
                     <button
                       type="button"
                       onClick={() => scrollRowBy(desktopScrollRef.current, 300)}
-                      className="rounded-btn absolute -right-1 top-[170px] z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
+                      className="rounded-btn absolute -right-1 top-[120px] z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/80 bg-white/95 text-[#8C451D] shadow-md backdrop-blur-sm cursor-pointer"
                       aria-label="Scroll right"
                     >
                       <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
@@ -398,7 +370,7 @@ export function TarotCardGrid({
             </section>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-4 md:gap-6 pt-1">
+          <div className="flex flex-col sm:flex-row items-center justify-center w-full gap-2.5 sm:gap-4 md:gap-6 pt-1">
             <button
               type="button"
               onClick={onBack}

@@ -1,16 +1,14 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
-import type { DayPlan, DisplayMenuData, PlanType } from "../_data/subscription";
+import { useState, useEffect } from "react";
+import type { DayPlan, DisplayMenuData, MenuData } from "../_data/subscription";
 import { getHolidayMeta, WEEKDAY_KO } from "../_data/subscription";
-import type { HoveredMealState } from "./MealHoverTooltip";
-import type { MobilePreviewState } from "./MobileMealPreview";
+import { getSlotRecommend } from "@/lib/api/subscription";
 
 interface DayRowProps {
   day: DayPlan;
   mealPlan: Record<string, DisplayMenuData>;
   selectedSlotId: string | null;
-  selectedPlan: PlanType | null;
   draggingMealId: string | null;
   dragOverDayKey: string | null;
   onSelectStartDate: (d: Date) => void;
@@ -18,17 +16,54 @@ interface DayRowProps {
   onRemoveMeal: (slotId: string, e: React.MouseEvent) => void;
   onDragOverDay: (key: string | null) => void;
   onDropMeal: (dateKey: string, mealId: string) => void;
-  onHoverMeal: (state: HoveredMealState | null) => void;
-  onShowMobilePreview: (state: MobilePreviewState) => void;
+  onSetMeal: (slotId: string, meal: DisplayMenuData) => void;
 }
 
-const POPUP_WIDTH = 280;
+function SlotRecPanel({ onPick }: { onPick: (meal: MenuData) => void }) {
+  const [loading, setLoading] = useState(true);
+  const [menus, setMenus] = useState<MenuData[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSlotRecommend().then((ms) => {
+      if (!cancelled) { setMenus(ms); setLoading(false); }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="mx-3 mb-[10px] p-[10px] bg-[#faf8f5] border border-black rounded-[6px]">
+      <p className="text-[11px] font-bold tracking-[0.05em] text-[#9a928c] mb-[8px]">추천 메뉴</p>
+      {loading ? (
+        <p className="text-[11px] text-[#9a928c]">로딩 중…</p>
+      ) : menus.length === 0 ? (
+        <p className="text-[11px] text-[#9a928c]">추천 메뉴를 불러올 수 없어요.</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-[10px]">
+          {menus.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onPick(m)}
+              className="flex flex-col gap-[5px] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2"
+            >
+              <div className="aspect-square border border-black rounded-[4px] overflow-hidden bg-[#e8e4de]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={m.image} alt={m.name} className="w-full h-full object-cover" draggable={false} />
+              </div>
+              <p className="text-[11px] leading-tight text-[#3d3d3d] line-clamp-2">{m.name}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DayRow({
   day,
   mealPlan,
   selectedSlotId,
-  selectedPlan,
   draggingMealId,
   dragOverDayKey,
   onSelectStartDate,
@@ -36,9 +71,10 @@ export function DayRow({
   onRemoveMeal,
   onDragOverDay,
   onDropMeal,
-  onHoverMeal,
-  onShowMobilePreview,
+  onSetMeal,
 }: DayRowProps) {
+  const [recSlot, setRecSlot] = useState<string | null>(null);
+
   const dow = day.date.getDay();
   const meta = getHolidayMeta(day.date);
   const isSunday = dow === 0;
@@ -47,30 +83,23 @@ export function DayRow({
   const dowShort = WEEKDAY_KO[dow];
   const mm = String(day.date.getMonth() + 1).padStart(2, "0");
   const dd = String(day.date.getDate()).padStart(2, "0");
-  const hasMeal = day.slots.some((s) => Boolean(mealPlan[s.slotId]));
-  const dateTone =
-    isSunday || isHoliday
-      ? "text-red-400"
-      : isSaturday
-        ? "text-blue-400"
-        : hasMeal
-          ? "text-gray-900"
-          : "text-gray-400";
-  const dowTone =
-    isSunday || isHoliday ? "text-red-500" : isSaturday ? "text-blue-500" : "text-gray-700";
-
-  const mealEntries = day.slots
-    .map((slot) => ({ slot, meal: mealPlan[slot.slotId] }))
-    .filter((e): e is { slot: typeof day.slots[number]; meal: DisplayMenuData } => Boolean(e.meal));
-
-  const firstSlot = day.slots[0];
-  const isFirstSelected = firstSlot ? selectedSlotId === firstSlot.slotId : false;
   const isDragOver = dragOverDayKey === day.dateKey;
-  const nextEmptySlot = day.slots.find((s) => !mealPlan[s.slotId]);
-  const nextEmptySelected = nextEmptySlot ? selectedSlotId === nextEmptySlot.slotId : false;
+
+  const dowColor =
+    isHoliday ? "text-[#ffab91]"
+    : isSunday ? "text-[#e68a45]"
+    : isSaturday ? "text-[#7eb5e6]"
+    : "text-[#9a928c]";
+
+  const dateColor =
+    isHoliday ? "text-[#ffab91]"
+    : isSunday ? "text-[#e68a45]"
+    : isSaturday ? "text-[#7eb5e6]"
+    : "text-[#3d3d3d]";
 
   return (
     <article
+      data-day-key={day.dateKey}
       onDragOver={(e) => {
         if (!draggingMealId) return;
         e.preventDefault();
@@ -87,114 +116,137 @@ export function DayRow({
         if (!mealId) return;
         onDropMeal(day.dateKey, mealId);
       }}
-      className={`flex min-h-[56px] lg:min-h-[76px] flex-1 flex-row items-center gap-6 md:gap-10 overflow-hidden border-b border-gray-200 px-4 md:px-5 last:border-b-0 transition-colors ${
-        isDragOver ? "bg-[#FDEEE8]" : "bg-white"
+      className={`grid border-b border-black last:border-b-0 transition-colors ${
+        isDragOver ? "bg-[rgba(223,255,79,0.14)]"
+        : isHoliday ? "bg-[#fbf2f2]"
+        : "bg-white"
       }`}
+      style={{ gridTemplateColumns: "72px minmax(0,1fr)" }}
     >
+      {/* 날짜 열 */}
       <button
         type="button"
         onClick={() => onSelectStartDate(day.date)}
         title="이 날짜부터 배송 시작"
-        className="flex shrink-0 flex-row lg:flex-col items-baseline lg:items-center gap-1.5 lg:gap-0.5 bg-transparent p-0 hover:opacity-70 cursor-pointer"
+        className="flex flex-col items-center justify-center gap-[4px] text-center bg-transparent p-0 cursor-pointer hover:opacity-70 transition-opacity border-r border-[rgba(26,10,5,0.08)]"
       >
-        <span className={`text-[22px] leading-tight tracking-tight ${dateTone}`}>
+        <span className={`text-[11px] font-medium tracking-[0.04em] leading-none ${dowColor}`}>
+          {dowShort}
+        </span>
+        <span className={`text-[16px] font-bold tracking-[-0.02em] leading-none ${dateColor}`}>
           {mm}.{dd}
         </span>
-        <span className={`text-[13px] leading-tight ${dowTone}`}>{dowShort}</span>
+        {isHoliday && (
+          <span className="text-[9px] text-[#ffab91] leading-tight">{meta.labelKo}</span>
+        )}
       </button>
 
-      {mealEntries.length > 0 ? (
-        <div
-          className="min-w-0 flex-1 flex flex-col lg:flex-row lg:items-center lg:flex-wrap gap-x-2 gap-y-1 text-[14px] leading-tight text-gray-800"
-          style={{ color: selectedPlan ? selectedPlan.accent : undefined }}
-        >
-          {mealEntries.map(({ slot, meal }, idx) => (
-            <span key={slot.slotId} className="inline-flex items-center gap-1 min-w-0 group/meal">
-              {idx > 0 && (
-                <span className="hidden lg:inline text-gray-300 shrink-0 mr-1">·</span>
+      {/* 슬롯 바디 */}
+      <div className="flex flex-col min-w-0 divide-y divide-[rgba(26,10,5,0.06)]">
+        {day.slots.map((slot) => {
+          const meal = mealPlan[slot.slotId];
+          const isSelected = selectedSlotId === slot.slotId;
+          const isLunch = slot.mealTime === "점심";
+
+          if (meal) {
+            return (
+              <div
+                key={slot.slotId}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", meal.id);
+                }}
+                className="flex flex-row items-center gap-[10px] h-[62px] min-h-[62px] max-h-[62px] px-3 overflow-hidden cursor-grab active:cursor-grabbing"
+              >
+                {/* 썸네일 */}
+                <div className="w-[46px] h-[46px] shrink-0 rounded-[3px] bg-[#fcfaf8] overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={meal.image}
+                    alt={meal.displayName}
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                  />
+                </div>
+
+                {/* 뱃지 + 이름 (세로 적층) */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center gap-[3px] overflow-hidden">
+                  <span className={`inline-flex items-center w-fit px-[7px] py-[1px] text-[10px] leading-snug rounded-full ${
+                    isLunch
+                      ? "bg-[#f0ede8] text-[#6b6560]"
+                      : "bg-[#e8e0d4] text-[#6b6560]"
+                  }`}>
+                    {slot.mealTime}
+                  </span>
+                  <span className="text-[13px] font-medium text-[#1a0a05] truncate leading-tight">
+                    {meal.displayName}
+                  </span>
+                </div>
+
+                {/* 가격 + 삭제 */}
+                <div className="flex flex-row items-center gap-[6px] shrink-0">
+                  <span className="text-[13px] text-[#3d3d3d] whitespace-nowrap tabular-nums">
+                    {meal.price.toLocaleString()}원
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => onRemoveMeal(slot.slotId, e)}
+                    aria-label={`${meal.displayName} 삭제`}
+                    className="w-[22px] h-[22px] shrink-0 flex items-center justify-center rounded-full text-[13px] leading-none border border-[rgba(26,10,5,0.25)] bg-white text-[#3d3d3d] hover:bg-black hover:text-[#dfff4f] hover:border-black transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={slot.slotId} className="flex flex-col">
+              <div className="flex flex-row items-center gap-[8px] h-[62px] min-h-[62px] max-h-[62px] px-3 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => onSelectSlot(slot.slotId)}
+                  className={`flex-1 min-w-0 h-[46px] flex flex-row items-center border rounded-[4px] bg-[#faf8f5] px-[10px] gap-[10px] text-left transition-colors ${
+                    isSelected
+                      ? "border-black shadow-[inset_0_0_0_1.5px_#dfff4f]"
+                      : "border-[rgba(26,10,5,0.1)] hover:border-[rgba(26,10,5,0.22)]"
+                  }`}
+                >
+                  <div className="w-[32px] h-[32px] shrink-0 rounded-[3px] bg-[rgba(26,10,5,0.05)]" />
+                  <div className="flex flex-col justify-center gap-[3px] min-w-0 overflow-hidden">
+                    <span className={`inline-flex items-center w-fit px-[7px] py-[1px] text-[10px] leading-snug rounded-full ${
+                      isLunch
+                        ? "bg-[#f0ede8] text-[#9a928c]"
+                        : "bg-[#e8e0d4] text-[#9a928c]"
+                    }`}>
+                      {slot.mealTime}
+                    </span>
+                    <span className="text-[11px] text-[#9a928c] truncate">{slot.mealTime} 추가</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecSlot((p) => (p === slot.slotId ? null : slot.slotId))}
+                  aria-label={`${slot.mealTime} 추가`}
+                  className="w-[26px] h-[26px] shrink-0 flex items-center justify-center border border-[rgba(26,10,5,0.25)] rounded-full bg-white text-[#3d3d3d] text-[15px] leading-none font-light hover:bg-black hover:text-[#dfff4f] hover:border-black transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              {recSlot === slot.slotId && (
+                <SlotRecPanel
+                  onPick={(m) => {
+                    onSetMeal(slot.slotId, { ...m, displayName: m.name, isVariation: false });
+                    setRecSlot(null);
+                  }}
+                />
               )}
-              <span
-                className="truncate hover:underline underline-offset-2 decoration-gray-400 cursor-pointer max-w-[180px]"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  onShowMobilePreview({
-                    meal,
-                    y: rect.top + rect.height / 2,
-                  });
-                  onSelectSlot(slot.slotId);
-                }}
-                onMouseEnter={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const spaceOnRight = window.innerWidth - rect.right;
-                  const placement: "left" | "right" =
-                    spaceOnRight > POPUP_WIDTH + 24 ? "right" : "left";
-                  onHoverMeal({
-                    meal,
-                    x: placement === "right" ? rect.right + 12 : rect.left - 12,
-                    y: rect.top + rect.height / 2,
-                    placement,
-                  });
-                }}
-                onMouseLeave={() => onHoverMeal(null)}
-              >
-                {meal.displayName}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => onRemoveMeal(slot.slotId, e)}
-                aria-label={`${meal.displayName} 삭제`}
-                title="삭제"
-                className="shrink-0 inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-gray-400 hover:text-black hover:bg-gray-100 bg-transparent cursor-pointer transition-colors"
-              >
-                <X className="w-2.5 h-2.5" strokeWidth={2.5} />
-              </button>
-            </span>
-          ))}
-          {nextEmptySlot && (
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedSlotId !== nextEmptySlot.slotId) onSelectSlot(nextEmptySlot.slotId);
-              }}
-              title={`${nextEmptySlot.mealTime} 메뉴 추가`}
-              className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 border border-dashed text-[12px] transition-all cursor-pointer ${
-                nextEmptySelected
-                  ? "border-[#8C451D] bg-[#FDEEE8] text-[#8C451D]"
-                  : "border-gray-300 bg-transparent text-gray-400 hover:border-gray-900 hover:text-gray-900"
-              }`}
-            >
-              <Plus className="w-3 h-3" strokeWidth={2.5} />
-              <span className="whitespace-nowrap">{nextEmptySlot.mealTime}</span>
-            </button>
-          )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            if (!firstSlot) return;
-            if (selectedSlotId !== firstSlot.slotId) onSelectSlot(firstSlot.slotId);
-          }}
-          className={`group min-w-0 flex-1 flex items-center gap-2 cursor-pointer text-left py-1.5 px-3 border border-dashed transition-all ${
-            isFirstSelected
-              ? "border-[#8C451D] bg-[#FDEEE8] text-[#8C451D]"
-              : "border-gray-300 bg-transparent text-gray-400 hover:border-gray-900 hover:bg-gray-50 hover:text-gray-900"
-          }`}
-        >
-          <span
-            className={`inline-flex shrink-0 items-center justify-center w-5 h-5 rounded-full border text-[13px] leading-none transition-colors ${
-              isFirstSelected
-                ? "border-[#8C451D] bg-[#8C451D] text-white"
-                : "border-gray-400 text-gray-400 group-hover:border-gray-900 group-hover:text-gray-900"
-            }`}
-          >
-            <Plus className="w-3 h-3" strokeWidth={2.5} />
-          </span>
-          <span className="text-[13px] whitespace-nowrap">
-            점심 · 저녁 메뉴 추가하기
-          </span>
-        </button>
-      )}
+            </div>
+          );
+        })}
+      </div>
     </article>
   );
 }

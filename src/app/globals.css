@@ -199,6 +199,15 @@
   --font-sans: var(--font-family);
 }
 
+/* 메뉴 상세 모달 열릴 때 배경 스크롤 완전 차단 */
+html.mm-open,
+html.mm-open body {
+  overflow: hidden !important;
+}
+html.mm-open .no-scrollbar {
+  overflow: hidden !important;
+}
+
 /* ============================================
    1. RESET & BASE
    ============================================ */
@@ -277,8 +286,8 @@
   }
 
   /* 모든 버튼 모서리 직각 (특수 버튼 제외) */
-  button:not(.chatbot-trigger):not(.rounded-btn) {
-    border-radius: 0 !important;
+  button:not(.chatbot-trigger):not(.rounded-btn):not(.rounded-full) {
+    /* border-radius: 0 !important; */
   }
 }
 

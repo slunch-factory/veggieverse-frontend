@@ -9,7 +9,7 @@ interface TopBannerProps {
 export function TopBanner({ onClose }: TopBannerProps) {
   return (
     <div
-      className="promo-bar relative w-full flex items-center justify-center px-4 bg-[#8C451D]"
+      className="promo-bar relative w-full flex items-center justify-center px-4 bg-[#1a0a05]"
       style={{ height: "var(--promo-h)" }}
     >
       <div
