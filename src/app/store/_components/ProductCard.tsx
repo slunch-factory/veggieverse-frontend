@@ -61,11 +61,11 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div
-      className={`menu-card cursor-pointer ${product.soldOut ? "soldout" : ""}`}
+      className={`card ${product.soldOut ? "is-soldout" : ""}`}
       onClick={() => router.push(`/store/product/${product.id}`)}
     >
       {/* 이미지 영역 */}
-      <div className="relative aspect-square bg-[#F5F5F5] rounded-[4px] overflow-hidden">
+      <div className="card-img" style={{ aspectRatio: "1 / 1" }}>
         {images.length > 0 ? (
           <div
             className="relative w-full h-full overflow-hidden"
@@ -121,13 +121,11 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-[#F5F5F5] text-[13px] text-[var(--gray-lighter)]">
-            IMG
-          </div>
+          <span className="text-[13px]" style={{ color: "var(--neutral-stone)" }}>IMG</span>
         )}
 
         {badgeVariant && (
-          <div className="absolute top-2 left-2 z-20">
+          <div className="card-badges">
             <Badge variant={badgeVariant} />
           </div>
         )}
@@ -144,48 +142,34 @@ export function ProductCard({ product }: { product: Product }) {
                   width: idx === currentImageIndex ? "8px" : "4px",
                   height: "4px",
                   borderRadius: "2px",
-                  backgroundColor: idx === currentImageIndex ? "var(--white-pure)" : "rgba(255,255,255,0.5)",
+                  backgroundColor: idx === currentImageIndex ? "var(--bg-white)" : "rgba(255,255,255,0.5)",
                 }}
                 aria-label={`이미지 ${idx + 1}`}
               />
             ))}
           </div>
         )}
-
-        {product.soldOut && (
-          <div className="absolute inset-0 bg-black/50 z-[15]" />
-        )}
       </div>
 
       {/* 상품 정보 */}
-      <div className="menu-card-content pt-4">
-        <h3 className="menu-card-title text-[15px] leading-[1.3] mb-2" style={{ color: product.soldOut ? "var(--gray)" : "#000" }}>
-          {product.name}
-        </h3>
+      <div className="card-body">
+        <p className="card-name">{product.name}</p>
         {product.description && (
-          <p className="text-[13px] text-[#6B6B6B] leading-[1.5] mb-3 overflow-hidden text-ellipsis whitespace-nowrap">
-            {product.description}
-          </p>
+          <p className="card-desc">{product.description}</p>
         )}
         <div>
           {product.originalPrice && product.originalPrice > product.price ? (
             <>
-              <p className="text-[13px] text-[var(--gray-light)] line-through m-0 mb-1">
-                {product.originalPrice.toLocaleString()}원
-              </p>
-              <div className="flex items-center gap-2">
+              <p className="card-orig">{product.originalPrice.toLocaleString()}원</p>
+              <div className="card-price-row">
                 {discountRate && discountRate > 0 && (
-                  <span className="text-[16px]" style={{ color: "#87b5e1" }}>{discountRate}%</span>
+                  <span className="card-discount">{discountRate}%</span>
                 )}
-                <span className="text-[16px]" style={{ color: product.soldOut ? "var(--gray)" : "var(--black)" }}>
-                  {product.price.toLocaleString()}원
-                </span>
+                <span className="card-price">{product.price.toLocaleString()}원</span>
               </div>
             </>
           ) : (
-            <span className="text-[16px]" style={{ color: product.soldOut ? "var(--gray)" : "var(--black)" }}>
-              {product.price.toLocaleString()}원
-            </span>
+            <span className="card-price">{product.price.toLocaleString()}원</span>
           )}
         </div>
       </div>
