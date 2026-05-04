@@ -270,7 +270,7 @@ export function SpiritStepClient3D({ questions }: Props) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',
-          gap: 6,
+          gap: 14,
           maxHeight: 'calc(100dvh - 260px)',
           overflowY: 'auto',
           overflowX: 'hidden',
@@ -302,35 +302,36 @@ export function SpiritStepClient3D({ questions }: Props) {
             const STACK_Y = 3; // px offset per card (down)
 
             if (group.isMulti && n > 1) {
-              const ROW_H = isMobile ? 50 : 64;  // approx height of one card row
-              const ROW_W = isMobile ? 110 : 150;
+              const ROW_H = isMobile ? 104 : 88;  // pad(10) + image + gap(5) + label(~13) + buffer
+              const ROW_W = isMobile ? 60 : 60;
               const OVERLAP = isMobile ? 8 : 10; // visible strip per stacked card
               return (
                 <div
                   key={group.questionId}
                   style={{
                     position: 'relative',
-                    width: ROW_W,
-                    height: ROW_H + (n - 1) * OVERLAP,
+                    width: ROW_W + (n - 1) * OVERLAP,
+                    height: ROW_H,
                     flexShrink: 0,
                   }}
                 >
                   {group.cards.map((card, cardIdx) => {
-                    const offset = n - 1 - cardIdx; // 0 = top (newest), n-1 = bottom (oldest)
+                    const offset = n - 1 - cardIdx; // 0 = right (oldest), n-1 = left (newest)
                     return (
                       <div
                         key={card.value}
                         style={{
                           position: 'absolute',
-                          top: offset * OVERLAP,
-                          left: 0,
+                          top: 0,
+                          left: offset * OVERLAP,
                           width: ROW_W,
                           display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 7,
+                          gap: 5,
                           background: 'rgba(28,28,28,0.92)',
                           borderRadius: isMobile ? 8 : 10,
-                          padding: isMobile ? '3px 6px 3px 3px' : '4px 8px 4px 4px',
+                          padding: isMobile ? '5px 5px' : '5px 6px',
                           border: '1px solid rgba(213,254,0,0.2)',
                           boxShadow: '0 2px 14px rgba(0,0,0,0.5), 0 0 8px rgba(136,100,255,0.12)',
                           backdropFilter: 'blur(8px)',
@@ -347,13 +348,15 @@ export function SpiritStepClient3D({ questions }: Props) {
                           )}
                         </div>
                         <span style={{
-                          fontSize: 11,
+                          fontSize: 10,
                           color: 'rgba(255,255,255,0.82)',
                           letterSpacing: '0.03em',
                           fontWeight: 500,
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
+                          maxWidth: '100%',
+                          textAlign: 'center',
                         }}>
                           {card.label}
                         </span>
@@ -405,17 +408,17 @@ export function SpiritStepClient3D({ questions }: Props) {
                       key={card.value}
                       style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 7,
+                        gap: 5,
                         background: 'rgba(28,28,28,0.88)',
                         borderRadius: 10,
-                        padding: '4px 8px 4px 4px',
+                        padding: '5px 6px',
                         border: '1px solid rgba(213,254,0,0.2)',
                         boxShadow: '0 2px 14px rgba(0,0,0,0.5), 0 0 8px rgba(136,100,255,0.12)',
                         backdropFilter: 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)',
-                        minWidth: 118,
-                        maxWidth: 150,
+                        width: 60,
                         flexShrink: 0,
                       }}
                     >
@@ -427,19 +430,19 @@ export function SpiritStepClient3D({ questions }: Props) {
                           <div style={{ width: '100%', height: '100%', background: 'rgba(136,100,255,0.18)' }} />
                         )}
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                        <span style={{
-                          fontSize: 11,
-                          color: 'rgba(255,255,255,0.82)',
-                          letterSpacing: '0.03em',
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}>
-                          {card.label}
-                        </span>
-                      </div>
+                      <span style={{
+                        fontSize: 10,
+                        color: 'rgba(255,255,255,0.82)',
+                        letterSpacing: '0.03em',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
+                        textAlign: 'center',
+                      }}>
+                        {card.label}
+                      </span>
                     </div>
                   )
                 ))}

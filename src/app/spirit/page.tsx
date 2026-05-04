@@ -1,6 +1,6 @@
 import { STANDARD_QUESTIONS } from "./_data/surveyQuestions";
-import { SpiritStepClient } from "./_components/SpiritStepClient";
+import { SpiritStepClient3D } from "./test/_components/SpiritStepClient3D";
 
 export default function SpiritPage() {
-  return <SpiritStepClient questions={STANDARD_QUESTIONS} />;
+  return <SpiritStepClient3D questions={STANDARD_QUESTIONS} />;
 }

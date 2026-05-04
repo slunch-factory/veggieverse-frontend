@@ -25,12 +25,13 @@ export function Snackbar({ message, onClose, duration = 3000 }: SnackbarProps) {
           : "translate-y-2 opacity-0 pointer-events-none"
       }`}
     >
-      <div className="flex items-center gap-4 bg-black border border-black px-[18px] py-3 min-w-[320px] max-w-[560px]">
+      <div className="toast">
+        <span className="toast-dot" />
         <span className="text-[13px] text-white leading-snug flex-1">{message}</span>
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 w-6 h-6 flex items-center justify-center text-white/70 text-[16px] leading-none hover:text-white transition-colors"
+          className="shrink-0 w-6 h-6 flex items-center justify-center text-white/70 text-[16px] leading-none hover:text-white transition-colors ml-1"
           aria-label="닫기"
         >
           ×

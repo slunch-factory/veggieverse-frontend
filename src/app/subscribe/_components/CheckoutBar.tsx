@@ -37,10 +37,10 @@ export function CheckoutBar({ totalPrice, filledSlots, onSubmit }: CheckoutBarPr
         <button
           disabled={disabled}
           onClick={() => { if (!disabled) onSubmit(); }}
-          className={`shrink-0 px-[22px] py-[11px] text-[14px] tracking-[0.02em] border transition-colors ${
+          className={`shrink-0 px-[22px] py-[11px] text-[14px] tracking-[0.02em] border rounded-[8px] ${
             disabled
-              ? "bg-[#bdbdbd] text-[#9a928c] border-[#ccc5c0] cursor-not-allowed"
-              : "bg-black text-[#dfff4f] border-black hover:bg-[#1a0a05]"
+              ? "opacity-[0.32] cursor-not-allowed pointer-none"
+              : "bg-[#250a00] text-[#dcfd4a] border-[#250a00] hover:bg-[#6e5035], hover:text-white"
           }`}
         >
           구매

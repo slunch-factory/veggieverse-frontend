@@ -15,11 +15,16 @@ const DUMMY_NUTRITION = { kcal: 520, protein: 18, carbs: 24, fat: 17 };
 export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) {
   useEffect(() => {
     if (!meal) return;
+    // overflow:hidden으로 스크롤바가 사라지면 뷰포트 너비가 scrollbarWidth만큼 늘어남
+    // CSS 변수로 body와 fixed 요소 모두 동일하게 보상
+    const sw = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.style.setProperty("--scrollbar-w", `${sw}px`);
     document.documentElement.classList.add("mm-open");
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => {
       document.documentElement.classList.remove("mm-open");
+      document.documentElement.style.removeProperty("--scrollbar-w");
       document.removeEventListener("keydown", onKey);
     };
   }, [meal, onClose]);
