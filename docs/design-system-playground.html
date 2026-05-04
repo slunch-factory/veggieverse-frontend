@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VeggieVerse Design System — Playground V3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== DESIGN TOKENS ===== */
+    :root {
+      /* Core */
+      --ink:              #250a00;  /* 글씨, 가장 진한색 */
+      --point:            #dcfd4a;  /* 포인트/대표 색상 */
+      --ink-light:        #6e5035;  /* 진한색의 옅은 배리에이션 */
+      --alert-red:        #ff1714;  /* NEW, 오류, 강조 알림 */
+
+      /* Backgrounds */
+      --bg-canvas:        #b4b4b4;  /* 캔버스 (노이즈 텍스처) */
+      --bg-white:         #ffffff;
+      --bg-off:           #e8e2e2;
+      --bg-pale:          #fcfaf8;
+
+      /* Neutrals / Status */
+      --neutral-stone:    #c9bcbe;
+      --neutral-warm:     #b8976a;
+      --neutral-lavender: #e0b6e5;
+      --neutral-yellow:   #fbf582;
+      --neutral-lime:     #cbed7f;
+      --neutral-orange:   #e6863f;
+      --neutral-blue:     #adcbf6;
+
+      /* Radius */
+      --r-btn:   6px;
+      --r-modal: 40px;
+      --r-pill:  999px;   /* 태그/뱃지 완벽한 타원 */
+
+      /* Spacing */
+      --sp-xs: 8px;
+      --sp-sm: 16px;
+      --sp-md: 24px;
+      --sp-lg: 40px;
+      --sp-xl: 72px;
+    }
+
+    /* ===== TOP MARQUEE BANNER ===== */
+    /* 페이지 최상단 풀폭 배너 — ink + point, 좌측으로 흘러가는 무한 루프 */
+    .topbar {
+      background: var(--ink);
+      color: var(--point);
+      overflow: hidden;
+      width: 100%;
+    }
+    .topbar-track {
+      display: flex;
+      width: max-content;
+      animation: topbar-scroll 32s linear infinite;
+    }
+    .topbar:hover .topbar-track { animation-play-state: paused; }
+    .topbar-text {
+      display: inline-block;
+      padding: 12px 60px 12px 0;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    @keyframes topbar-scroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, h1, h2, h3, h4, p, a, button, input, span, label, strong, b {
+      font-weight: 400 !important;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== TEXT SELECTION ===== */
+    ::selection { background: var(--point); color: var(--ink); }
+
+    /* ===== CANVAS + NOISE (baseFrequency 0.65, numOctaves 4, opacity 0.16 고정) ===== */
+    body {
+      background-color: var(--bg-canvas);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='0.48'/%3E%3C/svg%3E");
+      color: var(--ink);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      word-break: keep-all;
+    }
+
+    /* ===== LAYOUT ===== */
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: var(--sp-lg) 60px;
+      background-color: var(--bg-canvas);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='0.48'/%3E%3C/svg%3E");
+      min-height: 100vh;
+      border-left: 1px solid var(--bg-pale);
+      border-right: 1px solid var(--bg-pale);
+    }
+    @media (max-width: 767px) {
+      .wrap { padding-left: 20px; padding-right: 20px; }
+    }
+
+    /* ===== SECTION ===== */
+    .section {
+      margin-top: var(--sp-xl);
+      padding-top: var(--sp-md);
+      border-top: 1px solid var(--bg-pale);
+    }
+    /* 풀블리드 — .wrap 좌우 한계 무시하고 뷰포트 끝까지 배경 깔기 */
+    .section-bleed-pale {
+      background: var(--bg-pale);
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+      padding-left: calc(50vw - 50%);
+      padding-right: calc(50vw - 50%);
+      padding-bottom: var(--sp-lg);
+    }
+    .section-num {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .section-title {
+      font-size: 28px;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--sp-md);
+    }
+    .sub {
+      margin-top: var(--sp-md);
+      margin-bottom: 12px;
+    }
+    .sub-title {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink);
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--neutral-stone);
+      margin-bottom: 12px;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    .t-display { font-size: 48px; letter-spacing: -0.03em; line-height: 1.1; }
+    .t-h1      { font-size: 32px; letter-spacing: -0.02em; line-height: 1.2; }
+    .t-h2      { font-size: 24px; letter-spacing: -0.01em; line-height: 1.3; }
+    .t-h3      { font-size: 18px; line-height: 1.4; }
+    .t-body    { font-size: 15px; line-height: 1.7; }
+    .t-small   { font-size: 13px; line-height: 1.5; }
+    .t-caption { font-size: 11px; letter-spacing: 0.02em; color: var(--ink); }
+
+    /* ===== COLOR SWATCHES ===== */
+    .swatch-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .swatch { display: flex; flex-direction: column; gap: 5px; }
+    .swatch-block { width: 76px; height: 60px; border-radius: var(--r-btn); border: 1px solid rgba(0,0,0,0.1); }
+    .swatch-name { font-size: 10px; color: var(--ink); }
+    .swatch-hex  { font-size: 10px; font-family: monospace; color: var(--ink); }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 22px;
+      border-radius: var(--r-btn);
+      border: 1px solid var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      letter-spacing: 0.01em;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+      outline: none; /* 브라우저 기본 outline 제거 */
+    }
+
+    /* Primary */
+    .btn-primary { background: var(--point); color: var(--ink); }
+    .btn-primary:hover  { background: var(--bg-off); }
+    .btn-primary:active { background: var(--ink); color: var(--point); }
+    .btn-primary:focus-visible { background: var(--neutral-lime); }
+    .btn-primary:disabled { opacity: 0.32; cursor: not-allowed; pointer-events: none; }
+
+    /* Dark */
+    .btn-dark { background: var(--ink); color: var(--point); }
+    .btn-dark:hover  { background: var(--ink-light); color: var(--bg-white); }
+    .btn-dark:active { background: var(--point); color: var(--ink); }
+    .btn-dark:focus-visible { background: var(--ink-light); color: var(--bg-white); }
+    .btn-dark:disabled { opacity: 0.32; cursor: not-allowed; pointer-events: none; }
+
+    /* Ghost */
+    .btn-ghost { background: transparent; color: var(--ink); }
+    .btn-ghost:hover  { background: var(--bg-off); }
+    .btn-ghost:active { background: var(--neutral-stone); }
+    .btn-ghost:focus-visible { background: var(--neutral-stone); }
+    .btn-ghost:disabled { opacity: 0.32; cursor: not-allowed; pointer-events: none; }
+
+    /* Pill variant */
+    .btn-pill { border-radius: var(--r-pill); }
+
+    /* ===== LINKS ===== */
+    .ds-link { color: var(--ink); text-decoration: none; transition: color 0.15s; }
+    .ds-link:hover  { color: #e8e2e2; }
+    .ds-link:active { text-decoration: underline; text-underline-offset: 4px; }
+
+    /* ===== STATE TABLE ===== */
+    .state-table {
+      display: grid;
+      grid-template-columns: 72px repeat(5, minmax(100px, 1fr));
+      border: 1px solid var(--ink);
+      border-radius: var(--r-btn);
+      overflow: hidden;
+      gap: 1px;
+      background: var(--ink);
+      margin-top: 12px;
+    }
+    .st-cell {
+      background: var(--bg-white);
+      padding: 12px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .st-head {
+      background: var(--bg-off) !important;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .st-label {
+      background: var(--bg-off) !important;
+      justify-content: flex-start !important;
+      font-size: 11px;
+      color: var(--ink);
+    }
+
+    /* Static state sims — buttons in state-table are pointer-events:none */
+    .sim-no-interact { pointer-events: none; }
+
+    /* primary states */
+    .sim-p-hover  { background: var(--bg-off) !important; }
+    .sim-p-active { background: var(--ink) !important; color: var(--point) !important; }
+    .sim-p-focus  { background: var(--neutral-lime) !important; }
+    .sim-p-dis    { opacity: 0.32; }
+
+    /* dark states */
+    .sim-d-hover  { background: var(--ink-light) !important; color: var(--bg-white) !important; }
+    .sim-d-active { background: var(--point) !important; color: var(--ink) !important; }
+    .sim-d-focus  { background: var(--ink-light) !important; color: var(--bg-white) !important; }
+
+    /* ghost states */
+    .sim-g-hover  { background: var(--bg-off) !important; }
+    .sim-g-active { background: var(--neutral-stone) !important; }
+    .sim-g-focus  { background: var(--neutral-stone) !important; }
+
+    /* ===== TAGS & PILLS ===== */
+    /* 해시태그/필터: border-radius 999px = 완벽한 타원 */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 14px;
+      border-radius: var(--r-pill);
+      font-size: 12px;
+      letter-spacing: 0.01em;
+      border: 1px solid var(--ink);
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, color 0.12s, transform 0.08s;
+    }
+    .tag:hover  { background: var(--bg-off); }
+    .tag:active { background: var(--neutral-stone); }
+    .tag.is-selected { background: var(--ink); color: var(--point); }
+    .tag.is-disabled { opacity: 0.35; pointer-events: none; }
+
+    /* ===== BADGES ===== */
+    /* 상품 상태/수량 — 정원 (50x50 고정 사이즈, 글자 정중앙, ink 실선 보더 + 미디엄 weight) */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 1px solid var(--ink);
+      padding: 4px;
+      font-size: 10px;
+      font-weight: 500 !important;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+      text-transform: uppercase;
+      text-align: center;
+      word-break: keep-all;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .badge-new     { background: var(--point);         color: var(--ink); }
+    .badge-best    { background: var(--ink);           color: var(--point); }
+    .badge-sale    { background: var(--neutral-lavender); color: var(--ink); }
+    .badge-sold    { background: var(--neutral-stone);  color: var(--ink); border-color: currentColor; }
+    .badge-limited { background: var(--neutral-yellow); color: var(--ink); }
+
+    /* ===== TOAST / NOTIFICATIONS ===== */
+    /* 단일 스타일: ink 배경 + point(네온그린) 도트 + 흰 글자 */
+    .toast {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: var(--r-btn);
+      background: var(--ink);
+      color: var(--bg-white);
+      font-size: 13px;
+    }
+    .toast-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--point);
+      flex-shrink: 0;
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    .ds-input {
+      width: 100%;
+      padding: 11px 15px;
+      border: 1px solid var(--ink);
+      border-radius: var(--r-btn);
+      background: var(--bg-white);
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .ds-input::placeholder { color: var(--ink); opacity: 0.35; }
+    .ds-input:hover   { border-color: var(--ink-light); }
+    .ds-input:focus   { border-color: var(--ink); }
+    .ds-input.is-error { border-color: var(--alert-red); color: var(--alert-red); }
+    .ds-input:disabled { background: var(--bg-off); color: var(--ink); opacity: 0.35; border-color: var(--ink); cursor: not-allowed; }
+
+    .ds-input-msg {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 6px;
+      font-size: 12px;
+      letter-spacing: 0.01em;
+    }
+    .ds-input-msg.is-error { color: var(--ink); }
+    .ds-input-msg::before {
+      content: '!';
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--alert-red);
+      color: var(--bg-white);
+      font-size: 10px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    /* Checkbox */
+    .chk-wrap { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 14px; }
+    .chk-wrap input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border: 1px solid var(--ink);
+      border-radius: 4px;
+      background: var(--bg-white);
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.12s;
+    }
+    .chk-wrap input:checked { background: var(--point); }
+    .chk-wrap input:checked::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 9px;
+      border-right: 1.5px solid var(--ink);
+      border-bottom: 1.5px solid var(--ink);
+      transform: translate(-50%, -60%) rotate(45deg);
+    }
+    .chk-wrap input:focus-visible { outline: 2px solid var(--point); outline-offset: 2px; }
+    .chk-wrap input:disabled { background: var(--bg-off); border-color: var(--neutral-stone); cursor: not-allowed; }
+
+    /* Radio */
+    .radio-wrap { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 14px; }
+    .radio-wrap input[type="radio"] {
+      appearance: none; -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border: 1px solid var(--ink);
+      border-radius: 50%;
+      background: var(--bg-white);
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .radio-wrap input:checked::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: var(--ink);
+    }
+
+    /* Toggle Switch — 트랙 44x24 / 노브 18x18 / off:white → on:point(네온) */
+    .toggle-wrap { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 14px; }
+    .toggle-wrap input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 44px; height: 24px;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      background: var(--bg-white);
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .toggle-wrap input[type="checkbox"]::before {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--ink);
+      border-radius: 50%;
+      background: var(--bg-white);
+      transition: transform 0.2s ease;
+    }
+    .toggle-wrap input:checked { background: var(--point); }
+    .toggle-wrap input:checked::before { transform: translateX(20px); }
+    .toggle-wrap input:focus-visible { outline: 2px solid var(--point); outline-offset: 2px; }
+    .toggle-wrap input:disabled {
+      background: var(--bg-off);
+      border-color: var(--neutral-stone);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    .toggle-wrap input:disabled::before { border-color: var(--neutral-stone); }
+
+    /* ===== PRODUCT CARD ===== */
+    /* 프레임 없음 — 썸네일만 보이고 카드 외곽 테두리/배경 없음 */
+    .card {
+      cursor: pointer;
+      background: transparent;
+      transition: opacity 0.15s;
+    }
+    .card:hover .card-name { text-decoration: underline; text-underline-offset: 3px; }
+    .card:active { opacity: 0.85; }
+
+    .card-img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: var(--bg-off);
+      border-radius: var(--r-btn);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      position: relative;
+    }
+    .card-badges { position: absolute; top: 10px; left: 10px; display: flex; gap: 5px; }
+    .card-body   { padding: 14px 0 0; }
+    .card-name   {
+      font-size: 15px;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .card-desc   {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ink-light);
+      margin-bottom: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .card-orig   {
+      font-size: 12px;
+      text-decoration: line-through;
+      color: var(--neutral-stone);
+      margin-bottom: 4px;
+    }
+    .card-price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .card-discount {
+      font-size: 20px;
+      letter-spacing: -0.02em;
+      color: var(--neutral-lavender);
+      font-weight: 500 !important;
+    }
+    .card-price {
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+    .card.is-soldout { opacity: 0.55; }
+    .card.is-soldout .card-price { color: var(--neutral-stone); }
+
+    /* ===== PEEK FOLDER TAB ===== */
+    /* 화면 하단 풀스크린 폴더 — 평소엔 사다리꼴 탭만 노출, 클릭으로 슬라이드 업/다운 */
+    .peek {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      width: 720px;
+      max-width: 92%;
+      transform: translateX(-50%) translateY(calc(100% - 60px));
+      /* 닫힘 시 노출 영역 60px = 탭(50) + 본체 상단 10px peek → 폴더 스택 룩 */
+      transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 200;
+      pointer-events: none;
+    }
+    .peek.is-open { transform: translateX(-50%) translateY(0); }
+
+    .peek-tab {
+      position: relative;
+      display: block;
+      width: 280px;
+      height: 50px;
+      margin: 0 auto -2px;              /* 본체 상단 보더와 2px 겹쳐 — 닫힘 시 본체 완전 은폐 */
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      pointer-events: auto;
+      z-index: 2;
+    }
+    .peek-tab-shape {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;                /* 1px 스트로크가 viewBox 가장자리에서 잘리지 않게 */
+      pointer-events: none;
+    }
+    .peek-tab-fill { fill: var(--point); transition: fill 0.15s; }
+    .peek-tab-stroke { fill: none; stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .peek-tab:hover .peek-tab-fill { fill: var(--neutral-lime); }
+    .peek-tab:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+    .peek-tab-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+      pointer-events: none;
+      padding-bottom: 6px;              /* 사다리꼴 시각 중심 보정 (윗쪽이 좁으니 살짝 위로) */
+    }
+    .peek-tab-icon {
+      display: inline-block;
+      font-size: 9px;
+      line-height: 1;
+      transition: transform 0.35s ease;
+    }
+    .peek.is-open .peek-tab-icon { transform: rotate(180deg); }
+
+    .peek-body {
+      background: var(--point);
+      border: 1px solid var(--ink);
+      border-bottom: none;
+      border-radius: 32px 32px 0 0;
+      padding: 36px 44px 56px;
+      max-height: 72vh;
+      overflow-y: auto;
+      pointer-events: auto;
+    }
+
+    /* ===== ACCORDION ===== */
+    /* FAQ/콘텐츠 토글 — <details>/<summary> 시맨틱 마크업, 활성 시 ink + point 인버스 */
+    .acc {
+      border: 1px solid var(--ink);
+      border-radius: var(--r-btn);
+      overflow: hidden;
+      background: var(--bg-pale);
+    }
+    .acc-item + .acc-item { border-top: 1px solid var(--ink); }
+    .acc-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 15px;
+      line-height: 1.4;
+      user-select: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .acc-item summary::-webkit-details-marker { display: none; }
+    .acc-item summary:hover { background: var(--bg-off); }
+    .acc-item[open] summary { background: var(--ink); color: var(--point); }
+    .acc-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: transform 0.25s ease;
+    }
+    .acc-item[open] .acc-icon { transform: rotate(45deg); }
+    .acc-body {
+      padding: 18px 22px 22px;
+      font-size: 14px;
+      color: var(--ink-light);
+      line-height: 1.65;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(37,10,0,0.58);
+      display: none; align-items: center; justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(3px);
+    }
+    .modal-overlay.is-open { display: flex; }
+    .modal-box {
+      width: 90%; max-width: 480px;
+      background: var(--bg-white);
+      border: 1px solid var(--ink);
+      border-radius: var(--r-modal);
+      padding: var(--sp-lg);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; right: 24px; top: 24px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--ink);
+      background: var(--bg-white);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font: inherit; font-size: 18px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover  { background: var(--ink); color: var(--point); }
+    .modal-close:active { transform: scale(0.93); }
+
+    /* ===== GRID ===== */
+    .grid-12 { display: grid; grid-template-columns: repeat(12,1fr); gap: 16px; }
+    .g-cell { height: 34px; background: var(--neutral-lavender); border: 1px solid var(--ink); border-radius: 2px; opacity: 0.55; }
+    @media (max-width: 767px) {
+      .grid-12 { grid-template-columns: repeat(4,1fr); }
+      .g-cell:nth-child(n+5) { display: none; }
+    }
+
+    /* ===== PRODUCT GRID ===== */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: var(--sp-md);
+    }
+    @media (max-width: 767px) { .product-grid { grid-template-columns: repeat(2,1fr); } }
+
+    /* ===== UTILS ===== */
+    .flex       { display: flex; }
+    .flex-col   { flex-direction: column; }
+    .flex-wrap  { flex-wrap: wrap; }
+    .items-c    { align-items: center; }
+    .items-base { align-items: baseline; }
+    .gap-xs     { gap: var(--sp-xs); }
+    .gap-sm     { gap: var(--sp-sm); }
+    .gap-md     { gap: var(--sp-md); }
+    .mt-xs      { margin-top: var(--sp-xs); }
+    .mt-sm      { margin-top: var(--sp-sm); }
+    .mt-md      { margin-top: var(--sp-md); }
+  </style>
+</head>
+<body>
+
+<!-- TOP MARQUEE BANNER — 페이지 최상단 풀폭, 좌측으로 흐르는 모션 (hover 시 일시정지) -->
+<div class="topbar" role="region" aria-label="프로모션 배너">
+  <div class="topbar-track">
+    <span class="topbar-text">🎁 슬런치가 처음이신 고객님은 지금 가입하고 할인쿠폰 받아가세요!</span>
+    <span class="topbar-text">🎁 슬런치가 처음이신 고객님은 지금 가입하고 할인쿠폰 받아가세요!</span>
+    <span class="topbar-text">🎁 슬런치가 처음이신 고객님은 지금 가입하고 할인쿠폰 받아가세요!</span>
+    <span class="topbar-text">🎁 슬런치가 처음이신 고객님은 지금 가입하고 할인쿠폰 받아가세요!</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div style="padding-bottom: var(--sp-lg); border-bottom: 1px solid var(--bg-pale);">
+    <p class="t-caption" style="margin-bottom: 8px; letter-spacing: 0.1em; text-transform: uppercase;">VeggieVerse</p>
+    <h1 class="t-display">Design System<br>Playground V3</h1>
+    <p class="t-body" style="margin-top: 14px; max-width: 520px;">
+      인터랙션 상태 완전 포함 — 컬러 팔레트, 타이포그래피, 버튼, 태그, 배지, 폼, 카드, 모달
+    </p>
+  </div>
+
+
+  <!-- 00. COLOR PALETTE -->
+  <div class="section">
+    <p class="section-num">00</p>
+    <h2 class="section-title">Color Palette</h2>
+
+    <div class="sub">
+      <p class="sub-title">Core</p>
+      <div class="swatch-row">
+        <div class="swatch">
+          <div class="swatch-block" style="background:#250a00;"></div>
+          <span class="swatch-name">Ink</span>
+          <span class="swatch-hex">#250a00</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#dcfd4a; border-color:#ccc;"></div>
+          <span class="swatch-name">Point</span>
+          <span class="swatch-hex">#dcfd4a</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#6e5035;"></div>
+          <span class="swatch-name">Ink Light</span>
+          <span class="swatch-hex">#6e5035</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#ff1714;"></div>
+          <span class="swatch-name">Alert Red</span>
+          <span class="swatch-hex">#ff1714</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Backgrounds</p>
+      <div class="swatch-row">
+        <div class="swatch">
+          <div class="swatch-block" style="background:#b1b1b1;"></div>
+          <span class="swatch-name">Canvas</span>
+          <span class="swatch-hex">#b1b1b1 + noise</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#ffffff; border-color:#ccc;"></div>
+          <span class="swatch-name">White</span>
+          <span class="swatch-hex">#ffffff</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#e8e2e2;"></div>
+          <span class="swatch-name">Off</span>
+          <span class="swatch-hex">#e8e2e2</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#fcfaf8;"></div>
+          <span class="swatch-name">Pale</span>
+          <span class="swatch-hex">#fcfaf8</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Neutrals &amp; Status</p>
+      <div class="swatch-row">
+        <div class="swatch">
+          <div class="swatch-block" style="background:#c9bcbe;"></div>
+          <span class="swatch-name">Stone</span>
+          <span class="swatch-hex">#c9bcbe</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#b8976a;"></div>
+          <span class="swatch-name">Warm</span>
+          <span class="swatch-hex">#b8976a</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#e0b6e5;"></div>
+          <span class="swatch-name">Lavender</span>
+          <span class="swatch-hex">#e0b6e5</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#fbf582; border-color:#ccc;"></div>
+          <span class="swatch-name">Yellow</span>
+          <span class="swatch-hex">#fbf582</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#cbed7f; border-color:#ccc;"></div>
+          <span class="swatch-name">Lime</span>
+          <span class="swatch-hex">#cbed7f</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#e6863f;"></div>
+          <span class="swatch-name">Orange</span>
+          <span class="swatch-hex">#e6863f</span>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#adcbf6;"></div>
+          <span class="swatch-name">Blue</span>
+          <span class="swatch-hex">#adcbf6</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 01. TYPOGRAPHY -->
+  <div class="section">
+    <p class="section-num">01</p>
+    <h2 class="section-title">Typography</h2>
+    <div class="flex flex-col" style="gap: 22px;">
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">Display — 48px / -0.03em / lh 1.1</p>
+        <p class="t-display">가장 신선한 채소</p>
+      </div>
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">H1 — 32px / -0.02em / lh 1.2</p>
+        <p class="t-h1">오늘의 추천 상품</p>
+      </div>
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">H2 — 24px / -0.01em / lh 1.3</p>
+        <p class="t-h2">유기농 인증 채소 모음</p>
+      </div>
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">H3 — 18px / lh 1.4</p>
+        <p class="t-h3">청경채 500g</p>
+      </div>
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">Body — 15px / lh 1.7</p>
+        <p class="t-body">신선하게 수확된 제철 채소를 당일 배송으로 보내드립니다. 농약 없이 재배된 유기농 제품으로 건강한 식탁을 만들어보세요.</p>
+      </div>
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">Small — 13px / lh 1.5</p>
+        <p class="t-small">원산지: 경기도 파주 / 유통기한: 수령 후 3일 이내 냉장 보관</p>
+      </div>
+      <div>
+        <p class="t-caption" style="margin-bottom: 5px;">Caption — 11px / +0.02em</p>
+        <p class="t-caption">UPDATED 2026-04-30 · SKU: VV-00234</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 02. BUTTONS — ALL STATES -->
+  <div class="section">
+    <p class="section-num">02</p>
+    <h2 class="section-title">Buttons — All States</h2>
+
+    <div class="sub">
+      <p class="sub-title">Live Demo — hover / click 직접 해보세요</p>
+      <div class="flex flex-wrap items-c gap-sm mt-xs">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-dark">Dark / Editorial</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-primary btn-pill">Pill</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+        <a href="#" class="ds-link" style="font-size: 14px;">Text Link</a>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">State Reference (static visual)</p>
+      <div class="state-table">
+        <div class="st-cell st-head">Type</div>
+        <div class="st-cell st-head">Default</div>
+        <div class="st-cell st-head">Hover</div>
+        <div class="st-cell st-head">Active / Click</div>
+        <div class="st-cell st-head">Focus</div>
+        <div class="st-cell st-head">Disabled</div>
+
+        <div class="st-cell st-label">Primary</div>
+        <div class="st-cell"><button class="btn btn-primary sim-no-interact">Button</button></div>
+        <div class="st-cell"><button class="btn btn-primary sim-no-interact sim-p-hover">Button</button></div>
+        <div class="st-cell"><button class="btn btn-primary sim-no-interact sim-p-active">Button</button></div>
+        <div class="st-cell"><button class="btn btn-primary sim-no-interact sim-p-focus">Button</button></div>
+        <div class="st-cell"><button class="btn btn-primary sim-no-interact sim-p-dis">Button</button></div>
+
+        <div class="st-cell st-label">Dark</div>
+        <div class="st-cell"><button class="btn btn-dark sim-no-interact">Button</button></div>
+        <div class="st-cell"><button class="btn btn-dark sim-no-interact sim-d-hover">Button</button></div>
+        <div class="st-cell"><button class="btn btn-dark sim-no-interact sim-d-active">Button</button></div>
+        <div class="st-cell"><button class="btn btn-dark sim-no-interact sim-d-focus">Button</button></div>
+        <div class="st-cell"><button class="btn btn-dark sim-no-interact sim-p-dis">Button</button></div>
+
+        <div class="st-cell st-label">Ghost</div>
+        <div class="st-cell"><button class="btn btn-ghost sim-no-interact">Button</button></div>
+        <div class="st-cell"><button class="btn btn-ghost sim-no-interact sim-g-hover">Button</button></div>
+        <div class="st-cell"><button class="btn btn-ghost sim-no-interact sim-g-active">Button</button></div>
+        <div class="st-cell"><button class="btn btn-ghost sim-no-interact sim-g-focus">Button</button></div>
+        <div class="st-cell"><button class="btn btn-ghost sim-no-interact sim-p-dis">Button</button></div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Text Link States</p>
+      <div class="flex flex-wrap items-c gap-md mt-xs">
+        <span><a href="#" class="ds-link" style="font-size: 14px;">Default</a></span>
+        <span><a href="#" class="ds-link" style="font-size: 14px; color: #e8e2e2;">Hover</a></span>
+        <span><a href="#" class="ds-link" style="font-size: 14px; text-decoration: underline; text-underline-offset: 4px;">Active</a></span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 03. TAGS & PILLS -->
+  <div class="section">
+    <p class="section-num">03</p>
+    <h2 class="section-title">Tags &amp; Pills</h2>
+    <p class="t-caption" style="margin-bottom: 16px;">border-radius: 999px — 납작한 원, 완벽한 타원</p>
+
+    <div class="sub">
+      <p class="sub-title">Live — hover / click / selected</p>
+      <div class="flex flex-wrap gap-xs mt-xs">
+        <span class="tag">#유기농</span>
+        <span class="tag">#제철채소</span>
+        <span class="tag">#당일배송</span>
+        <span class="tag is-selected">#베스트 (selected)</span>
+        <span class="tag">#무농약</span>
+        <span class="tag">#로컬푸드</span>
+        <span class="tag">#비건</span>
+        <span class="tag is-disabled">#비활성</span>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Filled Variants</p>
+      <div class="flex flex-wrap gap-xs mt-xs">
+        <span class="tag" style="background:var(--neutral-lavender); border-color:transparent;">라벤더</span>
+        <span class="tag" style="background:var(--neutral-yellow); border-color:transparent;">옐로우</span>
+        <span class="tag" style="background:var(--neutral-lime); border-color:transparent;">라임</span>
+        <span class="tag" style="background:var(--neutral-blue); border-color:transparent;">블루</span>
+        <span class="tag" style="background:var(--neutral-stone); border-color:transparent;">스톤</span>
+        <span class="tag" style="background:var(--neutral-orange); color:#fff; border-color:transparent;">오렌지</span>
+        <span class="tag" style="background:var(--point); border-color:transparent;">포인트</span>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">State Reference (static)</p>
+      <div class="flex flex-wrap gap-md mt-xs">
+        <div class="flex flex-col items-c gap-xs">
+          <span class="tag" style="pointer-events:none;">#태그</span>
+          <span class="t-caption">Default</span>
+        </div>
+        <div class="flex flex-col items-c gap-xs">
+          <span class="tag" style="pointer-events:none; background:var(--bg-off);">#태그</span>
+          <span class="t-caption">Hover</span>
+        </div>
+        <div class="flex flex-col items-c gap-xs">
+          <span class="tag" style="pointer-events:none; background:var(--neutral-stone); transform:translateY(1px);">#태그</span>
+          <span class="t-caption">Active</span>
+        </div>
+        <div class="flex flex-col items-c gap-xs">
+          <span class="tag is-selected" style="pointer-events:none;">#태그</span>
+          <span class="t-caption">Selected</span>
+        </div>
+        <div class="flex flex-col items-c gap-xs">
+          <span class="tag is-disabled">#태그</span>
+          <span class="t-caption">Disabled</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 04. BADGES & NOTIFICATIONS -->
+  <div class="section">
+    <p class="section-num">04</p>
+    <h2 class="section-title">Badges &amp; Notifications</h2>
+
+    <div class="sub">
+      <p class="sub-title">Product Status — 정원 50×50</p>
+      <div class="flex flex-wrap gap-xs items-c mt-xs">
+        <span class="badge badge-new">NEW</span>
+        <span class="badge badge-best">BEST</span>
+        <span class="badge badge-sale">SALE</span>
+        <span class="badge badge-sold">SOLD OUT</span>
+        <span class="badge badge-limited">LIMITED</span>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Toast Notification — ink 배경 + point 도트 (단일 스타일)</p>
+      <div class="flex mt-xs" style="align-items: flex-start;">
+        <div class="toast"><div class="toast-dot"></div><span>장바구니에 추가되었습니다.</span></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 05. FORM ELEMENTS -->
+  <div class="section">
+    <p class="section-num">05</p>
+    <h2 class="section-title">Form Elements</h2>
+
+    <div class="sub">
+      <p class="sub-title">Text Input — Default / Focus / Error / Disabled</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 12px;">
+        <div>
+          <label class="t-caption" style="display:block; margin-bottom:6px;">Default</label>
+          <input class="ds-input" type="text" placeholder="상품명 입력" />
+        </div>
+        <div>
+          <label class="t-caption" style="display:block; margin-bottom:6px;">Focus (클릭)</label>
+          <input class="ds-input" type="text" placeholder="클릭해서 focus 확인" />
+        </div>
+        <div>
+          <label class="t-caption" style="display:block; margin-bottom:6px;">Error</label>
+          <input class="ds-input is-error" type="text" value="잘못된 입력값" />
+          <p class="ds-input-msg is-error">올바른 형식으로 입력해주세요.</p>
+        </div>
+        <div>
+          <label class="t-caption" style="display:block; margin-bottom:6px;">Disabled</label>
+          <input class="ds-input" type="text" placeholder="비활성" disabled />
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Checkbox &amp; Radio</p>
+      <div class="flex flex-wrap gap-md items-c mt-xs">
+        <label class="chk-wrap">
+          <input type="checkbox" />
+          <span>미체크</span>
+        </label>
+        <label class="chk-wrap">
+          <input type="checkbox" checked />
+          <span>체크됨</span>
+        </label>
+        <label class="chk-wrap">
+          <input type="checkbox" disabled />
+          <span>비활성</span>
+        </label>
+        <label class="radio-wrap">
+          <input type="radio" name="r1" />
+          <span>라디오 A</span>
+        </label>
+        <label class="radio-wrap">
+          <input type="radio" name="r1" checked />
+          <span>라디오 B (선택됨)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="sub">
+      <p class="sub-title">Toggle Switch — off / on(point) / disabled</p>
+      <div class="flex flex-wrap gap-md items-c mt-xs">
+        <label class="toggle-wrap">
+          <input type="checkbox" />
+          <span>알림 받기 (off)</span>
+        </label>
+        <label class="toggle-wrap">
+          <input type="checkbox" checked />
+          <span>다크 모드 (on)</span>
+        </label>
+        <label class="toggle-wrap">
+          <input type="checkbox" disabled />
+          <span>비활성 (off)</span>
+        </label>
+        <label class="toggle-wrap">
+          <input type="checkbox" checked disabled />
+          <span>비활성 (on)</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 06. PRODUCT CARDS -->
+  <div class="section section-bleed-pale">
+    <p class="section-num">06</p>
+    <h2 class="section-title">Product Cards</h2>
+    <p class="t-caption" style="margin-bottom: 16px;">프레임 없음 · 썸네일 4:3 · 이름 / 설명 / 원가(취소선) / 할인율 + 판매가 · Hover: 상품명 underline</p>
+
+    <div class="product-grid">
+      <!-- BEST + SALE (할인 있음) -->
+      <div class="card">
+        <div class="card-img">
+          <div class="card-badges">
+            <span class="badge badge-best">BEST</span>
+            <span class="badge badge-sale">SALE</span>
+          </div>
+          <span>이미지 4:3</span>
+        </div>
+        <div class="card-body">
+          <p class="card-name">복숭아 타르트</p>
+          <p class="card-desc">달콤한 복숭아를 올린 비건 디저트</p>
+          <p class="card-orig">35,000원</p>
+          <div class="card-price-row">
+            <span class="card-discount">9%</span>
+            <span class="card-price">32,000원</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW (정가) -->
+      <div class="card">
+        <div class="card-img">
+          <div class="card-badges"><span class="badge badge-new">NEW</span></div>
+          <span>이미지 4:3</span>
+        </div>
+        <div class="card-body">
+          <p class="card-name">페퍼로니 피자</p>
+          <p class="card-desc">비건 페퍼로니와 신선한 채소를 올린 비건 피자</p>
+          <div class="card-price-row">
+            <span class="card-price">22,000원</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOLD OUT -->
+      <div class="card is-soldout">
+        <div class="card-img">
+          <div class="card-badges"><span class="badge badge-sold">SOLD OUT</span></div>
+          <span>이미지 4:3</span>
+        </div>
+        <div class="card-body">
+          <p class="card-name">슬런치 위클리</p>
+          <p class="card-desc">매주 새로운 비건 메뉴를 만나보는 정기 구독 서비스</p>
+          <div class="card-price-row">
+            <span class="card-price">35,000원</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 07. MODAL -->
+  <div class="section">
+    <p class="section-num">07</p>
+    <h2 class="section-title">Modal (radius: 40px)</h2>
+    <p class="t-caption" style="margin-bottom: 16px;">Solid shadow 12px · backdrop-filter blur(3px) · 오버레이 클릭으로 닫기</p>
+    <button type="button" class="btn btn-primary" id="openModal">팝업 열기</button>
+  </div>
+
+
+  <!-- 08. GRID -->
+  <div class="section">
+    <p class="section-num">08</p>
+    <h2 class="section-title">12-Column Grid</h2>
+    <div class="grid-12 mt-xs">
+      <div class="g-cell"></div><div class="g-cell"></div><div class="g-cell"></div><div class="g-cell"></div>
+      <div class="g-cell"></div><div class="g-cell"></div><div class="g-cell"></div><div class="g-cell"></div>
+      <div class="g-cell"></div><div class="g-cell"></div><div class="g-cell"></div><div class="g-cell"></div>
+    </div>
+    <p class="t-caption mt-sm">Desktop 12col / 16px gap · Mobile 4col / Max-width 1440px · Side margin 60px</p>
+  </div>
+
+  <!-- 09. ACCORDION -->
+  <div class="section">
+    <p class="section-num">09</p>
+    <h2 class="section-title">Accordion</h2>
+    <p class="t-caption" style="margin-bottom: 16px;">FAQ/콘텐츠 토글 — &lt;details&gt; 시맨틱 · 클릭으로 접고 펼치기 · 활성 시 ink 배경 + point 글자 + 아이콘 45° 회전</p>
+
+    <div class="acc">
+      <details class="acc-item">
+        <summary>
+          <span>배송은 얼마나 걸리나요?</span>
+          <span class="acc-icon">+</span>
+        </summary>
+        <div class="acc-body">오후 6시 이전 주문 시 익일 새벽 도착합니다. 일부 도서·산간 지역은 1~2일 추가로 소요될 수 있습니다.</div>
+      </details>
+      <details class="acc-item" open>
+        <summary>
+          <span>비건 인증은 어떻게 받나요?</span>
+          <span class="acc-icon">+</span>
+        </summary>
+        <div class="acc-body">베지버스의 모든 제품은 한국비건인증원의 비건 인증을 받았습니다. 동물성 원료, 동물 실험, 교차 오염을 모두 차단한 시설에서 생산하며 인증서는 상품 상세 페이지에서 확인하실 수 있습니다.</div>
+      </details>
+      <details class="acc-item">
+        <summary>
+          <span>환불 정책이 궁금해요</span>
+          <span class="acc-icon">+</span>
+        </summary>
+        <div class="acc-body">상품 수령 후 7일 이내 미개봉 상품에 한해 100% 환불 가능합니다. 신선식품 특성상 개봉 후 환불이 어려운 점 양해 부탁드립니다.</div>
+      </details>
+    </div>
+  </div>
+
+  <!-- 10. PEEK FOLDER -->
+  <div class="section">
+    <p class="section-num">10</p>
+    <h2 class="section-title">Peek Folder</h2>
+    <p class="t-caption" style="margin-bottom: 16px;">
+      숨어있는 페이지를 폴더처럼 노출 — 화면 하단 중앙 둥근 탭만 보이다가 클릭 시 본체 슬라이드 업 · ink 보더 + point fill
+    </p>
+    <p class="t-body">↓ 페이지 최하단 중앙의 <strong>둘러보기</strong> 탭을 클릭해 동작 확인 (탭은 스크롤해도 항상 노출)</p>
+  </div>
+
+  <div style="height: calc(var(--sp-xl) + 60px);"></div>
+</div>
+
+<!-- PEEK FOLDER (fixed bottom — 폴더 탭으로 숨어있는 페이지 노출) -->
+<div class="peek" id="peekFolder">
+  <button class="peek-tab" type="button" id="peekTab" aria-expanded="false" aria-controls="peekBody">
+    <svg class="peek-tab-shape" width="280" height="50" viewBox="0 0 280 50" aria-hidden="true">
+      <!-- 둥근 사다리꼴: 아랫변(280) > 윗변(약 224), 양쪽 사이드 12px 안쪽으로 슬로프 -->
+      <path class="peek-tab-fill"   d="M 0 50 L 12 14 Q 16 0 30 0 L 250 0 Q 264 0 268 14 L 280 50 Z"/>
+      <path class="peek-tab-stroke" d="M 0 50 L 12 14 Q 16 0 30 0 L 250 0 Q 264 0 268 14 L 280 50"/>
+    </svg>
+    <span class="peek-tab-label">
+      <span>둘러보기</span>
+      <span class="peek-tab-icon" aria-hidden="true">▲</span>
+    </span>
+  </button>
+  <div class="peek-body" id="peekBody">
+    <h3 class="t-h2" style="margin-bottom: 14px;">숨어있던 페이지</h3>
+    <p class="t-body" style="margin-bottom: 22px; max-width: 480px;">
+      탭을 클릭하면 폴더처럼 페이지가 위로 슬라이드되어 나타납니다. 가벼운 진입 부담으로 보조 콘텐츠(이벤트·공지·미니메뉴 등)를 노출할 때 적합합니다.
+    </p>
+    <div class="flex flex-wrap gap-xs" style="margin-bottom: 22px;">
+      <span class="tag">#이번주신상</span>
+      <span class="tag">#한정수량</span>
+      <span class="tag">#무료배송</span>
+    </div>
+    <div class="flex flex-wrap gap-sm">
+      <a href="#" class="ds-link" style="font-size: 14px;">메뉴 보러가기 →</a>
+      <a href="#" class="ds-link" style="font-size: 14px;">레시피 →</a>
+      <a href="#" class="ds-link" style="font-size: 14px;">스토리 →</a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <button class="modal-close" type="button" id="closeModal" aria-label="닫기">×</button>
+    <h2 class="t-h2" style="margin-bottom: 12px;">알림 팝업 예시</h2>
+    <p class="t-body" style="margin-bottom: var(--sp-md);">
+      이 팝업은 <strong>40px 라운드</strong>가 적용된 모달입니다. 오버레이 클릭으로도 닫힙니다.
+    </p>
+    <div class="flex gap-xs" style="justify-content: flex-end;">
+      <button type="button" class="btn btn-ghost" id="cancelModal">취소</button>
+      <button type="button" class="btn btn-primary" id="confirmModal">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const overlay = document.getElementById('modalOverlay');
+  const close = () => overlay.classList.remove('is-open');
+  document.getElementById('openModal').onclick  = () => overlay.classList.add('is-open');
+  document.getElementById('closeModal').onclick  = close;
+  document.getElementById('cancelModal').onclick = close;
+  document.getElementById('confirmModal').onclick = close;
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+  // Peek folder toggle
+  const peekFolder = document.getElementById('peekFolder');
+  const peekTab = document.getElementById('peekTab');
+  peekTab.addEventListener('click', () => {
+    const isOpen = peekFolder.classList.toggle('is-open');
+    peekTab.setAttribute('aria-expanded', String(isOpen));
+  });
+</script>
+</body>
+</html>

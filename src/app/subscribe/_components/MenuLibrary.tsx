@@ -48,19 +48,11 @@ export function MenuLibrary({
   const [detailMeal, setDetailMeal] = useState<DisplayMenuData | null>(null);
 
   return (
-    <aside className="flex flex-col flex-1 min-h-0 lg:block" aria-label="구독 식단">
-      {/* 헤더 — 데스크톱 전용 (모바일은 바텀시트 헤더 사용) */}
+    <aside className="flex flex-col h-full min-h-0" aria-label="구독 식단">
+      {/* 헤더 — 데스크톱 전용 (catalog-header) */}
       <div className="shrink-0 bg-white">
-        <div className="hidden lg:flex items-end justify-between px-6 pt-5 pb-4 border-black">
-          <div>
-            <h2 className="text-[20px] leading-tight tracking-tight text-black">메뉴 고르기</h2>
-            <p className="mt-1 text-[12px] text-gray-400">
-              클릭하거나 드래그해서 식단에 추가하세요
-            </p>
-          </div>
-          <span className="text-[12px] text-gray-400 pb-0.5">
-            {filteredMeals.length}개 메뉴
-          </span>
+        <div className="hidden lg:flex h-[48px] px-5 items-center justify-center border-b border-black bg-white">
+          <h1 className="text-[14px] font-normal tracking-[-0.005em] text-black">주 14끼 구독 식단</h1>
         </div>
 
         <FilterPanel
@@ -72,35 +64,35 @@ export function MenuLibrary({
           onNutritionGoalToggle={onNutritionGoalToggle}
           onAllergyFilterToggle={onAllergyFilterToggle}
           onSpicyPreferenceChange={onSpicyPreferenceChange}
+          onResetFilters={onResetFilters}
         />
       </div>
 
-      {/* 메뉴 그리드 — 데스크톱: 자연 높이(페이지 스크롤), 모바일: 내부 스크롤 */}
-      <div className="no-scrollbar flex-1 min-h-0 overflow-y-auto lg:overflow-y-visible pb-20 lg:pb-0 bg-white">
+      {/* 메뉴 그리드 */}
+      <div className="no-scrollbar flex-1 min-h-0 overflow-y-auto bg-[#fcfaf8]">
         {filteredMeals.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-5 text-center">
-            <p className="text-[14px] text-gray-400">조건에 맞는 메뉴가 없습니다</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 py-12 px-8 text-center">
+            <p className="text-[13px] text-[#9a928c]">조건에 맞는 메뉴가 없습니다</p>
             <button
               type="button"
               onClick={onResetFilters}
-              className="border border-black px-4 py-2 text-[12px] tracking-wide hover:bg-black hover:text-white transition-colors"
+              className="border border-black px-4 py-2 text-[12px] tracking-[0.06em] hover:bg-black hover:text-[#dfff4f] transition-colors"
             >
               필터 초기화
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-[#e5e2dc] overflow-hidden">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 p-6">
             {filteredMeals.map((meal) => (
-              <div key={meal.id} className="border-r border-b border-[#e5e2dc]">
-                <MealCard
-                  meal={meal}
-                  draggingMealId={draggingMealId}
-                  onAdd={onAddMeal}
-                  onDetail={setDetailMeal}
-                  onDragStart={onDragStartMeal}
-                  onDragEnd={onDragEndMeal}
-                />
-              </div>
+              <MealCard
+                key={meal.id}
+                meal={meal}
+                draggingMealId={draggingMealId}
+                onAdd={onAddMeal}
+                onDetail={setDetailMeal}
+                onDragStart={onDragStartMeal}
+                onDragEnd={onDragEndMeal}
+              />
             ))}
           </div>
         )}

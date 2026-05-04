@@ -29,7 +29,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
       >
         {/* Fixed Top Container */}
         <div
-          className="fixed top-0 left-0 right-0 z-50 bg-[#D7D7D7]"
+          className="scroll-lock-compensate fixed top-0 left-0 right-0 z-50 bg-[#D7D7D7]"
         >
           {showTopBanner && (
             <TopBanner onClose={() => setShowTopBanner(false)} />

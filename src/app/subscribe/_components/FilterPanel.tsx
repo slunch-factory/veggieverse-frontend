@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useRef, useState } from "react";
+import type {
+  AllergyFilter,
+  DietType,
+  NutritionGoal,
+  SpicyPreference,
+} from "../_data/subscription";
 import {
-  type AllergyFilter,
-  type DietType,
-  type NutritionGoal,
-  type SpicyPreference,
   ALLERGY_FILTER_OPTIONS,
   DIET_TYPE_OPTIONS,
   NUTRITION_GOAL_OPTIONS,
@@ -26,85 +27,96 @@ interface FilterPanelProps {
 
 type FilterKey = "diet" | "nutrition" | "allergy" | "spicy";
 
-function useOutsideClick(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [ref, onClose]);
-}
-
-interface DropdownProps {
+function Chip({
+  label,
+  active,
+  isExclude,
+  onClick,
+}: {
   label: string;
-  badge?: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-  children: React.ReactNode;
-}
-
-function Dropdown({ label, badge, isOpen, onToggle, onClose, children }: DropdownProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  useOutsideClick(ref, onClose);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`flex items-center gap-1.5 h-full px-3 text-[12px] whitespace-nowrap transition-colors border-r border-black last:border-r-0 ${
-          isOpen || badge ? "bg-black text-white" : "bg-white text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        {badge ? (
-          <span>{label}: <span className="font-medium">{badge}</span></span>
-        ) : (
-          <span>{label}</span>
-        )}
-        <ChevronDown
-          className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          strokeWidth={2}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute top-full left-0 z-50 mt-px bg-white border border-black shadow-lg min-w-[160px]">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface OptionItemProps {
-  label: string;
-  selected: boolean;
-  isMulti?: boolean;
+  active: boolean;
+  isExclude?: boolean;
   onClick: () => void;
-}
-
-function OptionItem({ label, selected, isMulti, onClick }: OptionItemProps) {
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-2 px-4 py-2.5 text-[12px] text-left transition-colors ${
-        selected ? "bg-black text-white" : "text-gray-700 hover:bg-gray-50"
+      className={`px-3 py-[5px] border text-[12px] shrink-0 whitespace-nowrap transition-colors ${
+        active && isExclude
+          ? "bg-[#f7f4ef] text-[#a0a0a0] border-[#e5e2dc] line-through decoration-[1px]"
+          : active
+          ? "bg-black text-white border-black"
+          : "bg-transparent text-[#3d3d3d] border-[rgba(26,10,5,0.2)] hover:border-black"
       }`}
     >
-      {isMulti && (
-        <span
-          className={`w-3.5 h-3.5 border flex-shrink-0 flex items-center justify-center text-[9px] ${
-            selected ? "border-white bg-transparent" : "border-gray-400"
-          }`}
-        >
-          {selected && "✓"}
-        </span>
-      )}
       {label}
     </button>
+  );
+}
+
+function DropdownFilter({
+  label,
+  activeCount,
+  open,
+  onToggle,
+  onClose,
+  children,
+}: {
+  label: string;
+  activeCount: number;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number } | null>(null);
+
+  const handleToggle = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setDropPos({ top: r.bottom + 3, left: r.left });
+    }
+    onToggle();
+  };
+
+  return (
+    <div className="shrink-0">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center gap-[5px] px-[10px] py-[6px] text-[13px] border whitespace-nowrap transition-colors ${
+          activeCount > 0
+            ? "border-black bg-black text-white"
+            : "border-[rgba(26,10,5,0.22)] text-[#3d3d3d] bg-white hover:border-black"
+        }`}
+      >
+        <span>{label}</span>
+        {activeCount > 0 && (
+          <span className="text-[11px] opacity-80">({activeCount})</span>
+        )}
+        <span
+          className={`text-[9px] leading-none transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        >
+          ▾
+        </span>
+      </button>
+
+      {open && dropPos && (
+        <>
+          <div className="fixed inset-0 z-[190]" onClick={onClose} />
+          <div
+            className="fixed z-[191] bg-white border border-black shadow-lg p-3 flex flex-wrap gap-2 min-w-[160px] max-w-[280px]"
+            style={{ top: dropPos.top, left: dropPos.left }}
+          >
+            {children}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -117,119 +129,94 @@ export function FilterPanel({
   onNutritionGoalToggle,
   onAllergyFilterToggle,
   onSpicyPreferenceChange,
-}: FilterPanelProps) {
+  onResetFilters,
+}: FilterPanelProps & { onResetFilters: () => void }) {
   const [open, setOpen] = useState<FilterKey | null>(null);
-
-  const toggle = useCallback((key: FilterKey) => setOpen((prev) => (prev === key ? null : key)), []);
-  const close = useCallback(() => setOpen(null), []);
-
-  const dietLabel = dietType
-    ? DIET_TYPE_OPTIONS.find((o) => o.value === dietType)?.label
-    : undefined;
-
-  const nutritionBadge = (() => {
-    if (nutritionGoals.length === 0) return undefined;
-    const firstName = NUTRITION_GOAL_OPTIONS.find((o) => o.value === nutritionGoals[0])?.label ?? "";
-    return nutritionGoals.length === 1 ? firstName : `${firstName} 외 ${nutritionGoals.length - 1}`;
-  })();
-
-  const allergyBadge = (() => {
-    if (allergyFilters.includes("none")) return "해당 없음";
-    if (allergyFilters.length === 0) return undefined;
-    const firstName = ALLERGY_FILTER_OPTIONS.find((o) => o.value === allergyFilters[0])?.label ?? "";
-    return allergyFilters.length === 1 ? firstName : `${firstName} 외 ${allergyFilters.length - 1}`;
-  })();
-
-  const spicyLabel = spicyPreference
-    ? SPICY_PREFERENCE_OPTIONS.find((o) => o.value === spicyPreference)?.label
-    : undefined;
+  const toggle = (key: FilterKey) => setOpen((prev) => (prev === key ? null : key));
 
   return (
-    <div className="flex items-stretch h-10 border-t border-b border-black pl-3">
-      {/* 식이 유형 */}
-      <Dropdown
+    <div className="flex items-center gap-3 px-5 h-[56px] border-b border-black bg-white overflow-x-auto no-scrollbar shrink-0">
+      <DropdownFilter
         label="식이 유형"
-        badge={dietLabel}
-        isOpen={open === "diet"}
+        activeCount={dietType ? 1 : 0}
+        open={open === "diet"}
         onToggle={() => toggle("diet")}
-        onClose={close}
+        onClose={() => setOpen(null)}
       >
-        <OptionItem
-          label="전체"
-          selected={dietType === null}
-          onClick={() => { onDietTypeChange(null); close(); }}
-        />
         {DIET_TYPE_OPTIONS.map((opt) => (
-          <OptionItem
+          <Chip
             key={opt.value}
             label={opt.label}
-            selected={dietType === opt.value}
-            onClick={() => { onDietTypeChange(opt.value); close(); }}
+            active={dietType === opt.value}
+            onClick={() => onDietTypeChange(dietType === opt.value ? null : opt.value)}
           />
         ))}
-      </Dropdown>
+      </DropdownFilter>
 
-      {/* 영양 목표 */}
-      <Dropdown
+      <DropdownFilter
         label="영양 목표"
-        badge={nutritionBadge}
-        isOpen={open === "nutrition"}
+        activeCount={nutritionGoals.length}
+        open={open === "nutrition"}
         onToggle={() => toggle("nutrition")}
-        onClose={close}
+        onClose={() => setOpen(null)}
       >
         {NUTRITION_GOAL_OPTIONS.map((opt) => (
-          <OptionItem
+          <Chip
             key={opt.value}
             label={opt.label}
-            selected={nutritionGoals.includes(opt.value)}
-            isMulti
+            active={nutritionGoals.includes(opt.value)}
             onClick={() => onNutritionGoalToggle(opt.value)}
           />
         ))}
-      </Dropdown>
+      </DropdownFilter>
 
-      {/* 알레르기 */}
-      <Dropdown
-        label="알레르기"
-        badge={allergyBadge}
-        isOpen={open === "allergy"}
+      <DropdownFilter
+        label="알러지 제외"
+        activeCount={allergyFilters.length}
+        open={open === "allergy"}
         onToggle={() => toggle("allergy")}
-        onClose={close}
+        onClose={() => setOpen(null)}
       >
         {ALLERGY_FILTER_OPTIONS.map((opt) => (
-          <OptionItem
+          <Chip
             key={opt.value}
             label={opt.label}
-            selected={allergyFilters.includes(opt.value)}
-            isMulti={opt.value !== "none"}
+            active={allergyFilters.includes(opt.value)}
+            isExclude={opt.value !== "none"}
             onClick={() => onAllergyFilterToggle(opt.value)}
           />
         ))}
-      </Dropdown>
+      </DropdownFilter>
 
-      {/* 매운맛 */}
-      <Dropdown
+      <DropdownFilter
         label="매운맛"
-        badge={spicyLabel}
-        isOpen={open === "spicy"}
+        activeCount={spicyPreference ? 1 : 0}
+        open={open === "spicy"}
         onToggle={() => toggle("spicy")}
-        onClose={close}
+        onClose={() => setOpen(null)}
       >
-        <OptionItem
-          label="전체"
-          selected={spicyPreference === null}
-          onClick={() => { onSpicyPreferenceChange(null); close(); }}
-        />
         {SPICY_PREFERENCE_OPTIONS.map((opt) => (
-          <OptionItem
+          <Chip
             key={opt.value}
             label={opt.label}
-            selected={spicyPreference === opt.value}
-            onClick={() => { onSpicyPreferenceChange(opt.value); close(); }}
+            active={spicyPreference === opt.value}
+            isExclude={opt.value === "exclude"}
+            onClick={() =>
+              onSpicyPreferenceChange(spicyPreference === opt.value ? null : opt.value)
+            }
           />
         ))}
-      </Dropdown>
+      </DropdownFilter>
 
+      {(dietType || nutritionGoals.length > 0 || allergyFilters.length > 0 || spicyPreference) && (
+        <button
+          type="button"
+          onClick={onResetFilters}
+          className="shrink-0 px-[8px] py-[4px] text-[11px] border border-[rgba(26,10,5,0.22)] text-[#9a928c] bg-white hover:border-black hover:text-black transition-colors whitespace-nowrap"
+        >
+          초기화
+        </button>
+      )}
     </div>
   );
 }

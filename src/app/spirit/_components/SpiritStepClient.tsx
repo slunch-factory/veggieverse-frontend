@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { SurveyQuestion } from "@/app/spirit/_data/surveyQuestions";
 import type { SurveyAnswers } from "@/app/spirit/_types";
 import { TarotCardGrid } from "@/app/spirit/_components/TarotCardGrid";
-import { getAutoPlan, savePlan } from "@/lib/api/spirit";
+import { getAutoPlan } from "@/lib/api/spirit";
 
 const ALLERGY_QUESTION_ID = 3;
 const _publicBase = (process.env.NEXT_PUBLIC_BASE_PATH ?? "").replace(/\/$/, "");
@@ -74,14 +74,15 @@ export function SpiritStepClient({ questions }: SpiritStepClientProps) {
       setCurrentStep((s) => s + 1);
     } else {
       setIsPreparingPlan(true);
-      // autoPlan 먼저 → 그 product ID로 plan 저장 (순차 호출)
-      const recommended = await getAutoPlan(answers).catch(() => []);
+      // autoPlan + 최소 1.5초 로딩 표시를 병렬로 실행, 둘 다 완료되면 이동
+      const [recommended] = await Promise.all([
+        getAutoPlan(answers).catch(() => []),
+        new Promise<void>((r) => setTimeout(r, 1500)),
+      ]);
       if (recommended.length > 0) {
         sessionStorage.setItem("spirit-auto-plan", JSON.stringify(recommended));
-        const items = recommended.map((m) => ({ productId: Number(m.id), quantity: 1 }));
-        const planResult = await savePlan(items).catch(() => null);
-        if (planResult?.planId) sessionStorage.setItem("spirit-plan-id", planResult.planId);
       }
+      router.push("/subscribe");
     }
   };
 
@@ -89,12 +90,6 @@ export function SpiritStepClient({ questions }: SpiritStepClientProps) {
     if (currentStep > 0) setCurrentStep((s) => s - 1);
     else router.push("/");
   };
-
-  useEffect(() => {
-    if (!isPreparingPlan) return;
-    const timer = window.setTimeout(() => router.push("/subscribe"), 3000);
-    return () => window.clearTimeout(timer);
-  }, [isPreparingPlan, router]);
 
   useEffect(() => {
     if (!isPreparingPlan) {

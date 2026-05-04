@@ -11,20 +11,39 @@ import {
   type DisplayMenuData,
 } from "../../_data/subscription";
 import type { OrderData } from "../../_data/order";
+import type { CustomPlanResponse } from "@/lib/api/subscription";
 
 interface OrderSummaryCardProps {
   order: OrderData;
   canSubmit: boolean;
   onSubmit: () => void;
+  confirmedPlan?: CustomPlanResponse | null;
 }
 
 const formatShortDate = (d: Date) =>
   `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]})`;
 
-export function OrderSummaryCard({ order, canSubmit, onSubmit }: OrderSummaryCardProps) {
+export function OrderSummaryCard({ order, canSubmit, onSubmit, confirmedPlan }: OrderSummaryCardProps) {
   const [mealListOpen, setMealListOpen] = useState(true);
 
-  const mealEntries = Object.entries(order.mealPlan).sort(([a], [b]) => a.localeCompare(b));
+  // 서버 확정 플랜이 있으면 그 기준으로 표시, 없으면 로컬 mealPlan fallback
+  const mealEntries: [string, DisplayMenuData][] = (() => {
+    if (confirmedPlan) {
+      const entries: [string, DisplayMenuData][] = [];
+      for (const { date, lunch, dinner } of confirmedPlan.items) {
+        if (lunch !== 0) {
+          const meal = order.mealPlan[`${date}-0`];
+          if (meal) entries.push([`${date}-0`, meal]);
+        }
+        if (dinner !== 0) {
+          const meal = order.mealPlan[`${date}-1`];
+          if (meal) entries.push([`${date}-1`, meal]);
+        }
+      }
+      return entries.sort(([a], [b]) => a.localeCompare(b));
+    }
+    return Object.entries(order.mealPlan).sort(([a], [b]) => a.localeCompare(b));
+  })();
   const itemCount = mealEntries.length;
 
   const startD = new Date(order.startDateISO);
