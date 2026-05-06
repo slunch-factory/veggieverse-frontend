@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { SlidersHorizontal, ChevronDown, Check } from "lucide-react";
 
 export interface TabItem {
   id: string;
@@ -40,6 +40,34 @@ export default function TopControlBar({
   onSortChange,
 }: TopControlBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sortBtnRef = useRef<HTMLButtonElement>(null);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortPos, setSortPos] = useState<{ top: number; right: number } | null>(null);
+
+  const currentSortLabel =
+    sortOptions.find((o) => o.value === currentSort)?.label ?? "정렬";
+
+  const handleSortToggle = () => {
+    if (!sortOpen) {
+      const rect = sortBtnRef.current?.getBoundingClientRect();
+      if (rect) {
+        setSortPos({
+          top: rect.bottom + 4,
+          right: window.innerWidth - rect.right,
+        });
+      }
+    }
+    setSortOpen((p) => !p);
+  };
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSortOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sortOpen]);
 
   return (
     <div
@@ -47,9 +75,14 @@ export default function TopControlBar({
       style={{ top: "var(--header-area-h, var(--header-h))" }}
     >
       {/* Left spacer (same width as right controls for centering) */}
-      <div className="flex shrink-0 items-center gap-2 pl-4 invisible">
+      <div className="flex shrink-0 items-center gap-2 pl-4 invisible" aria-hidden>
         {showFilter && <span className="p-1"><SlidersHorizontal size={18} /></span>}
-        {showSort && <span className="pr-5 text-[13px]">정렬</span>}
+        {showSort && (
+          <span className="flex items-center gap-1 border border-black px-2.5 py-1 text-[13px]">
+            {currentSortLabel}
+            <ChevronDown size={14} />
+          </span>
+        )}
       </div>
 
       {/* Tabs - center aligned */}
@@ -96,23 +129,62 @@ export default function TopControlBar({
 
         {/* Sort dropdown */}
         {showSort && sortOptions.length > 0 && (
-          <div className="relative">
-            <select
-              value={currentSort}
-              onChange={(e) => onSortChange?.(e.target.value)}
-              className="appearance-none bg-transparent pr-5 text-[13px] text-gray-600 focus:outline-none"
+          <>
+            <button
+              ref={sortBtnRef}
+              type="button"
+              onClick={handleSortToggle}
+              aria-haspopup="listbox"
+              aria-expanded={sortOpen}
+              className={`flex items-center gap-1 border border-black px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors ${
+                sortOpen ? "bg-black text-white" : "bg-white text-black hover:bg-[var(--bg-off)]"
+              }`}
             >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-          </div>
+              <span>{currentSortLabel}</span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-150 ${sortOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {sortOpen && sortPos && (
+              <>
+                <div
+                  className="fixed inset-0 z-[190]"
+                  onClick={() => setSortOpen(false)}
+                />
+                <div
+                  role="listbox"
+                  className="fixed z-[191] flex flex-col bg-white border border-black min-w-[120px]"
+                  style={{ top: sortPos.top, right: sortPos.right }}
+                >
+                  {sortOptions.map((option) => {
+                    const selected = option.value === currentSort;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => {
+                          onSortChange?.(option.value);
+                          setSortOpen(false);
+                        }}
+                        className={`flex items-center justify-between gap-3 px-3 py-2.5 text-[13px] text-left whitespace-nowrap transition-colors ${
+                          selected
+                            ? "bg-black text-white"
+                            : "text-black hover:bg-[var(--bg-off)]"
+                        }`}
+                      >
+                        <span>{option.label}</span>
+                        {selected && <Check size={14} strokeWidth={1.5} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

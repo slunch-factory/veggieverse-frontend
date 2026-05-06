@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { CartItem } from "@/contexts/CartContext";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -76,16 +77,32 @@ export function OrderClient() {
   const searchParams = useSearchParams();
   const { items } = useCart();
 
+  const isDirectBuy = searchParams.get("directBuy") === "true";
+
+  const [directBuyItem] = useState<CartItem | null>(() => {
+    if (!isDirectBuy || typeof window === "undefined") return null;
+    const stored = sessionStorage.getItem("directBuyItem");
+    if (!stored) return null;
+    try {
+      const item = JSON.parse(stored);
+      sessionStorage.removeItem("directBuyItem");
+      return item;
+    } catch {
+      return null;
+    }
+  });
+
   const selectedIds = useMemo(() => {
+    if (isDirectBuy) return new Set<number>();
     const raw = searchParams.get("items");
     if (!raw) return new Set<number>();
     return new Set(raw.split(",").map(Number).filter(Boolean));
-  }, [searchParams]);
+  }, [searchParams, isDirectBuy]);
 
-  const orderItems = useMemo(
-    () => items.filter((i) => selectedIds.has(i.productId)),
-    [items, selectedIds],
-  );
+  const orderItems = useMemo(() => {
+    if (isDirectBuy) return directBuyItem ? [directBuyItem] : [];
+    return items.filter((i) => selectedIds.has(i.productId));
+  }, [isDirectBuy, directBuyItem, items, selectedIds]);
 
   const subtotal = orderItems.reduce((s, i) => s + i.discountedPrice * i.quantity, 0);
   const shippingFee =

@@ -2,9 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft } from "lucide-react";
+import Link from "next/link";
 import {
-  clearOrder,
+  ChevronLeft,
+  Check,
+  User,
+  MapPin,
+  CreditCard,
+  ShieldCheck,
+} from "lucide-react";
+import {
   getOrderSnapshot,
   getServerOrderSnapshot,
   subscribeOrderStore,
@@ -13,7 +20,6 @@ import { getCustomedPlan, type CustomPlanResponse } from "@/lib/api/subscription
 import { getUserProfile } from "@/lib/api/user";
 import {
   postPayment,
-  mapDeliveryCycle,
   FIXED_USER_ID,
   PAYMENT_RESULT_KEY,
 } from "@/lib/api/payment";
@@ -21,25 +27,20 @@ import { OrderSummaryCard } from "./OrderSummaryCard";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 
 interface FormState {
-  // 주문자 정보
   customerName: string;
   customerPhone: string;
   customerEmail: string;
   customerPostalCode: string;
   customerAddress: string;
   customerAddressDetail: string;
-  // 배송지
   sameAsCustomer: boolean;
   recipientName: string;
   recipientPhone: string;
   recipientPostalCode: string;
   recipientAddress: string;
   recipientAddressDetail: string;
-  // 배송 메세지
   deliveryNote: string;
-  // 결제
   paymentMethod: "card" | "toss";
-  // 약관
   agreeOrder: boolean;
   agreePrivacy: boolean;
   agreeThirdParty: boolean;
@@ -90,6 +91,7 @@ export function OrderClient() {
   const [postcodeTarget, setPostcodeTarget] = useState<"recipient" | null>(null);
   const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
   const [confirmedPlan, setConfirmedPlan] = useState<CustomPlanResponse | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (order === null || Object.keys(order.mealPlan).length === 0) {
@@ -160,7 +162,8 @@ export function OrderClient() {
   }, [form, order]);
 
   const handleSubmit = useCallback(async () => {
-    if (!order || !canSubmit) return;
+    if (!order || !canSubmit || submitting) return;
+    setSubmitting(true);
 
     const planId = sessionStorage.getItem("veggieverse-plan-id") ?? "";
 
@@ -181,16 +184,16 @@ export function OrderClient() {
       detail: toStr(rawAddr.detail),
     };
 
-    const deliveryCycle = "WEEKLY";
-
     const result = await postPayment({
       userId: FIXED_USER_ID,
       planId,
       subscriptionStartDate: toDateStr(startD),
       subscriptionEndDate: toDateStr(endD),
-      deliveryCycle,
+      deliveryCycle: "WEEKLY",
       deliveryAddress: addr,
     });
+
+    setSubmitting(false);
 
     if (!result) {
       alert("결제 중 오류가 발생했습니다. 다시 시도해 주세요.");
@@ -199,12 +202,17 @@ export function OrderClient() {
 
     sessionStorage.setItem(PAYMENT_RESULT_KEY, JSON.stringify(result));
     router.push("/subscribe/order/complete");
-  }, [order, canSubmit, form, router]);
+  }, [order, canSubmit, submitting, form, router]);
 
   if (!order) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-[13px] text-gray-400">
-        주문 정보를 불러오는 중...
+      <div
+        className="min-h-[60vh] flex items-center justify-center"
+        style={{ background: "var(--bg-pale)" }}
+      >
+        <p className="t-small" style={{ color: "var(--ink-light)" }}>
+          주문 정보를 불러오는 중...
+        </p>
       </div>
     );
   }
@@ -215,196 +223,199 @@ export function OrderClient() {
         isOpen={postcodeTarget !== null}
         onClose={() => setPostcodeTarget(null)}
         onSelect={({ postalCode, address }) => {
-          update("recipientPostalCode", postalCode);
-          update("recipientAddress", address);
-          update("recipientAddressDetail", "");
+          setForm((prev) => ({
+            ...prev,
+            recipientPostalCode: postalCode,
+            recipientAddress: address,
+            recipientAddressDetail: "",
+          }));
+          setPostcodeTarget(null);
         }}
       />
 
-      <div className="bg-white min-h-screen pb-24 lg:pb-8">
-        <div className="max-w-[1280px] mx-auto lg:px-6 lg:pt-6">
-          {/* 헤더 */}
-          <header className="flex items-center px-5 py-4 lg:px-6 lg:py-0 lg:mb-5 bg-white lg:bg-transparent border-b border-black lg:border-b-0">
-            <button
-              type="button"
-              onClick={() => router.push("/subscribe")}
-              className="inline-flex items-center gap-1.5 bg-transparent text-gray-600 hover:text-black cursor-pointer text-[12px] lg:text-[13px] leading-normal"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>구독 식단으로 돌아가기</span>
-            </button>
-          </header>
+      <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
+        <div className="mx-auto max-w-5xl px-4 py-6">
+          <Link
+            href="/subscribe"
+            className="inline-flex items-center gap-1 t-small mb-6"
+            style={{ color: "var(--ink-light)" }}
+          >
+            <ChevronLeft size={16} />
+            구독 식단으로 돌아가기
+          </Link>
 
-          <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:gap-6">
+          <h1 className="t-h2 mb-8" style={{ color: "var(--ink)" }}>주문·결제</h1>
+
+          <div className="flex flex-col lg:flex-row gap-8">
             {/* 좌: 폼 */}
-            <div className="flex flex-col">
+            <div className="flex-1 flex flex-col gap-5">
 
               {/* 주문자 정보 */}
-              <FormSection title="주문자 정보">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <FormField label="이름" required>
-                    <TextInput
+              <FormSection
+                icon={<User size={16} strokeWidth={1.5} />}
+                title="주문자 정보"
+              >
+                <div className="flex flex-col md:flex-row gap-4">
+                  <FormField label="이름" required className="flex-1">
+                    <input
                       value={form.customerName}
-                      onChange={(v) => update("customerName", v)}
+                      onChange={(e) => update("customerName", e.target.value)}
                       placeholder="홍길동"
+                      className="order-input"
                     />
                   </FormField>
-                  <FormField label="휴대전화" required>
-                    <TextInput
+                  <FormField label="휴대전화" required className="flex-1">
+                    <input
                       type="tel"
                       value={form.customerPhone}
-                      onChange={(v) => update("customerPhone", v)}
+                      onChange={(e) => update("customerPhone", e.target.value)}
                       placeholder="010-0000-0000"
+                      className="order-input"
                     />
                   </FormField>
                 </div>
                 <FormField label="이메일" required>
-                  <TextInput
+                  <input
                     type="email"
                     value={form.customerEmail}
-                    onChange={(v) => update("customerEmail", v)}
+                    onChange={(e) => update("customerEmail", e.target.value)}
                     placeholder="order@example.com"
+                    className="order-input"
                   />
                 </FormField>
                 <FormField label="주소">
-                  <div className="flex gap-2">
-                    <TextInput
-                      value={form.customerPostalCode}
-                      onChange={() => {}}
-                      placeholder="우편번호"
-                      className="w-[120px]"
-                      readOnly
-                    />
-                  </div>
-                  <TextInput
-                    value={form.customerAddress}
-                    onChange={() => {}}
-                    placeholder="기본 주소"
+                  <input
+                    value={form.customerPostalCode}
                     readOnly
+                    placeholder="우편번호"
+                    className="order-input"
+                    style={{ width: 120, flexShrink: 0 }}
                   />
-                  <TextInput
-                    value={form.customerAddressDetail}
-                    onChange={() => {}}
-                    placeholder="상세 주소 (동/호수)"
+                  <input
+                    value={form.customerAddress}
                     readOnly
+                    placeholder="기본 주소"
+                    className="order-input mt-2"
+                  />
+                  <input
+                    value={form.customerAddressDetail}
+                    readOnly
+                    placeholder="상세 주소 (동·호수)"
+                    className="order-input mt-2"
                   />
                 </FormField>
               </FormSection>
 
-              {/* 배송지 */}
-              <FormSection title="배송지">
-                {/* 탭 버튼 */}
-                <div className="flex border border-black overflow-hidden mb-1">
-                  {(
-                    [
-                      { value: true, label: "주문자 정보와 동일" },
-                      { value: false, label: "새로운 배송지" },
-                    ] as const
-                  ).map(({ value, label }, idx) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => update("sameAsCustomer", value)}
-                      className={`flex-1 h-10 text-[13px] cursor-pointer transition-colors select-none ${
-                        idx === 0 ? "" : "border-l border-black"
-                      } ${
-                        form.sameAsCustomer === value
-                          ? "bg-black text-white"
-                          : "bg-white text-black hover:bg-gray-50"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* 새로운 배송지 선택 시에만 필드 노출 */}
+              {/* 배송지 정보 */}
+              <FormSection
+                icon={<MapPin size={16} strokeWidth={1.5} />}
+                title="배송지 정보"
+                headerRight={
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={form.sameAsCustomer}
+                      onChange={(e) => update("sameAsCustomer", e.target.checked)}
+                      className="sr-only"
+                    />
+                    <StoreCheckBox checked={form.sameAsCustomer} size={15} />
+                    <span className="t-caption" style={{ color: "var(--ink)" }}>
+                      주문자 정보와 동일
+                    </span>
+                  </label>
+                }
+              >
                 {!form.sameAsCustomer && (
-                  <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <FormField label="받으시는 분" required>
-                        <TextInput
+                  <>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <FormField label="받으시는 분" required className="flex-1">
+                        <input
                           value={form.recipientName}
-                          onChange={(v) => update("recipientName", v)}
+                          onChange={(e) => update("recipientName", e.target.value)}
                           placeholder="받으시는 분 이름"
+                          className="order-input"
                         />
                       </FormField>
-                      <FormField label="휴대전화" required>
-                        <TextInput
+                      <FormField label="휴대전화" required className="flex-1">
+                        <input
                           type="tel"
                           value={form.recipientPhone}
-                          onChange={(v) => update("recipientPhone", v)}
+                          onChange={(e) => update("recipientPhone", e.target.value)}
                           placeholder="010-0000-0000"
+                          className="order-input"
                         />
                       </FormField>
                     </div>
-
                     <FormField label="주소" required>
                       <div className="flex gap-2">
-                        <TextInput
+                        <input
                           value={form.recipientPostalCode}
-                          onChange={() => {}}
-                          placeholder="우편번호"
-                          className="w-[120px]"
                           readOnly
+                          placeholder="우편번호"
+                          className="order-input"
+                          style={{ width: 120, flexShrink: 0 }}
                         />
                         <button
                           type="button"
                           onClick={() => setPostcodeTarget("recipient")}
-                          className="h-10 px-3 text-[12px] border border-black bg-white hover:bg-gray-50 cursor-pointer"
+                          className="btn btn-ghost btn-sm flex-shrink-0"
+                          style={{ border: "1px solid var(--neutral-stone)" }}
                         >
                           주소 검색
                         </button>
                       </div>
-                      <TextInput
+                      <input
                         value={form.recipientAddress}
-                        onChange={() => {}}
-                        placeholder="기본 주소"
                         readOnly
+                        placeholder="기본 주소"
+                        className="order-input mt-2"
                       />
-                      <TextInput
+                      <input
                         value={form.recipientAddressDetail}
-                        onChange={(v) => update("recipientAddressDetail", v)}
-                        placeholder="상세 주소 (동/호수)"
+                        onChange={(e) => update("recipientAddressDetail", e.target.value)}
+                        placeholder="상세 주소 (동·호수)"
+                        className="order-input mt-2"
                       />
                     </FormField>
-
-                    <FormField label="배송 메세지">
-                      <select
-                        value={deliveryNoteCustom ? "기타" : form.deliveryNote}
-                        onChange={(e) => {
-                          if (e.target.value === "기타") {
-                            setDeliveryNoteCustom(true);
-                            update("deliveryNote", "");
-                          } else {
-                            setDeliveryNoteCustom(false);
-                            update("deliveryNote", e.target.value);
-                          }
-                        }}
-                        className="h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none w-full cursor-pointer"
-                      >
-                        <option value="">배송 메세지를 선택해 주세요</option>
-                        {DELIVERY_NOTE_PRESETS.map((preset) => (
-                          <option key={preset} value={preset}>{preset}</option>
-                        ))}
-                        <option value="기타">기타 (직접 입력)</option>
-                      </select>
-                      {deliveryNoteCustom && (
-                        <TextInput
-                          value={form.deliveryNote}
-                          onChange={(v) => update("deliveryNote", v)}
-                          placeholder="배송 메세지를 입력해 주세요"
-                          className="mt-2"
-                        />
-                      )}
-                    </FormField>
-                  </div>
+                  </>
                 )}
+                <FormField label="배송 메세지">
+                  <select
+                    value={deliveryNoteCustom ? "기타" : form.deliveryNote}
+                    onChange={(e) => {
+                      if (e.target.value === "기타") {
+                        setDeliveryNoteCustom(true);
+                        update("deliveryNote", "");
+                      } else {
+                        setDeliveryNoteCustom(false);
+                        update("deliveryNote", e.target.value);
+                      }
+                    }}
+                    className="order-input order-select"
+                  >
+                    <option value="">배송 메세지를 선택해 주세요</option>
+                    {DELIVERY_NOTE_PRESETS.map((preset) => (
+                      <option key={preset} value={preset}>{preset}</option>
+                    ))}
+                    <option value="기타">기타 (직접 입력)</option>
+                  </select>
+                  {deliveryNoteCustom && (
+                    <input
+                      value={form.deliveryNote}
+                      onChange={(e) => update("deliveryNote", e.target.value)}
+                      placeholder="배송 메세지를 입력해 주세요"
+                      className="order-input mt-2"
+                    />
+                  )}
+                </FormField>
               </FormSection>
 
               {/* 결제 수단 */}
-              <FormSection title="결제 수단">
-                <div className="grid grid-cols-2 gap-2">
+              <FormSection
+                icon={<CreditCard size={16} strokeWidth={1.5} />}
+                title="결제 수단"
+              >
+                <div className="grid grid-cols-2 gap-3">
                   {PAYMENT_METHODS.map((opt) => {
                     const active = form.paymentMethod === opt.value;
                     return (
@@ -413,11 +424,15 @@ export function OrderClient() {
                         type="button"
                         onClick={() => update("paymentMethod", opt.value)}
                         aria-pressed={active}
-                        className={`h-12 text-[13px] border transition-colors cursor-pointer ${
-                          active
-                            ? "border-[#8C451D] bg-[#FDEEE8] text-[#8C451D]"
-                            : "border-gray-300 bg-white text-gray-700 hover:border-black"
-                        }`}
+                        className="t-small transition-colors cursor-pointer"
+                        style={{
+                          height: 48,
+                          border: `1px solid ${active ? "var(--ink)" : "var(--neutral-stone)"}`,
+                          borderRadius: "var(--r-btn)",
+                          background: active ? "var(--point)" : "var(--bg-white)",
+                          color: "var(--ink)",
+                          fontWeight: active ? 600 : 400,
+                        }}
                       >
                         {opt.label}
                       </button>
@@ -426,73 +441,148 @@ export function OrderClient() {
                 </div>
               </FormSection>
 
-              {/* 약관 */}
-              <FormSection title="이용약관 동의">
-                <label className="flex items-center gap-2 cursor-pointer select-none pb-2 border-b border-gray-200 mb-2">
+              {/* 이용약관 동의 */}
+              <FormSection
+                icon={<ShieldCheck size={16} strokeWidth={1.5} />}
+                title="이용약관 동의"
+              >
+                <label
+                  className="flex items-center gap-2 cursor-pointer select-none pb-3"
+                  style={{ borderBottom: "1px solid var(--neutral-stone)" }}
+                >
                   <input
                     type="checkbox"
                     checked={allTermsChecked}
                     onChange={(e) => toggleAllTerms(e.target.checked)}
                     className="sr-only"
                   />
-                  <CheckBox checked={allTermsChecked} />
-                  <span className="text-[14px] text-black">전체 동의</span>
+                  <StoreCheckBox checked={allTermsChecked} />
+                  <span className="t-body" style={{ color: "var(--ink)", fontWeight: 600 }}>
+                    전체 동의
+                  </span>
                 </label>
-                <TermsRow
-                  checked={form.agreeOrder}
-                  onChange={(v) => update("agreeOrder", v)}
-                  label="주문 상품 정보 확인"
-                  required
-                />
-                <TermsRow
-                  checked={form.agreePrivacy}
-                  onChange={(v) => update("agreePrivacy", v)}
-                  label="개인정보 수집·이용 동의"
-                  required
-                />
-                <TermsRow
-                  checked={form.agreeThirdParty}
-                  onChange={(v) => update("agreeThirdParty", v)}
-                  label="개인정보 제3자 제공 동의"
-                  required={order.purchaseType === "subscription"}
-                />
-                <TermsRow
-                  checked={form.agreeMarketing}
-                  onChange={(v) => update("agreeMarketing", v)}
-                  label="마케팅 정보 수신 동의"
-                />
+                <div className="flex flex-col gap-0.5 mt-1">
+                  <TermsRow
+                    checked={form.agreeOrder}
+                    onChange={(v) => update("agreeOrder", v)}
+                    label="주문 상품 정보 확인 및 결제 진행 동의"
+                    required
+                  />
+                  <TermsRow
+                    checked={form.agreePrivacy}
+                    onChange={(v) => update("agreePrivacy", v)}
+                    label="개인정보 수집·이용 동의"
+                    required
+                  />
+                  <TermsRow
+                    checked={form.agreeThirdParty}
+                    onChange={(v) => update("agreeThirdParty", v)}
+                    label="개인정보 제3자 제공 동의"
+                    required={order.purchaseType === "subscription"}
+                  />
+                  <TermsRow
+                    checked={form.agreeMarketing}
+                    onChange={(v) => update("agreeMarketing", v)}
+                    label="마케팅 정보 수신 동의"
+                  />
+                </div>
               </FormSection>
             </div>
 
-            {/* 우: 요약 (데스크탑) */}
-            <div className="hidden lg:block">
-              <div className="sticky top-6">
-                <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} confirmedPlan={confirmedPlan} />
+            {/* 우: 요약 */}
+            <div className="lg:w-80 flex-shrink-0">
+              <div className="sticky" style={{ top: "calc(var(--header-area-h) + 16px)" }}>
+                <OrderSummaryCard
+                  order={order}
+                  canSubmit={canSubmit && !submitting}
+                  onSubmit={handleSubmit}
+                  confirmedPlan={confirmedPlan}
+                  submitting={submitting}
+                />
               </div>
-            </div>
-
-            {/* 모바일: 요약 카드 하단 */}
-            <div className="lg:hidden px-4 pt-4">
-              <OrderSummaryCard order={order} canSubmit={canSubmit} onSubmit={handleSubmit} confirmedPlan={confirmedPlan} />
             </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        .order-input {
+          width: 100%;
+          height: 42px;
+          padding: 0 12px;
+          font-size: 13px;
+          color: var(--ink);
+          background: var(--bg-white);
+          border: 1px solid var(--neutral-stone);
+          border-radius: var(--r-btn);
+          outline: none;
+          transition: border-color 0.15s, background 0.15s;
+        }
+        .order-input:focus {
+          border-color: var(--ink);
+        }
+        .order-input::placeholder {
+          color: var(--neutral-stone);
+        }
+        .order-input:disabled {
+          background: var(--bg-off);
+          color: var(--ink-light);
+          cursor: not-allowed;
+        }
+        .order-input[readonly] {
+          background: var(--bg-white);
+          cursor: default;
+        }
+        .order-input[readonly]:disabled {
+          background: var(--bg-off);
+          color: var(--ink-light);
+          cursor: not-allowed;
+        }
+        .order-select {
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e5035' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+          padding-right: 32px;
+          cursor: pointer;
+        }
+      `}</style>
     </>
   );
 }
 
-/* ─── 보조 컴포넌트들 ─── */
+/* ─── 보조 컴포넌트 ─── */
 
-function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FormSection({
+  icon,
+  title,
+  headerRight,
+  children,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="bg-white border-b border-black lg:border lg:border-black lg:mb-4">
-      <header className="px-5 lg:px-6 pt-5 pb-4 border-b border-black">
-        <h2 className="text-[16px] lg:text-[18px] leading-normal tracking-tight text-black">
-          {title}
-        </h2>
+    <section
+      style={{
+        background: "var(--bg-white)",
+        border: "1px solid var(--ink)",
+        borderRadius: "var(--r-btn)",
+      }}
+    >
+      <header
+        className="px-5 py-4 flex items-center justify-between"
+        style={{ borderBottom: "1px solid var(--neutral-stone)" }}
+      >
+        <div className="flex items-center gap-2" style={{ color: "var(--ink)" }}>
+          {icon}
+          <h2 className="t-h3" style={{ color: "var(--ink)" }}>{title}</h2>
+        </div>
+        {headerRight}
       </header>
-      <div className="px-5 lg:px-6 py-4 flex flex-col gap-3">{children}</div>
+      <div className="px-5 py-5 flex flex-col gap-4">{children}</div>
     </section>
   );
 }
@@ -500,65 +590,40 @@ function FormSection({ title, children }: { title: string; children: React.React
 function FormField({
   label,
   required,
+  className = "",
   children,
 }: {
   label: string;
   required?: boolean;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] text-gray-500">
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <span className="t-small" style={{ color: "var(--ink)" }}>
         {label}
-        {required && <span className="ml-1 text-[#E57373]">*</span>}
-      </label>
+        {required && <span className="ml-1" style={{ color: "var(--alert-red)" }}>*</span>}
+      </span>
       {children}
     </div>
   );
 }
 
-function TextInput({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  className = "",
-  readOnly = false,
-  disabled = false,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: "text" | "email" | "tel";
-  className?: string;
-  readOnly?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      readOnly={readOnly}
-      disabled={disabled}
-      className={`h-10 px-3 border border-gray-300 text-[14px] bg-white focus:border-black focus:outline-none
-        ${readOnly ? "bg-gray-50 cursor-default" : ""}
-        ${disabled ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""}
-        ${className}`}
-    />
-  );
-}
-
-function CheckBox({ checked }: { checked: boolean }) {
+function StoreCheckBox({ checked, size = 18 }: { checked: boolean; size?: number }) {
   return (
     <span
-      className={`inline-flex w-4 h-4 items-center justify-center border ${
-        checked ? "bg-[#8C451D] border-[#8C451D]" : "bg-white border-gray-300"
-      }`}
+      className="inline-flex flex-shrink-0 items-center justify-center"
+      style={{
+        width: size,
+        height: size,
+        border: "1px solid var(--ink)",
+        borderRadius: 4,
+        background: checked ? "var(--point)" : "var(--bg-white)",
+        transition: "background 0.12s",
+      }}
       aria-hidden
     >
-      {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+      {checked && <Check size={size * 0.65} strokeWidth={2.5} style={{ color: "var(--ink)" }} />}
     </span>
   );
 }
@@ -575,17 +640,17 @@ function TermsRow({
   required?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer select-none py-0.5">
+    <label className="flex items-center gap-2 cursor-pointer select-none py-1">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="sr-only"
       />
-      <CheckBox checked={checked} />
-      <span className="text-[13px] text-gray-700">
+      <StoreCheckBox checked={checked} />
+      <span className="t-small" style={{ color: "var(--ink)" }}>
         {label}{" "}
-        <span className={required ? "text-[#E57373]" : "text-gray-400"}>
+        <span style={{ color: required ? "var(--alert-red)" : "var(--neutral-stone)" }}>
           ({required ? "필수" : "선택"})
         </span>
       </span>

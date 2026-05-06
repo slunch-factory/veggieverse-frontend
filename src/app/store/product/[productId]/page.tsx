@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -186,6 +186,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
+  const router = useRouter();
   const product = PRODUCTS.find((p) => p.id === Number(productId));
 
   /* image gallery */
@@ -278,6 +279,24 @@ export default function ProductDetailPage() {
 
   const discount = discountRate(product.originalPrice, product.price);
   const totalPrice = product.price * quantity;
+
+  const handleBuyNow = useCallback(() => {
+    sessionStorage.setItem(
+      "directBuyItem",
+      JSON.stringify({
+        productId: product.id,
+        slug: `product/${product.id}`,
+        name: product.name,
+        tagline: product.description,
+        price: product.originalPrice,
+        discountRate: discount,
+        discountedPrice: product.price,
+        imageUrl: images[0] ?? "",
+        quantity,
+      }),
+    );
+    router.push("/order?directBuy=true");
+  }, [product, discount, images, quantity, router]);
 
   /* ================================================================ */
   return (
@@ -465,6 +484,7 @@ export default function ProductDetailPage() {
             <button
               className="btn btn-dark flex-1"
               disabled={product.soldOut}
+              onClick={handleBuyNow}
             >
               {product.soldOut ? "품절" : "바로구매"}
             </button>
@@ -614,7 +634,7 @@ export default function ProductDetailPage() {
             <ShoppingCart size={18} />
             장바구니
           </button>
-          <button className="btn btn-dark flex-1" disabled={product.soldOut}>
+          <button className="btn btn-dark flex-1" disabled={product.soldOut} onClick={handleBuyNow}>
             {product.soldOut ? "품절" : "바로구매"}
           </button>
         </div>

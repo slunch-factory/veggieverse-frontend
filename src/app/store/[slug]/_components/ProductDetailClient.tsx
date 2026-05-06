@@ -76,6 +76,24 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
       setCartLoading(false);
     }
   }
+
+  function handleBuyNow() {
+    sessionStorage.setItem(
+      "directBuyItem",
+      JSON.stringify({
+        productId: product.productId,
+        slug: product.slug,
+        name: product.name,
+        tagline: product.tagline,
+        price: product.price,
+        discountRate: product.discountRate,
+        discountedPrice: product.discountedPrice,
+        imageUrl: product.images.main.url,
+        quantity,
+      }),
+    );
+    router.push("/order?directBuy=true");
+  }
   const [activeTab, setActiveTab] = useState<TabKey>("review");
   const [tabSticky, setTabSticky] = useState(false);
 
@@ -311,7 +329,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
               <ShoppingCart size={18} />
               장바구니
             </button>
-            <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-dark flex-1">
+            <button onClick={handleBuyNow} className="btn btn-dark flex-1">
               바로구매
             </button>
           </div>
@@ -414,8 +432,8 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
             <ShoppingCart size={18} />
             {cartLoading ? "담는 중..." : "장바구니"}
           </button>
-          <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-dark flex-1">
-            {cartLoading ? "담는 중..." : "바로구매"}
+          <button onClick={handleBuyNow} className="btn btn-dark flex-1">
+            바로구매
           </button>
         </div>
       </div>

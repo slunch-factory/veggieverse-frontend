@@ -71,15 +71,9 @@ export function Header({ showTopBanner = false }: HeaderProps) {
 
             {/* User Profile */}
             <Link
-              href={isLoggedIn ? "/mypage" : "#"}
-              onClick={(e) => {
-                if (!isLoggedIn) {
-                  e.preventDefault();
-                  setIsLoginModalOpen(true);
-                }
-              }}
+              href="/mypage"
               className="w-10 h-10 flex items-center justify-center"
-              aria-label={isLoggedIn ? "마이페이지" : "로그인"}
+              aria-label="마이페이지"
             >
               {isLoggedIn && spiritImageUrl ? (
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-black">

@@ -126,8 +126,122 @@ export function mapToMenuData(p: ProductItem): MenuData {
   };
 }
 
+export interface OrderHistoryProduct {
+  name: string;
+  quantity: number;
+}
+
+export interface OrderHistoryItem {
+  orderId: number;
+  orderNumber: string;
+  startDate: string;
+  endDate: string;
+  products: OrderHistoryProduct[];
+  deliveryCycle: string;
+  orderDate: string;
+  finalAmount: number;
+}
+
+export interface OrderHistoryResponse {
+  content: OrderHistoryItem[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
+export async function getOrderHistory(
+  userId: number,
+  options?: { page?: number; size?: number },
+): Promise<OrderHistoryResponse | null> {
+  const params = new URLSearchParams({ userId: String(userId) });
+  if (options?.page !== undefined) params.set("page", String(options.page));
+  if (options?.size !== undefined) params.set("size", String(options.size));
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/users/orderHistory?${params.toString()}`;
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      console.error("[getOrderHistory] HTTP error:", res.status, res.statusText);
+      return null;
+    }
+    const data: OrderHistoryResponse = await res.json();
+    console.log(
+      "%c[getOrderHistory] ✅ 주문 내역 조회 성공",
+      "color: #4A7F52; font-weight: bold;",
+      data,
+    );
+    return data;
+  } catch (err) {
+    console.error("[getOrderHistory] fetch failed:", err);
+    return null;
+  }
+}
+
+export interface OrderDetailDeliveryAddress {
+  zipCode: string;
+  street: string;
+  detail: string;
+}
+
+export interface OrderDetailProduct {
+  name: string;
+  price: number;
+  quantity: number;
+  imageUrl: string | null;
+}
+
+export interface OrderDetailResponse {
+  orderId: number;
+  orderNumber: string;
+  orderDate: string;
+  startDate: string;
+  endDate: string;
+  deliveryCycle: string;
+  deliveryAddress: OrderDetailDeliveryAddress;
+  originalAmount: number;
+  shippingFee: number;
+  discountInfo: {
+    discountAmount: number | null;
+    couponCode: string | null;
+    couponName: string | null;
+  };
+  finalAmount: number;
+  products: OrderDetailProduct[];
+}
+
+export async function getOrderDetail(
+  orderId: number | string,
+  userId: number,
+): Promise<OrderDetailResponse | null> {
+  const params = new URLSearchParams({ userId: String(userId) });
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/users/orderHistory/${encodeURIComponent(String(orderId))}?${params.toString()}`;
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      console.error("[getOrderDetail] HTTP error:", res.status, res.statusText);
+      return null;
+    }
+    const data: OrderDetailResponse = await res.json();
+    console.log(
+      "%c[getOrderDetail] ✅ 주문 상세 조회 성공",
+      "color: #4A7F52; font-weight: bold;",
+      data,
+    );
+    return data;
+  } catch (err) {
+    console.error("[getOrderDetail] fetch failed:", err);
+    return null;
+  }
+}
+
 export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/plan`;
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/plan`;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -146,7 +260,7 @@ export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | 
 }
 
 export async function getCustomedPlan(planId: string): Promise<CustomPlanResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/customedPlan?planId=${encodeURIComponent(planId)}`;
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/customedPlan?planId=${encodeURIComponent(planId)}`;
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -169,7 +283,7 @@ export async function getCustomedPlan(planId: string): Promise<CustomPlanRespons
 }
 
 export async function getMenus(): Promise<MenuData[]> {
-  const url = `${API_BASE}/api/v1/veggieverse/products`;
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/products`;
   try {
     const res = await fetch(url, {
       cache: "no-store",
@@ -192,7 +306,7 @@ export async function getMenus(): Promise<MenuData[]> {
 }
 
 export async function getSlotRecommend(): Promise<MenuData[]> {
-  const url = `${API_BASE}/api/v1/veggieverse/products`;
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/products`;
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/json" },

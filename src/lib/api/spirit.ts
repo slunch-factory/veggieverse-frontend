@@ -36,7 +36,7 @@ function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
   };
 }
 
-/** POST /api/v1/veggeiverse/autoPlan — 설문 기반 추천 메뉴 조회 */
+/** POST /api/v1/veggieverse/autoPlan — 설문 기반 추천 메뉴 조회 */
 export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
   const body = buildAutoPlanBody(answers);
   if (body.nutritionGoals.length < 2) {
@@ -47,7 +47,7 @@ export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
   }
   console.log("[getAutoPlan] request:", body);
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggeiverse/autoPlan`, {
+    const res = await fetch(`${API_BASE}/api/v1/veggieverse/autoPlan`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
@@ -66,11 +66,11 @@ export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
   }
 }
 
-/** POST /api/v1/veggieverse/plan — 선택한 상품 목록으로 플랜 저장 */
+/** POST /api/v1/veggieverse/subscription/plan — 선택한 상품 목록으로 플랜 저장 */
 export async function savePlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
   console.log("[savePlan] request:", { items });
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggieverse/plan`, {
+    const res = await fetch(`${API_BASE}/api/v1/veggieverse/subscription/plan`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ items }),
