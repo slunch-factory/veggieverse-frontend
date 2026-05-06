@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { User, Menu } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { useCart } from "@/contexts/CartContext";
 import { NavigationDrawer } from "./NavigationDrawer";
 import { LoginModal } from "../modals/LoginModal";
 import { SearchModal } from "../modals/SearchModal";
@@ -15,6 +16,7 @@ interface HeaderProps {
 
 export function Header({ showTopBanner = false }: HeaderProps) {
   const { user, isLoggedIn } = useUser();
+  const { totalCount } = useCart();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -64,20 +66,14 @@ export function Header({ showTopBanner = false }: HeaderProps) {
               className="h-10 flex items-center justify-center px-1 text-sm text-black"
               aria-label="장바구니"
             >
-              (0)
+              ({totalCount})
             </Link>
 
             {/* User Profile */}
             <Link
-              href={isLoggedIn ? "/mypage" : "#"}
-              onClick={(e) => {
-                if (!isLoggedIn) {
-                  e.preventDefault();
-                  setIsLoginModalOpen(true);
-                }
-              }}
+              href="/mypage"
               className="w-10 h-10 flex items-center justify-center"
-              aria-label={isLoggedIn ? "마이페이지" : "로그인"}
+              aria-label="마이페이지"
             >
               {isLoggedIn && spiritImageUrl ? (
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-black">

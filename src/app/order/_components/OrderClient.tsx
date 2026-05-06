@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { CartItem } from "@/contexts/CartContext";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -11,28 +12,34 @@ import {
   CreditCard,
   ShieldCheck,
 } from "lucide-react";
-import {
-  getOrderSnapshot,
-  getServerOrderSnapshot,
-  subscribeOrderStore,
-} from "../../_data/order";
-import { getCustomedPlan, type CustomPlanResponse } from "@/lib/api/subscription";
-import { getUserProfile } from "@/lib/api/user";
-import {
-  postPayment,
-  FIXED_USER_ID,
-  PAYMENT_RESULT_KEY,
-} from "@/lib/api/payment";
-import { OrderSummaryCard } from "./OrderSummaryCard";
+import { useCart } from "@/contexts/CartContext";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+
+const SHIPPING_FEE = 3500;
+const FREE_SHIPPING_THRESHOLD = 55000;
+
+function formatPrice(n: number) {
+  return n.toLocaleString("ko-KR");
+}
+
+const PAYMENT_METHODS = [
+  { value: "card", label: "신용/체크카드" },
+  { value: "toss", label: "토스" },
+] as const;
+
+type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
+
+const DELIVERY_NOTE_PRESETS = [
+  "문 앞에 놓아주세요",
+  "경비실에 맡겨주세요",
+  "부재 시 연락주세요",
+  "직접 전달해 주세요",
+];
 
 interface FormState {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
-  customerPostalCode: string;
-  customerAddress: string;
-  customerAddressDetail: string;
   sameAsCustomer: boolean;
   recipientName: string;
   recipientPhone: string;
@@ -40,7 +47,7 @@ interface FormState {
   recipientAddress: string;
   recipientAddressDetail: string;
   deliveryNote: string;
-  paymentMethod: "card" | "toss";
+  paymentMethod: PaymentMethod;
   agreeOrder: boolean;
   agreePrivacy: boolean;
   agreeThirdParty: boolean;
@@ -51,10 +58,7 @@ const INITIAL_FORM: FormState = {
   customerName: "",
   customerPhone: "",
   customerEmail: "",
-  customerPostalCode: "",
-  customerAddress: "",
-  customerAddressDetail: "",
-  sameAsCustomer: true,
+  sameAsCustomer: false,
   recipientName: "",
   recipientPhone: "",
   recipientPostalCode: "",
@@ -68,62 +72,61 @@ const INITIAL_FORM: FormState = {
   agreeMarketing: false,
 };
 
-const PAYMENT_METHODS: { value: FormState["paymentMethod"]; label: string }[] = [
-  { value: "card", label: "신용/체크카드" },
-  { value: "toss", label: "토스 페이먼츠" },
-];
-
-const DELIVERY_NOTE_PRESETS = [
-  "문 앞에 놓아주세요",
-  "경비실에 맡겨주세요",
-  "부재 시 연락주세요",
-  "직접 전달해 주세요",
-];
-
 export function OrderClient() {
   const router = useRouter();
-  const order = useSyncExternalStore(
-    subscribeOrderStore,
-    getOrderSnapshot,
-    getServerOrderSnapshot,
-  );
-  const [form, setForm] = useState<FormState>(INITIAL_FORM);
-  const [postcodeTarget, setPostcodeTarget] = useState<"recipient" | null>(null);
-  const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
-  const [confirmedPlan, setConfirmedPlan] = useState<CustomPlanResponse | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const searchParams = useSearchParams();
+  const { items } = useCart();
 
-  useEffect(() => {
-    if (order === null || Object.keys(order.mealPlan).length === 0) {
-      router.replace("/subscribe");
+  const isDirectBuy = searchParams.get("directBuy") === "true";
+
+  const [directBuyItem] = useState<CartItem | null>(() => {
+    if (!isDirectBuy || typeof window === "undefined") return null;
+    const stored = sessionStorage.getItem("directBuyItem");
+    if (!stored) return null;
+    try {
+      const item = JSON.parse(stored);
+      sessionStorage.removeItem("directBuyItem");
+      return item;
+    } catch {
+      return null;
     }
-  }, [order, router]);
+  });
 
-  useEffect(() => {
-    const planId = sessionStorage.getItem("veggieverse-plan-id");
-    if (!planId) return;
-    getCustomedPlan(planId).then((plan) => {
-      if (plan) setConfirmedPlan(plan);
-    });
-  }, []);
+  const selectedIds = useMemo(() => {
+    if (isDirectBuy) return new Set<number>();
+    const raw = searchParams.get("items");
+    if (!raw) return new Set<number>();
+    return new Set(raw.split(",").map(Number).filter(Boolean));
+  }, [searchParams, isDirectBuy]);
 
-  useEffect(() => {
-    getUserProfile().then((profile) => {
-      if (!profile) return;
-      setForm((prev) => ({
-        ...prev,
-        ...(profile.name && { customerName: profile.name }),
-        ...(profile.phone && { customerPhone: profile.phone }),
-        ...(profile.email && { customerEmail: profile.email }),
-        ...(profile.postalCode && { customerPostalCode: profile.postalCode }),
-        ...(profile.address && { customerAddress: profile.address }),
-        ...(profile.addressDetail && { customerAddressDetail: profile.addressDetail }),
-      }));
-    });
-  }, []);
+  const orderItems = useMemo(() => {
+    if (isDirectBuy) return directBuyItem ? [directBuyItem] : [];
+    return items.filter((i) => selectedIds.has(i.productId));
+  }, [isDirectBuy, directBuyItem, items, selectedIds]);
+
+  const subtotal = orderItems.reduce((s, i) => s + i.discountedPrice * i.quantity, 0);
+  const shippingFee =
+    orderItems.length === 0 ? 0 : subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  const total = subtotal + shippingFee;
+
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [postcodeTarget, setPostcodeTarget] = useState<"recipient" | null>(null);
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleSameAsCustomer = useCallback((checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      sameAsCustomer: checked,
+      ...(checked && {
+        recipientName: prev.customerName,
+        recipientPhone: prev.customerPhone,
+      }),
+    }));
   }, []);
 
   const allTermsChecked =
@@ -140,79 +143,36 @@ export function OrderClient() {
   };
 
   const canSubmit = useMemo(() => {
-    if (!order) return false;
+    if (!form.customerName.trim() || !form.customerPhone.trim() || !form.customerEmail.trim())
+      return false;
     if (
-      !form.customerName.trim() ||
-      !form.customerPhone.trim() ||
-      !form.customerEmail.trim()
-    ) return false;
-    if (!form.sameAsCustomer) {
-      if (
-        !form.recipientName.trim() ||
-        !form.recipientPhone.trim() ||
-        !form.recipientPostalCode.trim() ||
-        !form.recipientAddress.trim()
-      ) return false;
-    }
-    return (
-      form.agreeOrder &&
-      form.agreePrivacy &&
-      (order.purchaseType === "subscription" ? form.agreeThirdParty : true)
-    );
-  }, [form, order]);
+      !form.recipientName.trim() ||
+      !form.recipientPhone.trim() ||
+      !form.recipientPostalCode ||
+      !form.recipientAddress
+    )
+      return false;
+    return form.agreeOrder && form.agreePrivacy;
+  }, [form]);
 
   const handleSubmit = useCallback(async () => {
-    if (!order || !canSubmit || submitting) return;
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
-
-    const planId = sessionStorage.getItem("veggieverse-plan-id") ?? "";
-
-    const startD = new Date(order.startDateISO);
-    const endD = new Date(startD);
-    endD.setDate(startD.getDate() + order.duration * 7 - 1);
-    const toDateStr = (d: Date) => d.toISOString().split("T")[0];
-
-    const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
-
-    const rawAddr = form.sameAsCustomer
-      ? { zipCode: form.customerPostalCode, street: form.customerAddress, detail: form.customerAddressDetail }
-      : { zipCode: form.recipientPostalCode, street: form.recipientAddress, detail: form.recipientAddressDetail };
-
-    const addr = {
-      zipCode: toStr(rawAddr.zipCode),
-      street: toStr(rawAddr.street),
-      detail: toStr(rawAddr.detail),
-    };
-
-    const result = await postPayment({
-      userId: FIXED_USER_ID,
-      planId,
-      subscriptionStartDate: toDateStr(startD),
-      subscriptionEndDate: toDateStr(endD),
-      deliveryCycle: "WEEKLY",
-      deliveryAddress: addr,
-    });
-
+    // TODO: 결제 API 연동
+    await new Promise((r) => setTimeout(r, 800));
     setSubmitting(false);
+    alert("주문이 완료되었습니다!");
+    router.push("/store");
+  }, [canSubmit, submitting, router]);
 
-    if (!result) {
-      alert("결제 중 오류가 발생했습니다. 다시 시도해 주세요.");
-      return;
-    }
-
-    sessionStorage.setItem(PAYMENT_RESULT_KEY, JSON.stringify(result));
-    router.push("/subscribe/order/complete");
-  }, [order, canSubmit, submitting, form, router]);
-
-  if (!order) {
+  if (orderItems.length === 0) {
     return (
       <div
-        className="min-h-[60vh] flex items-center justify-center"
+        className="min-h-screen flex flex-col items-center justify-center gap-6"
         style={{ background: "var(--bg-pale)" }}
       >
-        <p className="t-small" style={{ color: "var(--ink-light)" }}>
-          주문 정보를 불러오는 중...
-        </p>
+        <p className="t-h3" style={{ color: "var(--ink)" }}>주문할 상품이 없습니다</p>
+        <Link href="/cart" className="btn btn-dark btn-md">장바구니로 돌아가기</Link>
       </div>
     );
   }
@@ -236,12 +196,12 @@ export function OrderClient() {
       <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
         <div className="mx-auto max-w-5xl px-4 py-6">
           <Link
-            href="/subscribe"
+            href="/cart"
             className="inline-flex items-center gap-1 t-small mb-6"
             style={{ color: "var(--ink-light)" }}
           >
             <ChevronLeft size={16} />
-            구독 식단으로 돌아가기
+            장바구니
           </Link>
 
           <h1 className="t-h2 mb-8" style={{ color: "var(--ink)" }}>주문·결제</h1>
@@ -249,6 +209,65 @@ export function OrderClient() {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* 좌: 폼 */}
             <div className="flex-1 flex flex-col gap-5">
+
+              {/* 주문 상품 */}
+              <div
+                style={{
+                  background: "var(--bg-white)",
+                  border: "1px solid var(--ink)",
+                  borderRadius: "var(--r-btn)",
+                }}
+              >
+                <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--neutral-stone)" }}>
+                  <p className="t-h3" style={{ color: "var(--ink)" }}>
+                    주문 상품 {orderItems.length}개
+                  </p>
+                </div>
+                <ul>
+                  {orderItems.map((item, idx) => (
+                    <li
+                      key={item.productId}
+                      className="flex gap-3 px-5 py-4"
+                      style={{ borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)" }}
+                    >
+                      <div
+                        className="flex-shrink-0 overflow-hidden"
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: "var(--r-btn)",
+                          background: "var(--bg-off)",
+                          border: "1px solid var(--neutral-stone)",
+                        }}
+                      >
+                        {item.imageUrl && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="t-small truncate" style={{ color: "var(--ink)" }}>{item.name}</p>
+                        {item.tagline && (
+                          <p className="t-caption truncate mt-0.5" style={{ color: "var(--ink-light)" }}>
+                            {item.tagline}
+                          </p>
+                        )}
+                        <p className="t-caption mt-1" style={{ color: "var(--ink-light)" }}>
+                          수량 {item.quantity}개
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        {item.discountRate > 0 && (
+                          <p className="card-orig">{formatPrice(item.price * item.quantity)}원</p>
+                        )}
+                        <p className="t-small" style={{ color: "var(--ink)" }}>
+                          {formatPrice(item.discountedPrice * item.quantity)}원
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               {/* 주문자 정보 */}
               <FormSection
@@ -283,27 +302,6 @@ export function OrderClient() {
                     className="order-input"
                   />
                 </FormField>
-                <FormField label="주소">
-                  <input
-                    value={form.customerPostalCode}
-                    readOnly
-                    placeholder="우편번호"
-                    className="order-input"
-                    style={{ width: 120, flexShrink: 0 }}
-                  />
-                  <input
-                    value={form.customerAddress}
-                    readOnly
-                    placeholder="기본 주소"
-                    className="order-input mt-2"
-                  />
-                  <input
-                    value={form.customerAddressDetail}
-                    readOnly
-                    placeholder="상세 주소 (동·호수)"
-                    className="order-input mt-2"
-                  />
-                </FormField>
               </FormSection>
 
               {/* 배송지 정보 */}
@@ -315,7 +313,7 @@ export function OrderClient() {
                     <input
                       type="checkbox"
                       checked={form.sameAsCustomer}
-                      onChange={(e) => update("sameAsCustomer", e.target.checked)}
+                      onChange={(e) => handleSameAsCustomer(e.target.checked)}
                       className="sr-only"
                     />
                     <StoreCheckBox checked={form.sameAsCustomer} size={15} />
@@ -325,61 +323,63 @@ export function OrderClient() {
                   </label>
                 }
               >
-                {!form.sameAsCustomer && (
-                  <>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <FormField label="받으시는 분" required className="flex-1">
-                        <input
-                          value={form.recipientName}
-                          onChange={(e) => update("recipientName", e.target.value)}
-                          placeholder="받으시는 분 이름"
-                          className="order-input"
-                        />
-                      </FormField>
-                      <FormField label="휴대전화" required className="flex-1">
-                        <input
-                          type="tel"
-                          value={form.recipientPhone}
-                          onChange={(e) => update("recipientPhone", e.target.value)}
-                          placeholder="010-0000-0000"
-                          className="order-input"
-                        />
-                      </FormField>
-                    </div>
-                    <FormField label="주소" required>
-                      <div className="flex gap-2">
-                        <input
-                          value={form.recipientPostalCode}
-                          readOnly
-                          placeholder="우편번호"
-                          className="order-input"
-                          style={{ width: 120, flexShrink: 0 }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setPostcodeTarget("recipient")}
-                          className="btn btn-ghost btn-sm flex-shrink-0"
-                          style={{ border: "1px solid var(--neutral-stone)" }}
-                        >
-                          주소 검색
-                        </button>
-                      </div>
-                      <input
-                        value={form.recipientAddress}
-                        readOnly
-                        placeholder="기본 주소"
-                        className="order-input mt-2"
-                      />
-                      <input
-                        value={form.recipientAddressDetail}
-                        onChange={(e) => update("recipientAddressDetail", e.target.value)}
-                        placeholder="상세 주소 (동·호수)"
-                        className="order-input mt-2"
-                      />
-                    </FormField>
-                  </>
-                )}
-                <FormField label="배송 메세지">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <FormField label="받으시는 분" required className="flex-1">
+                    <input
+                      value={form.recipientName}
+                      onChange={(e) => update("recipientName", e.target.value)}
+                      placeholder="받으시는 분 이름"
+                      disabled={form.sameAsCustomer}
+                      className="order-input"
+                    />
+                  </FormField>
+                  <FormField label="휴대전화" required className="flex-1">
+                    <input
+                      type="tel"
+                      value={form.recipientPhone}
+                      onChange={(e) => update("recipientPhone", e.target.value)}
+                      placeholder="010-0000-0000"
+                      disabled={form.sameAsCustomer}
+                      className="order-input"
+                    />
+                  </FormField>
+                </div>
+                <FormField label="주소" required>
+                  <div className="flex gap-2">
+                    <input
+                      value={form.recipientPostalCode}
+                      readOnly
+                      disabled={form.sameAsCustomer}
+                      placeholder="우편번호"
+                      className="order-input"
+                      style={{ width: 120, flexShrink: 0 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPostcodeTarget("recipient")}
+                      disabled={form.sameAsCustomer}
+                      className="btn btn-ghost btn-sm flex-shrink-0"
+                      style={{ border: "1px solid var(--neutral-stone)" }}
+                    >
+                      주소 검색
+                    </button>
+                  </div>
+                  <input
+                    value={form.recipientAddress}
+                    readOnly
+                    disabled={form.sameAsCustomer}
+                    placeholder="기본 주소"
+                    className="order-input mt-2"
+                  />
+                  <input
+                    value={form.recipientAddressDetail}
+                    onChange={(e) => update("recipientAddressDetail", e.target.value)}
+                    disabled={form.sameAsCustomer}
+                    placeholder="상세 주소 (동·호수)"
+                    className="order-input mt-2"
+                  />
+                </FormField>
+                <FormField label="배송 메모">
                   <select
                     value={deliveryNoteCustom ? "기타" : form.deliveryNote}
                     onChange={(e) => {
@@ -393,9 +393,9 @@ export function OrderClient() {
                     }}
                     className="order-input order-select"
                   >
-                    <option value="">배송 메세지를 선택해 주세요</option>
-                    {DELIVERY_NOTE_PRESETS.map((preset) => (
-                      <option key={preset} value={preset}>{preset}</option>
+                    <option value="">배송 메모를 선택해주세요</option>
+                    {DELIVERY_NOTE_PRESETS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
                     ))}
                     <option value="기타">기타 (직접 입력)</option>
                   </select>
@@ -403,7 +403,7 @@ export function OrderClient() {
                     <input
                       value={form.deliveryNote}
                       onChange={(e) => update("deliveryNote", e.target.value)}
-                      placeholder="배송 메세지를 입력해 주세요"
+                      placeholder="배송 메모를 입력해주세요"
                       className="order-input mt-2"
                     />
                   )}
@@ -478,7 +478,6 @@ export function OrderClient() {
                     checked={form.agreeThirdParty}
                     onChange={(v) => update("agreeThirdParty", v)}
                     label="개인정보 제3자 제공 동의"
-                    required={order.purchaseType === "subscription"}
                   />
                   <TermsRow
                     checked={form.agreeMarketing}
@@ -490,20 +489,60 @@ export function OrderClient() {
             </div>
 
             {/* 우: 요약 */}
-            <div className="lg:w-80 flex-shrink-0">
+            <div className="lg:w-72 flex-shrink-0">
               <div className="sticky" style={{ top: "calc(var(--header-area-h) + 16px)" }}>
-                <OrderSummaryCard
-                  order={order}
-                  canSubmit={canSubmit && !submitting}
-                  onSubmit={handleSubmit}
-                  confirmedPlan={confirmedPlan}
-                  submitting={submitting}
-                />
+                  {/* 결제 금액 */}
+                  <div
+                    className="p-5"
+                    style={{
+                      background: "var(--bg-white)",
+                      border: "1px solid var(--ink)",
+                      borderRadius: "var(--r-btn)",
+                    }}
+                  >
+                    <p className="t-h3 mb-4" style={{ color: "var(--ink)" }}>결제 금액</p>
+                    <dl className="flex flex-col gap-3 t-small">
+                      <div className="flex justify-between">
+                        <dt style={{ color: "var(--ink-light)" }}>상품 금액</dt>
+                        <dd style={{ color: "var(--ink)" }}>{formatPrice(subtotal)}원</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt style={{ color: "var(--ink-light)" }}>배송비</dt>
+                        <dd style={{ color: shippingFee === 0 ? "var(--primary)" : "var(--ink)" }}>
+                          {shippingFee === 0 ? "무료" : `${formatPrice(shippingFee)}원`}
+                        </dd>
+                      </div>
+                      {subtotal < FREE_SHIPPING_THRESHOLD && (
+                        <p className="t-caption" style={{ color: "var(--ink-light)" }}>
+                          {formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)}원 더 담으면 무료배송
+                        </p>
+                      )}
+                    </dl>
+                    <div className="my-4" style={{ borderTop: "1px solid var(--ink)" }} />
+                    <div className="flex justify-between mb-5">
+                      <span className="t-body" style={{ color: "var(--ink)" }}>합계</span>
+                      <span className="t-h3" style={{ color: "var(--ink)" }}>{formatPrice(total)}원</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!canSubmit || submitting}
+                      onClick={handleSubmit}
+                      className="btn btn-dark w-full btn-lg"
+                    >
+                      {submitting ? "처리 중..." : `${formatPrice(total)}원 결제하기`}
+                    </button>
+                    {!canSubmit && (
+                      <p className="t-caption mt-3 text-center" style={{ color: "var(--ink-light)" }}>
+                        필수 정보 입력과 약관 동의 후 진행할 수 있습니다
+                      </p>
+                    )}
+                  </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
 
       <style>{`
         .order-input {

@@ -57,7 +57,7 @@ export interface PaymentResponse {
 export const PAYMENT_RESULT_KEY = "veggieverse-payment-result";
 
 export async function postPayment(req: PaymentRequest): Promise<PaymentResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/payments`;
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/payments`;
   try {
     const res = await fetch(url, {
       method: "POST",

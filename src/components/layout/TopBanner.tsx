@@ -11,22 +11,40 @@ const MESSAGE = "🎁 슬런치가 처음이신 고객님은 지금 가입하고
 export function TopBanner({ onClose }: TopBannerProps) {
   return (
     <div
-      className="promo-bar relative w-full overflow-hidden flex items-center"
+      className="promo-bar relative w-full overflow-hidden"
       style={{ height: "var(--promo-h)", backgroundColor: "#250a00" }}
     >
-      {/* Marquee track — two copies for seamless loop */}
-      <div className="marquee-track flex whitespace-nowrap">
-        {[0, 1, 2, 3].map((i) => (
-          <Link
-            key={i}
-            href="/event"
-            className="text-[#DCFD4A] text-[12px] leading-[1.2] whitespace-nowrap"
-            style={{ paddingRight: "6rem" }}
-            tabIndex={i === 0 ? 0 : -1}
-            aria-hidden={i !== 0 ? "true" : undefined}
+      {/* absolute로 flex 흐름 밖에 배치 → width: max-content가 정확히 적용되어 translateX(-50%)가 정확한 half 너비를 가리킴 */}
+      <div
+        className="marquee-track"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          width: "max-content",
+        }}
+      >
+        {[0, 1].map((half) => (
+          <div
+            key={half}
+            style={{ display: "flex", alignItems: "center", flexShrink: 0 }}
+            aria-hidden={half === 1 ? "true" : undefined}
           >
-            {MESSAGE}
-          </Link>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <Link
+                key={i}
+                href="/event"
+                className="text-[#DCFD4A] text-[12px] leading-[1.2] whitespace-nowrap"
+                style={{ paddingRight: "6rem" }}
+                tabIndex={half === 0 && i === 0 ? 0 : -1}
+              >
+                {MESSAGE}
+              </Link>
+            ))}
+          </div>
         ))}
       </div>
 
@@ -42,14 +60,14 @@ export function TopBanner({ onClose }: TopBannerProps) {
 
       <style>{`
         .marquee-track {
-          animation: marquee-left 20s linear infinite;
+          animation: marquee-left 40s linear infinite;
         }
         .marquee-track:hover {
           animation-play-state: paused;
         }
         @keyframes marquee-left {
           from { transform: translateX(0); }
-          to   { transform: translateX(-25%); }
+          to   { transform: translateX(-50%); }
         }
       `}</style>
     </div>

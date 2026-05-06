@@ -1,38 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import TopControlBar, { type TabItem, type SortOption } from "@/components/store/TopControlBar";
-import type { Product } from "../_data/products";
 import { ProductCard } from "./ProductCard";
 import { FilterDrawer, type FilterState } from "./FilterDrawer";
-
-const TAB_CATEGORY_MAP: Record<string, string> = {
-  "소스/오일": "소스와 오일",
-};
+import type { StoreProduct, StoreSortParam } from "@/lib/api/store";
 
 const SORT_OPTIONS: SortOption[] = [
-  { value: "default", label: "기본정렬" },
-  { value: "name-asc", label: "상품명순 A-Z" },
-  { value: "name-desc", label: "상품명순 Z-A" },
-  { value: "price-asc", label: "가격 저가순" },
-  { value: "price-desc", label: "가격 고가순" },
-  { value: "popular", label: "인기순" },
+  { value: "nameAsc",     label: "상품명순 A-Z" },
+  { value: "nameDesc",    label: "상품명순 Z-A" },
+  { value: "priceAsc",    label: "가격 낮은순" },
+  { value: "popularDesc", label: "인기순" },
 ];
 
-function buildTabs(products: Product[]): TabItem[] {
-  const TAB_IDS = ["전체", "밀키트", "베이커리", "소스/오일", "세트", "구독"];
-  return TAB_IDS.map((id) => ({
-    id,
-    label: id,
-    count: id === "전체"
-      ? products.length
-      : products.filter((p) => p.category === (TAB_CATEGORY_MAP[id] ?? id)).length,
-  }));
+const CATEGORY_TABS = [
+  "전체",
+  "샐러드",
+  "파스타",
+  "아시안 누들",
+  "월드 플레이트",
+  "뇨끼",
+  "라자냐",
+  "덮밥",
+  "리조또",
+];
+
+interface Props {
+  initialProducts: StoreProduct[];
+  currentSort: StoreSortParam;
 }
 
-export function StoreClient({ products }: { products: Product[] }) {
+export function StoreClient({ initialProducts, currentSort }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
   const [activeTab, setActiveTab] = useState("전체");
-  const [sort, setSort] = useState("default");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     diet: "전체",
@@ -40,38 +44,31 @@ export function StoreClient({ products }: { products: Product[] }) {
     foodTypes: [],
   });
 
-  const tabs = buildTabs(products);
+  function handleSortChange(value: string) {
+    startTransition(() => {
+      router.push(`${pathname}?sort=${value}`);
+    });
+  }
+
+  const filtered = activeTab === "전체"
+    ? initialProducts
+    : initialProducts.filter((p) => p.categories.includes(activeTab));
+
+  const tabs: TabItem[] = CATEGORY_TABS.map((cat) => ({
+    id: cat,
+    label: cat,
+    count: cat === "전체"
+      ? initialProducts.length
+      : initialProducts.filter((p) => p.categories.includes(cat)).length,
+  }));
 
   const filterCount =
     (filters.diet !== "전체" ? 1 : 0) +
     filters.restrictions.length +
     filters.foodTypes.length;
 
-  const resolvedCategory = TAB_CATEGORY_MAP[activeTab] ?? activeTab;
-
-  const filtered = activeTab === "전체"
-    ? products
-    : products.filter((p) => p.category === resolvedCategory);
-
-  const sorted = [...filtered].sort((a, b) => {
-    switch (sort) {
-      case "name-asc":
-        return a.name.localeCompare(b.name, "ko");
-      case "name-desc":
-        return b.name.localeCompare(a.name, "ko");
-      case "price-asc":
-        return a.price - b.price;
-      case "price-desc":
-        return b.price - a.price;
-      case "popular":
-        return a.id - b.id;
-      default:
-        return 0;
-    }
-  });
-
   return (
-    <div className="min-h-screen bg-[var(--cream)]">
+    <div className={`min-h-screen bg-[var(--bg-pale)] transition-opacity${isPending ? " opacity-60" : ""}`}>
       <TopControlBar
         tabs={tabs}
         activeTab={activeTab}
@@ -81,19 +78,19 @@ export function StoreClient({ products }: { products: Product[] }) {
         onFilterClick={() => setFilterOpen(true)}
         showSort
         sortOptions={SORT_OPTIONS}
-        currentSort={sort}
-        onSortChange={setSort}
+        currentSort={currentSort}
+        onSortChange={handleSortChange}
       />
 
       <div className="mx-auto max-w-[1400px] px-4 py-6 pt-[60px]">
-        {sorted.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex min-h-[30vh] items-center justify-center">
             <p className="text-[14px] text-gray-400">상품이 없습니다.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {sorted.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {filtered.map((product) => (
+              <ProductCard key={product.productId} product={product} />
             ))}
           </div>
         )}

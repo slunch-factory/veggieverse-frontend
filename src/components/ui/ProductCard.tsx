@@ -11,6 +11,7 @@ interface ProductCardProps {
   originalPrice?: number;
   image?: string;
   badge?: "NEW" | "BEST" | "SOLD_OUT";
+  soldOut?: boolean;
   href?: string;
   onClick?: () => void;
 }
@@ -22,42 +23,48 @@ export function ProductCard({
   originalPrice,
   image,
   badge,
+  soldOut = false,
   href,
   onClick,
 }: ProductCardProps) {
-  const cardContent = (
-    <div
-      className="bg-[var(--cream)] border border-black rounded-lg cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
-      onClick={onClick}
-    >
-      {image && (
-        <div className="relative w-full aspect-square overflow-hidden mb-[13px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image} alt={title} className="w-full h-full object-cover" loading="lazy" />
-          {badge && (
-            <div className="absolute top-2 left-2">
-              <Badge variant={badge} />
-            </div>
-          )}
-        </div>
-      )}
+  const hasDiscount = originalPrice !== undefined && price !== undefined && originalPrice > price;
+  const discountRate = hasDiscount
+    ? Math.round(((originalPrice - price!) / originalPrice) * 100)
+    : 0;
 
-      <div className="p-6">
-        <h3 className="text-[16px] leading-tight text-black mb-2">{title}</h3>
-        {description && (
-          <p className="text-sm text-[var(--gray)] leading-relaxed mb-[13px]">{description}</p>
+  const cardContent = (
+    <div className={`card${soldOut ? " is-soldout" : ""}`} onClick={onClick}>
+      <div className="card-img" style={{ aspectRatio: "1 / 1" }}>
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt={title}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
         )}
-        {price !== undefined && (
-          <div className="flex items-baseline gap-2">
-            {originalPrice && originalPrice > price && (
-              <span className="text-sm text-[var(--gray-light)] line-through">
-                {originalPrice.toLocaleString()}원
-              </span>
-            )}
-            <span className="text-[15px] font-mono text-black">
-              {price.toLocaleString()}원
-            </span>
+        {badge && (
+          <div className="card-badges">
+            <Badge variant={badge} />
           </div>
+        )}
+      </div>
+      <div className="card-body">
+        <p className="card-name">{title}</p>
+        {description && <p className="card-desc">{description}</p>}
+        {price !== undefined && (
+          <>
+            {hasDiscount && (
+              <p className="card-orig">{originalPrice!.toLocaleString()}원</p>
+            )}
+            <div className="card-price-row">
+              {discountRate > 0 && (
+                <span className="card-discount">{discountRate}%</span>
+              )}
+              <span className="card-price">{price.toLocaleString()}원</span>
+            </div>
+          </>
         )}
       </div>
     </div>

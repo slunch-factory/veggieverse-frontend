@@ -193,26 +193,26 @@ export function NavigationDrawer({
             Search
           </button>
 
-          {isLoggedIn ? (
-            <div className="flex flex-col gap-4">
-              <Link href="/mypage" onClick={onClose} className="text-[15px] text-black">
-                My Page
-              </Link>
+          <div className="flex flex-col gap-4">
+            <Link href="/mypage" onClick={onClose} className="text-[15px] text-black">
+              My Page
+            </Link>
+            {isLoggedIn ? (
               <button
                 onClick={() => { onClose(); onLogoutClick(); }}
                 className="text-[15px] text-[#666] bg-transparent border-none cursor-pointer text-left p-0"
               >
                 Logout
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => { onLoginClick(); onClose(); }}
-              className="text-[15px] text-black bg-transparent border-none cursor-pointer text-left p-0"
-            >
-              Login / Sign Up
-            </button>
-          )}
+            ) : (
+              <button
+                onClick={() => { onLoginClick(); onClose(); }}
+                className="text-[15px] text-black bg-transparent border-none cursor-pointer text-left p-0"
+              >
+                Login / Sign Up
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

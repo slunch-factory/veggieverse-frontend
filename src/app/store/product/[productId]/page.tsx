@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -186,6 +186,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
+  const router = useRouter();
   const product = PRODUCTS.find((p) => p.id === Number(productId));
 
   /* image gallery */
@@ -200,6 +201,7 @@ export default function ProductDetailPage() {
 
   /* tabs */
   const [activeTab, setActiveTab] = useState<TabKey>("review");
+  const [tabSticky, setTabSticky] = useState(false);
   const sectionRefs = useRef<Record<TabKey, HTMLDivElement | null>>({
     review: null,
     detail: null,
@@ -207,6 +209,8 @@ export default function ProductDetailPage() {
     inquiry: null,
   });
   const tabBarRef = useRef<HTMLDivElement | null>(null);
+  const tabSentinelRef = useRef<HTMLDivElement | null>(null);
+  const headerHRef = useRef(92);
 
   const scrollToSection = (key: TabKey) => {
     setActiveTab(key);
@@ -217,9 +221,27 @@ export default function ProductDetailPage() {
     window.scrollTo({ top: y, behavior: "smooth" });
   };
 
-  /* scroll spy */
+  /* 헤더 높이 캐시 (배너 on/off, 리사이즈 대응) */
+  useEffect(() => {
+    const update = () => {
+      const el = document.querySelector<HTMLElement>(".scroll-lock-compensate");
+      if (el) headerHRef.current = el.offsetHeight;
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  /* scroll spy + sticky tab detection */
   useEffect(() => {
     const handleScroll = () => {
+      // sentinel이 헤더 하단보다 위로 올라가면 탭바 고정
+      if (tabSentinelRef.current) {
+        setTabSticky(
+          tabSentinelRef.current.getBoundingClientRect().top <= headerHRef.current
+        );
+      }
+      // scroll spy
       const tabBarH = tabBarRef.current?.offsetHeight ?? 48;
       for (let i = TABS.length - 1; i >= 0; i--) {
         const el = sectionRefs.current[TABS[i].key];
@@ -240,7 +262,7 @@ export default function ProductDetailPage() {
   /* ----- not found ----- */
   if (!product) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-[var(--cream)]">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-[var(--bg-pale)]">
         <p className="text-lg font-medium text-stone-700">
           상품을 찾을 수 없습니다.
         </p>
@@ -258,9 +280,27 @@ export default function ProductDetailPage() {
   const discount = discountRate(product.originalPrice, product.price);
   const totalPrice = product.price * quantity;
 
+  const handleBuyNow = useCallback(() => {
+    sessionStorage.setItem(
+      "directBuyItem",
+      JSON.stringify({
+        productId: product.id,
+        slug: `product/${product.id}`,
+        name: product.name,
+        tagline: product.description,
+        price: product.originalPrice,
+        discountRate: discount,
+        discountedPrice: product.price,
+        imageUrl: images[0] ?? "",
+        quantity,
+      }),
+    );
+    router.push("/order?directBuy=true");
+  }, [product, discount, images, quantity, router]);
+
   /* ================================================================ */
   return (
-    <div className="min-h-screen bg-[var(--cream)]">
+    <div className="min-h-screen bg-[var(--bg-pale)]">
       {/* ---- back nav ---- */}
       <div className="mx-auto max-w-6xl px-4 py-3">
         <Link
@@ -277,7 +317,7 @@ export default function ProductDetailPage() {
         {/* ======== LEFT: image gallery ======== */}
         <div className="w-full lg:w-1/2">
           {/* main image */}
-          <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-stone-200 bg-white">
+          <div className="relative aspect-square w-full overflow-hidden" style={{ borderRadius: "var(--r-btn)", border: "1px solid var(--ink)", background: "var(--bg-off)" }}>
             <Image
               src={images[mainIdx]}
               alt={product.name}
@@ -307,9 +347,8 @@ export default function ProductDetailPage() {
               <button
                 key={i}
                 onClick={() => setMainIdx(i)}
-                className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border-2 transition-colors ${
-                  i === mainIdx ? "border-black" : "border-stone-200"
-                }`}
+                className="relative h-16 w-16 flex-shrink-0 overflow-hidden transition-colors"
+                style={{ borderRadius: "var(--r-btn)", border: `2px solid ${i === mainIdx ? "var(--ink)" : "var(--neutral-stone)"}` }}
               >
                 <Image
                   src={src}
@@ -326,85 +365,63 @@ export default function ProductDetailPage() {
         {/* ======== RIGHT: product info ======== */}
         <div className="w-full lg:w-1/2">
           {/* BEST badge */}
-          <span className="mb-2 inline-block rounded bg-black px-2 py-0.5 text-xs font-bold text-white">
-            BEST
-          </span>
+          <div className="mb-2">
+            <span className="badge badge-best">BEST</span>
+          </div>
 
           {/* name */}
-          <h1 className="text-[24px] font-bold leading-tight text-stone-900">
-            {product.name}
-          </h1>
+          <h1 className="t-h2">{product.name}</h1>
 
           {/* price */}
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-xl font-bold text-[#87b5e1]">
-              {discount}%
-            </span>
-            <span className="text-2xl font-extrabold text-stone-900">
-              {formatPrice(product.price)}원
-            </span>
-            <span className="text-sm text-stone-400 line-through">
-              {formatPrice(product.originalPrice)}원
-            </span>
+          <div className="mt-3">
+            <p className="card-orig">{formatPrice(product.originalPrice)}원</p>
+            <div className="card-price-row">
+              <span className="card-discount">{discount}%</span>
+              <span className="card-price" style={{ fontSize: 22 }}>{formatPrice(product.price)}원</span>
+            </div>
           </div>
 
           {/* description */}
-          <p className="mt-3 text-sm leading-relaxed text-stone-600">
+          <p className="mt-3 t-small" style={{ color: "var(--ink-light)", lineHeight: 1.65 }}>
             {product.description}
           </p>
 
           {/* tags */}
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-stone-300 px-3 py-0.5 text-xs text-stone-600">
-              {product.spectrum}
-            </span>
-            <span className="rounded-full border border-stone-300 px-3 py-0.5 text-xs text-stone-600">
-              {product.category}
-            </span>
+            <span className="tag" style={{ pointerEvents: "none" }}>{product.spectrum}</span>
+            <span className="tag" style={{ pointerEvents: "none" }}>{product.category}</span>
           </div>
 
           {/* divider */}
           <div className="my-5 border-t border-black" />
 
           {/* purchase info */}
-          <dl className="space-y-2 text-sm">
+          <dl className="space-y-2" style={{ fontSize: 14 }}>
             <div className="flex">
-              <dt className="w-24 flex-shrink-0 font-medium text-stone-500">
-                포인트
-              </dt>
-              <dd className="text-stone-800">
-                {formatPrice(Math.floor(product.price * 0.01))}P 적립
-              </dd>
+              <dt className="w-24 flex-shrink-0" style={{ color: "var(--ink-light)" }}>포인트</dt>
+              <dd style={{ color: "var(--ink)" }}>{formatPrice(Math.floor(product.price * 0.01))}P 적립</dd>
             </div>
             <div className="flex">
-              <dt className="w-24 flex-shrink-0 font-medium text-stone-500">
-                배송방법
-              </dt>
-              <dd className="text-stone-800">택배</dd>
+              <dt className="w-24 flex-shrink-0" style={{ color: "var(--ink-light)" }}>배송방법</dt>
+              <dd style={{ color: "var(--ink)" }}>택배</dd>
             </div>
             <div className="flex">
-              <dt className="w-24 flex-shrink-0 font-medium text-stone-500">
-                배송비
-              </dt>
-              <dd className="text-stone-800">
+              <dt className="w-24 flex-shrink-0" style={{ color: "var(--ink-light)" }}>배송비</dt>
+              <dd style={{ color: "var(--ink)" }}>
                 3,500원{" "}
-                <span className="text-stone-400">
-                  (55,000원 이상 무료)
-                </span>
+                <span style={{ color: "var(--neutral-stone)" }}>(55,000원 이상 무료)</span>
               </dd>
             </div>
           </dl>
 
           {/* 오늘출발 info box */}
-          <div className="mt-4 flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-3">
-            <Truck size={18} className="mt-0.5 flex-shrink-0 text-[#87b5e1]" />
-            <div className="text-sm">
-              <p className="font-semibold text-stone-800">오늘출발 상품</p>
-              <p className="mt-0.5 text-stone-500">
-                평일 14시 이전 주문 시 당일 출고됩니다.
-              </p>
+          <div className="mt-4 flex items-start gap-2 p-3" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)" }}>
+            <Truck size={18} className="mt-0.5 flex-shrink-0" style={{ color: "var(--neutral-blue)" }} />
+            <div style={{ fontSize: 14 }}>
+              <p style={{ color: "var(--ink)" }}>오늘출발 상품</p>
+              <p className="mt-0.5" style={{ color: "var(--ink-light)" }}>평일 14시 이전 주문 시 당일 출고됩니다.</p>
             </div>
-            <Info size={14} className="ml-auto mt-0.5 flex-shrink-0 text-stone-400" />
+            <Info size={14} className="ml-auto mt-0.5 flex-shrink-0" style={{ color: "var(--neutral-stone)" }} />
           </div>
 
           {/* divider */}
@@ -412,22 +429,24 @@ export default function ProductDetailPage() {
 
           {/* quantity selector */}
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-stone-700">수량</span>
-            <div className="flex items-center border border-black rounded">
+            <span className="t-small" style={{ color: "var(--ink)" }}>수량</span>
+            <div className="flex items-center" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)" }}>
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="flex h-9 w-9 items-center justify-center text-stone-600 hover:bg-stone-100 disabled:opacity-30"
+                className="flex h-9 w-9 items-center justify-center disabled:opacity-30"
+                style={{ color: "var(--ink)" }}
                 disabled={quantity <= 1 || product.soldOut}
                 aria-label="수량 감소"
               >
                 <Minus size={16} />
               </button>
-              <span className="flex h-9 w-12 items-center justify-center border-x border-black text-sm font-medium">
+              <span className="flex h-9 w-12 items-center justify-center text-sm" style={{ borderLeft: "1px solid var(--ink)", borderRight: "1px solid var(--ink)", color: "var(--ink)" }}>
                 {quantity}
               </span>
               <button
                 onClick={() => setQuantity((q) => q + 1)}
-                className="flex h-9 w-9 items-center justify-center text-stone-600 hover:bg-stone-100 disabled:opacity-30"
+                className="flex h-9 w-9 items-center justify-center disabled:opacity-30"
+                style={{ color: "var(--ink)" }}
                 disabled={product.soldOut}
                 aria-label="수량 증가"
               >
@@ -437,39 +456,35 @@ export default function ProductDetailPage() {
           </div>
 
           {/* divider */}
-          <div className="my-5 border-t border-black" />
+          <div className="my-5" style={{ borderTop: "1px solid var(--ink)" }} />
 
           {/* total price */}
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-stone-500">
-              총 상품금액
-            </span>
-            <span className="text-2xl font-extrabold text-stone-900">
-              {formatPrice(totalPrice)}원
-            </span>
+            <span className="t-small" style={{ color: "var(--ink-light)" }}>총 상품금액</span>
+            <span className="t-h2">{formatPrice(totalPrice)}원</span>
           </div>
 
           {/* desktop buttons (hidden on mobile) */}
           <div className="mt-6 hidden lg:flex gap-2">
             <button
               onClick={() => setLiked((v) => !v)}
-              className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-black transition-colors ${
-                liked ? "bg-red-50 text-red-500" : "bg-white text-stone-600"
-              }`}
+              className="btn btn-icon btn-lg btn-ghost flex-shrink-0"
+              style={liked ? { color: "#e05555" } : undefined}
               aria-label="좋아요"
             >
               <Heart size={20} fill={liked ? "currentColor" : "none"} />
             </button>
             <button
-              className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded border border-black bg-white text-sm font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-40"
+              className="btn btn-ghost flex-1 gap-1.5"
               disabled={product.soldOut}
             >
               <ShoppingCart size={18} />
               장바구니
             </button>
             <button
-              className="flex h-12 flex-1 items-center justify-center rounded bg-black text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-40"
+              className="btn btn-dark flex-1"
               disabled={product.soldOut}
+              onClick={handleBuyNow}
             >
               {product.soldOut ? "품절" : "바로구매"}
             </button>
@@ -482,24 +497,34 @@ export default function ProductDetailPage() {
       {/* ================================================================ */}
 
       <div className="mx-auto max-w-6xl px-4 pb-40 lg:pb-16">
-        {/* sticky tab bar */}
+        {/* sentinel — 이 요소가 뷰포트 밖으로 나가면 탭바 고정 */}
+        <div ref={tabSentinelRef} />
+        {/* 탭바가 fixed로 빠질 때 레이아웃 밀림 방지용 spacer */}
+        {tabSticky && (
+          <div style={{ height: tabBarRef.current?.offsetHeight ?? 48 }} />
+        )}
+
+        {/* tab bar */}
         <div
           ref={tabBarRef}
-          className="sticky top-0 z-30 flex border-b border-black bg-[var(--cream)]"
+          className={`z-40 ${tabSticky ? "fixed left-0 right-0" : ""}`}
+          style={{ borderBottom: "1px solid var(--ink)", background: "var(--bg-pale)", ...(tabSticky ? { top: "var(--header-area-h)" } : {}) }}
         >
+          <div className={tabSticky ? "mx-auto max-w-6xl px-4 flex" : "flex"}>
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => scrollToSection(tab.key)}
-              className={`flex-1 py-3 text-center text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "border-b-2 border-black text-stone-900"
-                  : "text-stone-400 hover:text-stone-600"
-              }`}
+              className="flex-1 py-3 text-center transition-colors t-small"
+              style={{
+                color: activeTab === tab.key ? "var(--ink)" : "var(--neutral-stone)",
+                borderBottom: activeTab === tab.key ? "2px solid var(--ink)" : "none",
+              }}
             >
               {tab.label}
             </button>
           ))}
+          </div>
         </div>
 
         {/* --- 리뷰 --- */}
@@ -507,8 +532,8 @@ export default function ProductDetailPage() {
           ref={(el) => { sectionRefs.current.review = el; }}
           className="pt-8"
         >
-          <h2 className="text-lg font-bold text-stone-900">리뷰</h2>
-          <div className="mt-4 rounded-lg border border-stone-200 bg-white p-6 text-center text-sm text-stone-400">
+          <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>리뷰</h2>
+          <div className="p-6 text-center t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--neutral-stone)" }}>
             아직 작성된 리뷰가 없습니다.
           </div>
         </div>
@@ -518,8 +543,8 @@ export default function ProductDetailPage() {
           ref={(el) => { sectionRefs.current.detail = el; }}
           className="pt-8"
         >
-          <h2 className="text-lg font-bold text-stone-900">상세정보</h2>
-          <div className="mt-4 rounded-lg border border-stone-200 bg-white p-6 text-sm leading-relaxed text-stone-700">
+          <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>상세정보</h2>
+          <div className="p-6 t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--ink-light)", lineHeight: 1.65 }}>
             {product.detailDescription}
           </div>
         </div>
@@ -529,21 +554,53 @@ export default function ProductDetailPage() {
           ref={(el) => { sectionRefs.current.return = el; }}
           className="pt-8"
         >
-          <h2 className="text-lg font-bold text-stone-900">반품/교환정보</h2>
-          <div className="mt-4 space-y-3 rounded-lg border border-stone-200 bg-white p-6 text-sm leading-relaxed text-stone-700">
-            <p>
-              <strong>반품/교환 기한</strong>: 상품 수령일로부터 7일 이내
-              신청하실 수 있습니다.
-            </p>
-            <p>
-              <strong>반품 배송비</strong>: 고객 변심에 의한 반품 시 왕복
-              배송비 5,000원이 부과됩니다.
-            </p>
-            <p>
-              <strong>교환 불가 사유</strong>: 신선식품 특성상 단순 변심에
-              의한 교환은 어려울 수 있습니다. 상품 하자 시 사진과 함께
-              고객센터로 문의 바랍니다.
-            </p>
+          <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>반품/교환정보</h2>
+          <div className="acc mt-4">
+            <details className="acc-item">
+              <summary>
+                <span>반품/교환 기한</span>
+                <span className="acc-icon">+</span>
+              </summary>
+              <div className="acc-body">
+                상품 수령일로부터 7일 이내 신청하실 수 있습니다. 단, 신선식품 특성상 상품 수령 후 즉시 상태를 확인해 주시기 바랍니다.
+              </div>
+            </details>
+            <details className="acc-item">
+              <summary>
+                <span>반품 배송비</span>
+                <span className="acc-icon">+</span>
+              </summary>
+              <div className="acc-body">
+                고객 변심에 의한 반품 시 왕복 배송비 5,000원이 부과됩니다. 상품 불량 또는 오배송의 경우에는 배송비 없이 반품 처리해 드립니다.
+              </div>
+            </details>
+            <details className="acc-item">
+              <summary>
+                <span>교환 불가 사유</span>
+                <span className="acc-icon">+</span>
+              </summary>
+              <div className="acc-body">
+                신선식품 특성상 단순 변심에 의한 교환은 어려울 수 있습니다. 상품 하자 또는 이물질 발견 시 사진과 함께 고객센터로 문의해 주시면 빠르게 처리해 드립니다.
+              </div>
+            </details>
+            <details className="acc-item">
+              <summary>
+                <span>환불 처리 기간</span>
+                <span className="acc-icon">+</span>
+              </summary>
+              <div className="acc-body">
+                반품 상품 수거 확인 후 영업일 기준 3~5일 이내에 환불이 처리됩니다. 카드 결제의 경우 카드사 정책에 따라 추가 영업일이 소요될 수 있습니다.
+              </div>
+            </details>
+            <details className="acc-item">
+              <summary>
+                <span>고객센터 안내</span>
+                <span className="acc-icon">+</span>
+              </summary>
+              <div className="acc-body">
+                반품/교환 문의는 고객센터(1588-0000)로 연락해 주시거나 하단의 상품문의 탭을 이용해 주세요. 평일 09:00 ~ 18:00 (점심시간 12:00 ~ 13:00, 주말/공휴일 휴무)
+              </div>
+            </details>
           </div>
         </div>
 
@@ -552,8 +609,8 @@ export default function ProductDetailPage() {
           ref={(el) => { sectionRefs.current.inquiry = el; }}
           className="pt-8"
         >
-          <h2 className="text-lg font-bold text-stone-900">상품문의</h2>
-          <div className="mt-4 rounded-lg border border-stone-200 bg-white p-6 text-center text-sm text-stone-400">
+          <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>상품문의</h2>
+          <div className="p-6 text-center t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--neutral-stone)" }}>
             등록된 문의가 없습니다.
           </div>
         </div>
@@ -563,28 +620,21 @@ export default function ProductDetailPage() {
       {/* MOBILE FIXED BOTTOM BAR                                          */}
       {/* ================================================================ */}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white px-4 py-3 lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 px-4 py-3 lg:hidden" style={{ borderTop: "1px solid var(--ink)", background: "var(--bg-white)" }}>
         <div className="mx-auto flex max-w-6xl items-center gap-2">
           <button
             onClick={() => setLiked((v) => !v)}
-            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded border border-black transition-colors ${
-              liked ? "bg-red-50 text-red-500" : "bg-white text-stone-600"
-            }`}
+            className="btn btn-icon btn-md btn-ghost flex-shrink-0"
+            style={liked ? { color: "#e05555" } : undefined}
             aria-label="좋아요"
           >
             <Heart size={20} fill={liked ? "currentColor" : "none"} />
           </button>
-          <button
-            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded border border-black bg-white text-sm font-semibold text-stone-800 disabled:opacity-40"
-            disabled={product.soldOut}
-          >
+          <button className="btn btn-ghost flex-1 gap-1.5" disabled={product.soldOut}>
             <ShoppingCart size={18} />
             장바구니
           </button>
-          <button
-            className="flex h-11 flex-1 items-center justify-center rounded bg-black text-sm font-semibold text-white disabled:opacity-40"
-            disabled={product.soldOut}
-          >
+          <button className="btn btn-dark flex-1" disabled={product.soldOut} onClick={handleBuyNow}>
             {product.soldOut ? "품절" : "바로구매"}
           </button>
         </div>
@@ -593,7 +643,8 @@ export default function ProductDetailPage() {
       {/* scroll to top */}
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed bottom-20 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-stone-300 bg-white shadow-md lg:bottom-6"
+        className="btn btn-ghost btn-icon btn-md fixed bottom-20 right-4 z-50 lg:bottom-6"
+        style={{ borderRadius: "50%" }}
         aria-label="맨 위로"
       >
         <ChevronUp size={20} />
