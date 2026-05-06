@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { User, Menu } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { useCart } from "@/contexts/CartContext";
 import { NavigationDrawer } from "./NavigationDrawer";
 import { LoginModal } from "../modals/LoginModal";
 import { SearchModal } from "../modals/SearchModal";
@@ -15,6 +16,7 @@ interface HeaderProps {
 
 export function Header({ showTopBanner = false }: HeaderProps) {
   const { user, isLoggedIn } = useUser();
+  const { totalCount } = useCart();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -64,7 +66,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
               className="h-10 flex items-center justify-center px-1 text-sm text-black"
               aria-label="장바구니"
             >
-              (0)
+              ({totalCount})
             </Link>
 
             {/* User Profile */}

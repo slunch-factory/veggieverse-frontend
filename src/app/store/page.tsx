@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { PRODUCTS } from "./_data/products";
 import { StoreClient } from "./_components/StoreClient";
+import { getStoreProducts, type StoreSortParam } from "@/lib/api/store";
 
 export const metadata: Metadata = {
   title: "스토어 - 슬런치 팩토리",
@@ -13,6 +13,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function StorePage() {
-  return <StoreClient products={PRODUCTS} />;
+const VALID_SORTS: StoreSortParam[] = ["nameAsc", "nameDesc", "priceAsc", "popularDesc"];
+
+export default async function StorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { sort } = await searchParams;
+  const currentSort = (VALID_SORTS.includes(sort as StoreSortParam) ? sort : "nameAsc") as StoreSortParam;
+  const products = await getStoreProducts(currentSort);
+
+  return <StoreClient initialProducts={products} currentSort={currentSort} />;
 }

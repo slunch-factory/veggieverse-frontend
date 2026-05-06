@@ -15,11 +15,7 @@ export function CategoryPill({
 }: CategoryPillProps) {
   return (
     <span
-      className={`inline-block px-5 py-2.5 rounded-full text-[13px] cursor-pointer transition-all duration-150 ${
-        active
-          ? "bg-black text-white border border-transparent"
-          : "bg-transparent text-black border border-[var(--gray-light)]"
-      } ${className}`}
+      className={`tag${active ? " is-selected" : ""} ${className}`}
       onClick={onClick}
     >
       {children}

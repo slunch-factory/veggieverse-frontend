@@ -1,25 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
-import { getProductThumbnailImages } from "@/utils/productImages";
-import type { Product } from "../_data/products";
+import type { StoreProduct } from "@/lib/api/store";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: StoreProduct }) {
   const router = useRouter();
-  const rawImages = getProductThumbnailImages(product.id);
-  const images = rawImages.length >= 3 ? rawImages.slice(0, 5) : rawImages.length > 0 ? [rawImages[0]] : [];
+  const images = product.imageUrl ? [product.imageUrl] : [];
   const useSlider = images.length >= 3;
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [loadedImages, setLoadedImages] = useState<string[]>([]);
   const [dragStartX, setDragStartX] = useState<number | null>(null);
-
-  useEffect(() => {
-    setLoadedImages([]);
-    setCurrentImageIndex(0);
-  }, [product.id]);
 
   const goTo = (idx: number) => {
     const next = ((idx % images.length) + images.length) % images.length;
@@ -41,34 +33,24 @@ export function ProductCard({ product }: { product: Product }) {
     setDragStartX(null);
   };
 
-  const handleImageClick = (e: React.MouseEvent) => {
-    if (useSlider) {
-      e.stopPropagation();
-      setCurrentImageIndex((prev) => (prev + 1) % images.length);
-    }
-  };
-
-  const badgeVariant = product.soldOut
-    ? "SOLD_OUT" as const
-    : product.isNew
-      ? "NEW" as const
+  const badgeVariant = product.labels.isNew
+    ? "NEW" as const
+    : product.labels.isBest
+      ? "BEST" as const
       : null;
 
-  const discountRate =
-    product.originalPrice && product.originalPrice > product.price
-      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-      : null;
+  const hasDiscount = product.discountRate > 0;
 
   return (
     <div
-      className={`card ${product.soldOut ? "is-soldout" : ""}`}
-      onClick={() => router.push(`/store/product/${product.id}`)}
+      className="card"
+      onClick={() => router.push(`/store/${product.slug}`)}
     >
       {/* 이미지 영역 */}
       <div className="card-img" style={{ aspectRatio: "1 / 1" }}>
         {images.length > 0 ? (
           <div
-            className="relative w-full h-full overflow-hidden"
+            className="absolute inset-0 overflow-hidden"
             style={{ touchAction: "pan-y" }}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
@@ -85,10 +67,9 @@ export function ProductCard({ product }: { product: Product }) {
               >
                 {images.map((img, idx) => (
                   <div
-                    key={`${product.id}-${idx}`}
+                    key={idx}
                     className="relative bg-[#F5F5F5]"
                     style={{ flex: "0 0 auto", width: `${100 / images.length}%`, height: "100%" }}
-                    onClick={handleImageClick}
                   >
                     {Math.abs(idx - currentImageIndex) <= 1 && (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -97,9 +78,6 @@ export function ProductCard({ product }: { product: Product }) {
                         alt={product.name}
                         className="absolute inset-0 w-full h-full object-cover"
                         loading="lazy"
-                        onLoad={() => {
-                          if (!loadedImages.includes(img)) setLoadedImages((prev) => [...prev, img]);
-                        }}
                         onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
                       />
                     )}
@@ -113,9 +91,6 @@ export function ProductCard({ product }: { product: Product }) {
                 alt={product.name}
                 className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
-                onLoad={() => {
-                  if (!loadedImages.includes(images[0])) setLoadedImages((prev) => [...prev, images[0]]);
-                }}
                 onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
               />
             )}
@@ -130,7 +105,7 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        {useSlider && !product.soldOut && (
+        {useSlider && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
             {images.map((_, idx) => (
               <button
@@ -154,22 +129,20 @@ export function ProductCard({ product }: { product: Product }) {
       {/* 상품 정보 */}
       <div className="card-body">
         <p className="card-name">{product.name}</p>
-        {product.description && (
-          <p className="card-desc">{product.description}</p>
+        {product.tagline && (
+          <p className="card-desc">{product.tagline}</p>
         )}
         <div>
-          {product.originalPrice && product.originalPrice > product.price ? (
+          {hasDiscount ? (
             <>
-              <p className="card-orig">{product.originalPrice.toLocaleString()}원</p>
+              <p className="card-orig">{product.price.toLocaleString()}원</p>
               <div className="card-price-row">
-                {discountRate && discountRate > 0 && (
-                  <span className="card-discount">{discountRate}%</span>
-                )}
-                <span className="card-price">{product.price.toLocaleString()}원</span>
+                <span className="card-discount">{product.discountRate}%</span>
+                <span className="card-price">{product.discountedPrice.toLocaleString()}원</span>
               </div>
             </>
           ) : (
-            <span className="card-price">{product.price.toLocaleString()}원</span>
+            <span className="card-price">{product.discountedPrice.toLocaleString()}원</span>
           )}
         </div>
       </div>
