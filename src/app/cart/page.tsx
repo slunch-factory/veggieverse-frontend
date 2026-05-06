@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { deleteCartItem, updateCartItemQuantity } from "@/lib/api/cart";
@@ -14,6 +15,7 @@ function formatPrice(n: number) {
 }
 
 export default function CartPage() {
+  const router = useRouter();
   const { items, updateQuantity, removeItem } = useCart();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState<Set<number>>(new Set());
@@ -282,7 +284,14 @@ export default function CartPage() {
                 <span className="t-h3" style={{ color: "var(--ink)" }}>{formatPrice(orderTotal)}원</span>
               </div>
 
-              <button className="btn btn-dark w-full btn-lg" disabled={selectedItems.length === 0}>
+              <button
+                className="btn btn-dark w-full btn-lg"
+                disabled={selectedItems.length === 0}
+                onClick={() => {
+                  const ids = [...selected].join(",");
+                  router.push(`/order?items=${ids}`);
+                }}
+              >
                 {selectedItems.length > 0 ? `${selectedItems.length}개 주문하기` : "상품을 선택해주세요"}
               </button>
               <Link href="/store" className="btn btn-ghost w-full btn-md mt-2" style={{ justifyContent: "center" }}>
