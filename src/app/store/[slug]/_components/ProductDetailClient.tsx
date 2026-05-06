@@ -11,9 +11,11 @@ import {
   Heart,
   Truck,
   Info,
+  X,
 } from "lucide-react";
 import type { StoreProductDetail } from "@/lib/api/store";
 import { useCart } from "@/contexts/CartContext";
+import { addCartItem } from "@/lib/api/cart";
 import { useRouter } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
@@ -49,19 +51,30 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
   const [mainIdx, setMainIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [liked, setLiked] = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [showCartPopup, setShowCartPopup] = useState(false);
 
-  function handleAddToCart() {
-    addItem({
-      productId: product.productId,
-      slug: product.slug,
-      name: product.name,
-      tagline: product.tagline,
-      price: product.price,
-      discountRate: product.discountRate,
-      discountedPrice: product.discountedPrice,
-      imageUrl: product.images.main.url,
-    }, quantity);
-    router.push("/cart");
+  async function handleAddToCart() {
+    if (cartLoading) return;
+    setCartLoading(true);
+    try {
+      await addCartItem(product.productId, quantity);
+      addItem({
+        productId: product.productId,
+        slug: product.slug,
+        name: product.name,
+        tagline: product.tagline,
+        price: product.price,
+        discountRate: product.discountRate,
+        discountedPrice: product.discountedPrice,
+        imageUrl: product.images.main.url,
+      }, quantity);
+      setShowCartPopup(true);
+    } catch (err) {
+      console.error("[addCartItem] failed:", err);
+    } finally {
+      setCartLoading(false);
+    }
   }
   const [activeTab, setActiveTab] = useState<TabKey>("review");
   const [tabSticky, setTabSticky] = useState(false);
@@ -119,6 +132,30 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
 
   return (
     <div className="min-h-screen bg-[var(--bg-pale)]">
+      {/* 장바구니 담기 팝업 */}
+      {showCartPopup && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.35)" }}>
+          <div className="relative w-full max-w-xs p-6 text-center" style={{ background: "var(--bg-white)", border: "1px solid var(--ink)", borderRadius: "var(--r-btn)" }}>
+            <button
+              onClick={() => setShowCartPopup(false)}
+              className="absolute top-3 right-3 flex items-center justify-center w-7 h-7"
+              style={{ color: "var(--ink-light)" }}
+              aria-label="닫기"
+            >
+              <X size={16} />
+            </button>
+            <p className="t-body mb-4" style={{ color: "var(--ink)" }}>상품이 장바구니에 담겼습니다.</p>
+            <Link
+              href="/cart"
+              className="btn btn-dark w-full"
+              style={{ justifyContent: "center" }}
+            >
+              장바구니 바로가기 &gt;
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* back nav */}
       <div className="mx-auto max-w-6xl px-4 py-3">
         <Link href="/store" className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--ink-light)" }}>
@@ -239,34 +276,6 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
             <Info size={14} className="ml-auto mt-0.5 flex-shrink-0" style={{ color: "var(--neutral-stone)" }} />
           </div>
 
-          <div className="my-5 border-t border-black" />
-
-          <div className="flex items-center justify-between">
-            <span className="t-small" style={{ color: "var(--ink)" }}>수량</span>
-            <div className="flex items-center" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)" }}>
-              <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-                className="flex h-9 w-9 items-center justify-center disabled:opacity-30"
-                style={{ color: "var(--ink)" }}
-                aria-label="수량 감소"
-              >
-                <Minus size={16} />
-              </button>
-              <span className="flex h-9 w-12 items-center justify-center text-sm" style={{ borderLeft: "1px solid var(--ink)", borderRight: "1px solid var(--ink)", color: "var(--ink)" }}>
-                {quantity}
-              </span>
-              <button
-                onClick={() => setQuantity((q) => q + 1)}
-                className="flex h-9 w-9 items-center justify-center"
-                style={{ color: "var(--ink)" }}
-                aria-label="수량 증가"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-          </div>
-
           <div className="my-5" style={{ borderTop: "1px solid var(--ink)" }} />
 
           <div className="flex items-center justify-between">
@@ -274,20 +283,35 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
             <span className="t-h2">{formatPrice(totalPrice)}원</span>
           </div>
 
-          <div className="mt-6 hidden lg:flex gap-2">
-            <button
-              onClick={() => setLiked((v) => !v)}
-              className="btn btn-icon btn-lg btn-ghost flex-shrink-0"
-              style={liked ? { color: "#e05555" } : undefined}
-              aria-label="좋아요"
-            >
-              <Heart size={20} fill={liked ? "currentColor" : "none"} />
-            </button>
-            <button onClick={handleAddToCart} className="btn btn-ghost flex-1 gap-1.5">
+          <div className="mt-6 hidden lg:flex gap-2 items-center">
+            {/* 수량 선택 (하트 버튼 대체) */}
+            <div className="flex items-center flex-shrink-0" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)" }}>
+              <button
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
+                className="flex h-12 w-12 items-center justify-center disabled:opacity-30"
+                style={{ color: "var(--ink)" }}
+                aria-label="수량 감소"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="flex h-12 w-12 items-center justify-center t-body" style={{ borderLeft: "1px solid var(--ink)", borderRight: "1px solid var(--ink)", color: "var(--ink)" }}>
+                {quantity}
+              </span>
+              <button
+                onClick={() => setQuantity((q) => q + 1)}
+                className="flex h-12 w-12 items-center justify-center"
+                style={{ color: "var(--ink)" }}
+                aria-label="수량 증가"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-ghost flex-1 gap-1.5">
               <ShoppingCart size={18} />
               장바구니
             </button>
-            <button onClick={handleAddToCart} className="btn btn-dark flex-1">
+            <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-dark flex-1">
               바로구매
             </button>
           </div>
@@ -386,12 +410,12 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
           >
             <Heart size={20} fill={liked ? "currentColor" : "none"} />
           </button>
-          <button onClick={handleAddToCart} className="btn btn-ghost flex-1 gap-1.5">
+          <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-ghost flex-1 gap-1.5">
             <ShoppingCart size={18} />
-            장바구니
+            {cartLoading ? "담는 중..." : "장바구니"}
           </button>
-          <button onClick={handleAddToCart} className="btn btn-dark flex-1">
-            바로구매
+          <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-dark flex-1">
+            {cartLoading ? "담는 중..." : "바로구매"}
           </button>
         </div>
       </div>

@@ -14,19 +14,22 @@ export function TopBanner({ onClose }: TopBannerProps) {
       className="promo-bar relative w-full overflow-hidden flex items-center"
       style={{ height: "var(--promo-h)", backgroundColor: "#250a00" }}
     >
-      {/* Marquee track — two copies for seamless loop */}
-      <div className="marquee-track flex whitespace-nowrap">
-        {[0, 1, 2, 3].map((i) => (
-          <Link
-            key={i}
-            href="/event"
-            className="text-[#DCFD4A] text-[12px] leading-[1.2] whitespace-nowrap"
-            style={{ paddingRight: "6rem" }}
-            tabIndex={i === 0 ? 0 : -1}
-            aria-hidden={i !== 0 ? "true" : undefined}
-          >
-            {MESSAGE}
-          </Link>
+      {/* Marquee track — 절반씩 두 벌 복사, -50% 애니메이션으로 루프 공백 제거 */}
+      <div className="marquee-track flex whitespace-nowrap" style={{ width: "max-content" }}>
+        {[0, 1].map((half) => (
+          <div key={half} className="flex whitespace-nowrap flex-shrink-0" aria-hidden={half === 1 ? "true" : undefined}>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <Link
+                key={i}
+                href="/event"
+                className="text-[#DCFD4A] text-[12px] leading-[1.2] whitespace-nowrap"
+                style={{ paddingRight: "6rem" }}
+                tabIndex={half === 0 && i === 0 ? 0 : -1}
+              >
+                {MESSAGE}
+              </Link>
+            ))}
+          </div>
         ))}
       </div>
 
@@ -42,14 +45,14 @@ export function TopBanner({ onClose }: TopBannerProps) {
 
       <style>{`
         .marquee-track {
-          animation: marquee-left 20s linear infinite;
+          animation: marquee-left 40s linear infinite;
         }
         .marquee-track:hover {
           animation-play-state: paused;
         }
         @keyframes marquee-left {
           from { transform: translateX(0); }
-          to   { transform: translateX(-25%); }
+          to   { transform: translateX(-50%); }
         }
       `}</style>
     </div>
