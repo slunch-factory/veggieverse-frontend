@@ -1,13 +1,35 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, ShoppingBag, Heart, MessageSquare, ChevronRight } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
+import { FIXED_USER_ID } from "@/lib/api/payment";
 
-const RECENT_ORDERS = [
-  { id: "ORD-2024-001", name: "김치볶음밥 밀키트", date: "2024.12.28", status: "배송완료" as const, price: 12000 },
-  { id: "ORD-2024-002", name: "시금치 뇨끼", date: "2024.12.25", status: "배송중" as const, price: 18000 },
-];
+type OrderStatus = "준비중" | "배송중" | "배송완료";
+
+function deriveStatus(startDate: string, endDate: string): OrderStatus {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (today < start) return "준비중";
+  if (today > end) return "배송완료";
+  return "배송중";
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getProductSummary(order: OrderHistoryItem) {
+  const names = order.products.slice(0, 2).map((p) => p.name).join(", ");
+  const remaining = Math.max(0, order.products.length - 2);
+  return { names, remaining };
+}
 
 const QUICK_MENU = [
   { label: "관심상품", path: "/mypage/wishlist", icon: Heart },
@@ -17,11 +39,28 @@ const QUICK_MENU = [
 ];
 
 export default function MyPageHome() {
+  const router = useRouter();
   const { user, userProfile } = useUser();
   const profileImage = userProfile.profileImage;
   const username = user?.name || "Guest";
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
+
+  const [recentOrders, setRecentOrders] = useState<OrderHistoryItem[] | null>(null);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setOrdersLoading(true);
+    getOrderHistory(FIXED_USER_ID).then((res) => {
+      if (cancelled) return;
+      setRecentOrders(res?.content.slice(0, 2) ?? []);
+      setOrdersLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="mx-auto max-w-[720px] flex flex-col gap-5">
@@ -96,32 +135,56 @@ export default function MyPageHome() {
       <Card>
         <SectionHeader title="최근 주문" moreLink="/mypage/orders" />
         <div className="px-5 pb-4">
-          {RECENT_ORDERS.length === 0 ? (
+          {ordersLoading ? (
+            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
+              불러오는 중...
+            </p>
+          ) : !recentOrders || recentOrders.length === 0 ? (
             <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
               주문 내역이 없습니다.
             </p>
           ) : (
             <ul>
-              {RECENT_ORDERS.map((order, idx) => (
-                <li
-                  key={order.id}
-                  className="flex items-center justify-between py-3"
-                  style={{
-                    borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
-                  }}
-                >
-                  <div className="min-w-0">
-                    <p className="t-small truncate" style={{ color: "var(--ink)" }}>{order.name}</p>
-                    <p className="t-caption mt-0.5" style={{ color: "var(--ink-light)" }}>{order.date}</p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <OrderStatusBadge status={order.status} />
-                    <p className="t-small" style={{ color: "var(--ink)" }}>
-                      {order.price.toLocaleString()}원
-                    </p>
-                  </div>
-                </li>
-              ))}
+              {recentOrders.map((order, idx) => {
+                const { names, remaining } = getProductSummary(order);
+                const navigate = () => router.push(`/mypage/orders/${order.orderId}`);
+                return (
+                  <li
+                    key={order.orderId}
+                    onClick={navigate}
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate();
+                      }
+                    }}
+                    className="flex items-center justify-between gap-3 py-3 -mx-5 px-5 cursor-pointer transition-colors hover:bg-[var(--bg-pale)]"
+                    style={{
+                      borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="t-small truncate" style={{ color: "var(--ink)" }}>
+                        {names}
+                        {remaining > 0 && (
+                          <span style={{ color: "var(--ink-light)" }}> 외 {remaining}건</span>
+                        )}
+                      </p>
+                      <p className="t-caption mt-0.5" style={{ color: "var(--ink-light)" }}>
+                        {formatDate(order.orderDate)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <OrderStatusBadge status={deriveStatus(order.startDate, order.endDate)} />
+                      <p className="t-small" style={{ color: "var(--ink)" }}>
+                        {order.finalAmount.toLocaleString()}원
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
