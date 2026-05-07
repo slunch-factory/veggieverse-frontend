@@ -260,8 +260,7 @@ export default function EditProfilePage() {
                   value={form.postalCode}
                   readOnly
                   placeholder="우편번호"
-                  className="ds-input"
-                  style={{ width: 140, flexShrink: 0 }}
+                  className="ds-input edit-postal-input"
                 />
                 <button
                   type="button"
@@ -289,9 +288,9 @@ export default function EditProfilePage() {
 
           {/* 프로필 사진 */}
           <FormSection icon={<ImageIcon size={16} strokeWidth={1.5} />} title="프로필 사진">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div
-                className="flex shrink-0 items-center justify-center overflow-hidden"
+                className="flex shrink-0 items-center justify-center overflow-hidden self-center sm:self-auto"
                 style={{
                   width: 84,
                   height: 84,
@@ -415,6 +414,30 @@ export default function EditProfilePage() {
         .edit-profile-form .edit-aligned-btn {
           height: 44px;
         }
+        .edit-profile-form .edit-postal-input {
+          width: 140px;
+          flex-shrink: 0;
+        }
+        @media (max-width: 480px) {
+          .edit-profile-form .edit-postal-input {
+            width: 100%;
+            min-width: 0;
+            flex: 1;
+          }
+          .edit-profile-form .edit-aligned-btn {
+            padding-left: 14px;
+            padding-right: 14px;
+            font-size: 13px;
+          }
+          .edit-profile-form .edit-section-header {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+          .edit-profile-form .edit-section-body {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+        }
       `}</style>
     </>
   );
@@ -440,13 +463,13 @@ function FormSection({
       }}
     >
       <header
-        className="px-5 py-4 flex items-center gap-2"
+        className="edit-section-header px-5 py-4 flex items-center gap-2"
         style={{ borderBottom: "1px solid var(--neutral-stone)", color: "var(--ink)" }}
       >
         {icon}
         <h2 className="t-h3" style={{ color: "var(--ink)" }}>{title}</h2>
       </header>
-      <div className="px-5 py-5 flex flex-col gap-4">{children}</div>
+      <div className="edit-section-body px-5 py-5 flex flex-col gap-4">{children}</div>
     </section>
   );
 }

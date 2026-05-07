@@ -4,8 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-/** Naver 브랜드 컬러 — 디자인 시스템 외 3rd-party 예외 */
-const NAVER_GREEN = "#03C75A";
+/** Kakao 브랜드 컬러 — 디자인 시스템 외 3rd-party 예외 */
+const KAKAO_YELLOW = "#FEE500";
+const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
 export function LoginClient() {
   const router = useRouter();
@@ -25,9 +26,9 @@ export function LoginClient() {
     router.push("/");
   };
 
-  const handleNaverLogin = () => {
-    // TODO: Naver OAuth 연동
-    alert("네이버 로그인 (mock)");
+  const handleKakaoLogin = () => {
+    // TODO: Kakao OAuth 연동
+    alert("카카오 로그인 (mock)");
   };
 
   return (
@@ -38,8 +39,8 @@ export function LoginClient() {
         background: "var(--bg-pale)",
       }}
     >
-      <div className="w-full max-w-[400px] px-4 py-12">
-        <h1 className="t-h2 text-center mb-8" style={{ color: "var(--ink)" }}>
+      <div className="w-full max-w-[400px] px-4 py-8 sm:py-12">
+        <h1 className="t-h2 text-center mb-6 sm:mb-8" style={{ color: "var(--ink)" }}>
           로그인
         </h1>
 
@@ -103,19 +104,19 @@ export function LoginClient() {
         </form>
 
         {/* 간편 로그인 */}
-        <div className="mt-12">
-          <p className="t-h3 text-center mb-5" style={{ color: "var(--ink)" }}>
+        <div className="mt-8 sm:mt-12">
+          <p className="t-h3 text-center mb-4 sm:mb-5" style={{ color: "var(--ink)" }}>
             간편 로그인
           </p>
 
           <button
             type="button"
-            onClick={handleNaverLogin}
+            onClick={handleKakaoLogin}
             className="w-full flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-90"
             style={{
               height: 48,
-              background: NAVER_GREEN,
-              color: "#fff",
+              background: KAKAO_YELLOW,
+              color: KAKAO_LABEL,
               border: "none",
               borderRadius: "var(--r-btn)",
               fontSize: 14,
@@ -126,16 +127,16 @@ export function LoginClient() {
               style={{
                 width: 20,
                 height: 20,
-                background: "#fff",
-                color: NAVER_GREEN,
-                borderRadius: 3,
+                background: KAKAO_LABEL,
+                color: KAKAO_YELLOW,
+                borderRadius: "50%",
                 fontSize: 13,
               }}
               aria-hidden
             >
-              N
+              K
             </span>
-            네이버로 계속하기
+            카카오로 계속하기
           </button>
         </div>
       </div>

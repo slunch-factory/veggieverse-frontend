@@ -10,7 +10,8 @@ interface LoginModalProps {
   onLoginSuccess?: () => void;
 }
 
-const NAVER_GREEN = "#03C75A";
+const KAKAO_YELLOW = "#FEE500";
+const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
   const router = useRouter();
@@ -29,7 +30,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     onClose();
   };
 
-  const handleNaverLogin = () => {
+  const handleKakaoLogin = () => {
     onLoginSuccess?.();
     onClose();
   };
@@ -145,13 +146,13 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
 
         <button
           type="button"
-          onClick={handleNaverLogin}
-          className="login-naver"
+          onClick={handleKakaoLogin}
+          className="login-kakao"
         >
-          <span className="login-naver-icon" aria-hidden>
-            N
+          <span className="login-kakao-icon" aria-hidden>
+            K
           </span>
-          네이버로 계속하기
+          카카오로 계속하기
         </button>
       </div>
 
@@ -200,31 +201,31 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           text-decoration: underline;
           text-underline-offset: 3px;
         }
-        .login-naver {
+        .login-kakao {
           width: 100%;
           height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          background: ${NAVER_GREEN};
-          color: #fff;
+          background: ${KAKAO_YELLOW};
+          color: ${KAKAO_LABEL};
           border: none;
           border-radius: var(--r-btn);
           font-size: 14px;
           cursor: pointer;
           transition: opacity 0.15s ease;
         }
-        .login-naver:hover { opacity: 0.9; }
-        .login-naver-icon {
+        .login-kakao:hover { opacity: 0.9; }
+        .login-kakao-icon {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           width: 20px;
           height: 20px;
-          background: #fff;
-          color: ${NAVER_GREEN};
-          border-radius: 3px;
+          background: ${KAKAO_LABEL};
+          color: ${KAKAO_YELLOW};
+          border-radius: 50%;
           font-size: 13px;
         }
       `}</style>

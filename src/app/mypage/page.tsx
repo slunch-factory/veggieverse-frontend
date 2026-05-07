@@ -89,12 +89,12 @@ export default function MyPageHome() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[720px] flex flex-col gap-5">
+    <div className="mx-auto max-w-[720px] flex flex-col gap-4 sm:gap-5">
       {/* 프로필 요약 카드 */}
       <Card>
-        <div className="flex items-center gap-5 px-5 py-5">
+        <div className="flex items-center gap-3 sm:gap-5 px-4 sm:px-5 py-4 sm:py-5">
           <div
-            className="flex shrink-0 items-center justify-center overflow-hidden"
+            className="flex shrink-0 items-center justify-center overflow-hidden mypage-profile-avatar"
             style={{
               width: 72,
               height: 72,
@@ -112,9 +112,9 @@ export default function MyPageHome() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="t-body" style={{ color: "var(--ink)" }}>{username}</p>
+            <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
             {(spiritName || veganType) && (
-              <p className="t-small mt-0.5" style={{ color: "var(--ink-light)" }}>
+              <p className="t-small mt-0.5 truncate" style={{ color: "var(--ink-light)" }}>
                 {[spiritName, veganType].filter(Boolean).join(" · ")}
               </p>
             )}
@@ -123,7 +123,7 @@ export default function MyPageHome() {
 
           <Link
             href="/mypage/info"
-            className="t-small shrink-0"
+            className="t-small shrink-0 whitespace-nowrap"
             style={{
               color: "var(--ink-light)",
               textDecoration: "underline",

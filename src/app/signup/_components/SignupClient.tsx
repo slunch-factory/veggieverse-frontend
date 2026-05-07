@@ -207,17 +207,17 @@ export function SignupClient() {
       />
 
       <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
-        <div className="mx-auto max-w-[560px] px-4 py-6">
+        <div className="mx-auto max-w-[560px] px-4 py-5 sm:py-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-1 t-small mb-6"
+            className="inline-flex items-center gap-1 t-small mb-4 sm:mb-6"
             style={{ color: "var(--ink-light)" }}
           >
             <ChevronLeft size={16} />
             홈으로
           </Link>
 
-          <h1 className="flex justify-center t-h2 mb-8" style={{ color: "var(--ink)" }}>회원가입</h1>
+          <h1 className="flex justify-center t-h2 mb-6 sm:mb-8" style={{ color: "var(--ink)" }}>회원가입</h1>
 
           <form onSubmit={handleSubmit} className="signup-form flex flex-col gap-5">
             {/* 계정 정보 */}
@@ -333,8 +333,7 @@ export function SignupClient() {
                     value={form.postalCode}
                     readOnly
                     placeholder="우편번호"
-                    className="ds-input"
-                    style={{ width: 140, flexShrink: 0 }}
+                    className="ds-input signup-postal-input"
                   />
                   <button
                     type="button"
@@ -362,9 +361,9 @@ export function SignupClient() {
 
             {/* 프로필 사진 */}
             <FormSection icon={<ImageIcon size={16} strokeWidth={1.5} />} title="프로필 사진">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div
-                  className="flex shrink-0 items-center justify-center overflow-hidden"
+                  className="flex shrink-0 items-center justify-center overflow-hidden self-center sm:self-auto"
                   style={{
                     width: 84,
                     height: 84,
@@ -513,6 +512,30 @@ export function SignupClient() {
         .signup-form .signup-aligned-btn {
           height: 44px;
         }
+        .signup-form .signup-postal-input {
+          width: 140px;
+          flex-shrink: 0;
+        }
+        @media (max-width: 480px) {
+          .signup-form .signup-postal-input {
+            width: 100%;
+            min-width: 0;
+            flex: 1;
+          }
+          .signup-form .signup-aligned-btn {
+            padding-left: 14px;
+            padding-right: 14px;
+            font-size: 13px;
+          }
+          .signup-form .signup-section-header {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+          .signup-form .signup-section-body {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+        }
       `}</style>
     </>
   );
@@ -538,13 +561,13 @@ function FormSection({
       }}
     >
       <header
-        className="px-5 py-4 flex items-center gap-2"
+        className="signup-section-header px-5 py-4 flex items-center gap-2"
         style={{ borderBottom: "1px solid var(--neutral-stone)", color: "var(--ink)" }}
       >
         {icon}
         <h2 className="t-h3" style={{ color: "var(--ink)" }}>{title}</h2>
       </header>
-      <div className="px-5 py-5 flex flex-col gap-4">{children}</div>
+      <div className="signup-section-body px-5 py-5 flex flex-col gap-4">{children}</div>
     </section>
   );
 }
