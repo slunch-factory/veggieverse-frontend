@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
 interface LoginModalProps {
@@ -9,128 +10,224 @@ interface LoginModalProps {
   onLoginSuccess?: () => void;
 }
 
+const NAVER_GREEN = "#03C75A";
+
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
-  const [email, setEmail] = useState("");
+  const router = useRouter();
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const canSubmit = Boolean(userId.trim() && password.trim());
+
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // TODO: 실제 로그인 API 연동
+    if (!canSubmit) return;
     onLoginSuccess?.();
     onClose();
   };
 
-  const handleSocialLogin = () => {
-    // TODO: 소셜 로그인 API 연동
+  const handleNaverLogin = () => {
     onLoginSuccess?.();
     onClose();
+  };
+
+  const navigate = (path: string) => {
+    onClose();
+    router.push(path);
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
-      onClick={onClose}
-    >
+    <div className="sl-modal-overlay login-modal-overlay" onClick={onClose}>
       <div
-        className="w-full max-w-[400px] bg-white border border-black rounded-2xl p-8 relative"
+        className="login-modal"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
-        {/* 닫기 버튼 */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-transparent border-none cursor-pointer p-0"
+          className="login-modal-close"
           aria-label="닫기"
         >
-          <X size={20} strokeWidth={1} color="#000" />
+          <X size={20} strokeWidth={1.5} color="var(--ink)" />
         </button>
 
-        {/* 헤더 */}
-        <h2 className="text-center mb-8 text-[20px] text-black">
-          Log-in
+        <h2 className="t-h2 text-center mb-6" style={{ color: "var(--ink)" }}>
+          로그인
         </h2>
 
-        {/* 폼 */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="login-form flex flex-col gap-3">
           <input
             type="text"
-            placeholder="이메일 또는 아이디"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-[14px] mb-3 border border-black rounded-lg text-[14px] outline-none box-border"
-            required
+            className="ds-input"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="아이디 또는 이메일"
+            autoComplete="username"
           />
 
           <input
             type="password"
-            placeholder="비밀번호"
+            className="ds-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-[14px] mb-4 border border-black rounded-lg text-[14px] outline-none box-border"
-            required
+            placeholder="비밀번호"
+            autoComplete="current-password"
           />
 
-          {/* 옵션 */}
-          <div className="flex items-center justify-between mb-5">
-            <label className="flex items-center gap-2 cursor-pointer">
+          <div className="flex items-center justify-between mt-1 mb-2">
+            <label className="chk-wrap">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 accent-black"
               />
-              <span className="text-[13px] text-black">아이디 저장</span>
+              <span className="t-small" style={{ color: "var(--ink)" }}>
+                아이디 저장
+              </span>
             </label>
-            <span className="text-[13px] text-[#888]">보안접속</span>
+            <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
+              보안접속
+            </span>
           </div>
 
-          {/* 로그인 버튼 */}
           <button
             type="submit"
-            className="w-full p-[14px] mb-3 bg-black border-none rounded-lg text-[14px] text-white cursor-pointer"
+            disabled={!canSubmit}
+            className="btn btn-dark btn-lg w-full"
           >
-            Log-in
+            로그인
           </button>
 
-          {/* 게스트 주문 버튼 */}
           <button
             type="button"
             onClick={onClose}
-            className="w-full p-[14px] mb-5 bg-transparent border border-black rounded-lg text-[14px] text-black cursor-pointer"
+            className="btn btn-ghost btn-lg w-full"
+            style={{ borderColor: "var(--ink)" }}
           >
-            Guest-Order
+            비회원 주문
           </button>
         </form>
 
-        {/* 링크 */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-2 text-xs text-[#888]">
-            <button className="bg-transparent border-none cursor-pointer text-[#888] text-xs">
-              아이디 찾기
-            </button>
-            <span>|</span>
-            <button className="bg-transparent border-none cursor-pointer text-[#888] text-xs">
-              비밀번호 찾기
-            </button>
-            <span>|</span>
-            <button className="bg-transparent border-none cursor-pointer text-[#888] text-xs">
-              회원가입
-            </button>
-          </div>
-        </div>
-
-        {/* 소셜 로그인 버튼 */}
-        <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-center gap-2 mt-5 mb-5">
           <button
-            onClick={handleSocialLogin}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-transparent border border-black rounded-lg text-[14px] text-black cursor-pointer"
+            type="button"
+            onClick={() => navigate("/find-id")}
+            className="t-caption login-link"
           >
-            NAVER로 로그인
+            아이디 찾기
+          </button>
+          <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
+            |
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate("/find-password")}
+            className="t-caption login-link"
+          >
+            비밀번호 찾기
+          </button>
+          <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
+            |
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate("/signup")}
+            className="t-caption login-link"
+          >
+            회원가입
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleNaverLogin}
+          className="login-naver"
+        >
+          <span className="login-naver-icon" aria-hidden>
+            N
+          </span>
+          네이버로 계속하기
+        </button>
       </div>
+
+      <style>{`
+        .login-modal-overlay {
+          z-index: 100;
+          padding: 16px;
+        }
+        .login-modal {
+          width: 100%;
+          max-width: 400px;
+          background: var(--bg-white);
+          border: 1px solid var(--ink);
+          border-radius: var(--r-btn);
+          padding: 32px 28px;
+          position: relative;
+        }
+        .login-modal-close {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          padding: 0;
+        }
+        .login-form .ds-input {
+          height: 48px;
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+        .login-link {
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          color: var(--ink-light);
+          padding: 0;
+        }
+        .login-link:hover {
+          color: var(--ink);
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .login-naver {
+          width: 100%;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: ${NAVER_GREEN};
+          color: #fff;
+          border: none;
+          border-radius: var(--r-btn);
+          font-size: 14px;
+          cursor: pointer;
+          transition: opacity 0.15s ease;
+        }
+        .login-naver:hover { opacity: 0.9; }
+        .login-naver-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          background: #fff;
+          color: ${NAVER_GREEN};
+          border-radius: 3px;
+          font-size: 13px;
+        }
+      `}</style>
     </div>
   );
 }

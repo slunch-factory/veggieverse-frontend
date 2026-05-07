@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, ShoppingBag, Heart, MessageSquare, ChevronRight } from "lucide-react";
+import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
 import { FIXED_USER_ID } from "@/lib/api/payment";
 
 type OrderStatus = "준비중" | "배송중" | "배송완료";
+type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
 
-function deriveStatus(startDate: string, endDate: string): OrderStatus {
+function deriveOrderStatus(startDate: string, endDate: string): OrderStatus {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const start = new Date(startDate);
@@ -18,6 +19,16 @@ function deriveStatus(startDate: string, endDate: string): OrderStatus {
   if (today < start) return "준비중";
   if (today > end) return "배송완료";
   return "배송중";
+}
+
+function deriveSubscriptionStatus(startDate: string, endDate: string): SubscriptionStatus {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (today < start) return "준비중";
+  if (today > end) return "종료됨";
+  return "진행중";
 }
 
 function formatDate(iso: string) {
@@ -32,6 +43,7 @@ function getProductSummary(order: OrderHistoryItem) {
 }
 
 const QUICK_MENU = [
+  { label: "구독 내역", path: "/mypage/subscriptions", icon: Repeat },
   { label: "관심상품", path: "/mypage/wishlist", icon: Heart },
   { label: "레시피 북마크", path: "/mypage/bookmarks", icon: ShoppingBag },
   { label: "상품 리뷰", path: "/mypage/reviews", icon: MessageSquare },
@@ -48,15 +60,29 @@ export default function MyPageHome() {
 
   const [recentOrders, setRecentOrders] = useState<OrderHistoryItem[] | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [recentSubs, setRecentSubs] = useState<OrderHistoryItem[] | null>(null);
+  const [subsLoading, setSubsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setOrdersLoading(true);
+    setSubsLoading(true);
+
     getOrderHistory(FIXED_USER_ID).then((res) => {
       if (cancelled) return;
-      setRecentOrders(res?.content.slice(0, 2) ?? []);
+      const all = res?.content ?? [];
+      setRecentOrders(all.slice(0, 2));
       setOrdersLoading(false);
+
+      const active = all.filter((o) => {
+        const s = deriveSubscriptionStatus(o.startDate, o.endDate);
+        return s === "진행중" || s === "준비중";
+      });
+      const fallback = active.length > 0 ? active : all;
+      setRecentSubs(fallback.slice(0, 2));
+      setSubsLoading(false);
     });
+
     return () => {
       cancelled = true;
     };
@@ -131,6 +157,62 @@ export default function MyPageHome() {
         ))}
       </div>
 
+      {/* 최근 구독 */}
+      <Card>
+        <SectionHeader title="최근 구독" moreLink="/mypage/subscriptions" />
+        <div className="px-5 pb-4">
+          {subsLoading ? (
+            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
+              불러오는 중...
+            </p>
+          ) : !recentSubs || recentSubs.length === 0 ? (
+            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
+              구독 내역이 없습니다.
+            </p>
+          ) : (
+            <ul>
+              {recentSubs.map((sub, idx) => {
+                const status = deriveSubscriptionStatus(sub.startDate, sub.endDate);
+                const navigate = () => router.push(`/mypage/subscriptions/${sub.orderId}`);
+                return (
+                  <li
+                    key={sub.orderId}
+                    onClick={navigate}
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate();
+                      }
+                    }}
+                    className="flex items-center justify-between gap-3 py-3 -mx-5 px-5 cursor-pointer transition-colors hover:bg-[var(--bg-pale)]"
+                    style={{
+                      borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="t-small" style={{ color: "var(--ink)" }}>
+                        {formatDate(sub.startDate)} – {formatDate(sub.endDate)}
+                      </p>
+                      <p className="t-caption mt-0.5" style={{ color: "var(--ink-light)" }}>
+                        {sub.deliveryCycle}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <SubscriptionStatusBadge status={status} />
+                      <p className="t-small" style={{ color: "var(--ink)" }}>
+                        {sub.finalAmount.toLocaleString()}원
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </Card>
+
       {/* 최근 주문 */}
       <Card>
         <SectionHeader title="최근 주문" moreLink="/mypage/orders" />
@@ -177,7 +259,7 @@ export default function MyPageHome() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <OrderStatusBadge status={deriveStatus(order.startDate, order.endDate)} />
+                      <OrderStatusBadge status={deriveOrderStatus(order.startDate, order.endDate)} />
                       <p className="t-small" style={{ color: "var(--ink)" }}>
                         {order.finalAmount.toLocaleString()}원
                       </p>
@@ -248,8 +330,8 @@ function SectionHeader({ title, moreLink }: { title: string; moreLink?: string }
   );
 }
 
-function OrderStatusBadge({ status }: { status: "배송중" | "배송완료" | "준비중" }) {
-  const variant: Record<typeof status, { bg: string; color: string }> = {
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  const variant: Record<OrderStatus, { bg: string; color: string }> = {
     "준비중": { bg: "var(--point)", color: "var(--ink)" },
     "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
     "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
@@ -272,3 +354,29 @@ function OrderStatusBadge({ status }: { status: "배송중" | "배송완료" | "
     </span>
   );
 }
+
+function SubscriptionStatusBadge({ status }: { status: SubscriptionStatus }) {
+  const variant: Record<SubscriptionStatus, { bg: string; color: string }> = {
+    "준비중": { bg: "var(--point)", color: "var(--ink)" },
+    "진행중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
+    "종료됨": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+  };
+  const v = variant[status];
+  return (
+    <span
+      className="inline-flex items-center"
+      style={{
+        background: v.bg,
+        color: v.color,
+        padding: "2px 8px",
+        borderRadius: "var(--r-pill)",
+        border: "1px solid var(--ink)",
+        fontSize: 11,
+        letterSpacing: "0.02em",
+      }}
+    >
+      {status}
+    </span>
+  );
+}
+

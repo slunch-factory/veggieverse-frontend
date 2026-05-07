@@ -2,22 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package, ChevronDown } from "lucide-react";
-import { getOrderHistory, type OrderHistoryItem, type OrderHistoryProduct } from "@/lib/api/subscription";
+import { CalendarRange, ChevronDown, Repeat } from "lucide-react";
+import {
+  getOrderHistory,
+  type OrderHistoryItem,
+  type OrderHistoryProduct,
+} from "@/lib/api/subscription";
 import { FIXED_USER_ID } from "@/lib/api/payment";
 
-type OrderStatus = "준비중" | "배송중" | "배송완료";
+type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
 
-const STATUS_TABS = ["전체", "준비중", "배송중", "배송완료"] as const;
+const STATUS_TABS = ["전체", "준비중", "진행중", "종료됨"] as const;
 
-function deriveStatus(startDate: string, endDate: string): OrderStatus {
+function deriveStatus(startDate: string, endDate: string): SubscriptionStatus {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (today < start) return "준비중";
-  if (today > end) return "배송완료";
-  return "배송중";
+  if (today > end) return "종료됨";
+  return "진행중";
 }
 
 function formatDate(iso: string) {
@@ -25,9 +29,28 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function MyOrdersPage() {
+function daysBetween(a: Date, b: Date) {
+  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function deriveProgress(startDate: string, endDate: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const total = Math.max(1, daysBetween(start, end));
+  const elapsed = Math.max(0, Math.min(total, daysBetween(start, today)));
+  return {
+    total,
+    elapsed,
+    remaining: Math.max(0, daysBetween(today, end)),
+    pct: Math.round((elapsed / total) * 100),
+  };
+}
+
+export default function MySubscriptionsPage() {
   const [activeTab, setActiveTab] = useState<(typeof STATUS_TABS)[number]>("전체");
-  const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
+  const [items, setItems] = useState<OrderHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -42,7 +65,7 @@ export default function MyOrdersPage() {
         setLoading(false);
         return;
       }
-      setOrders(res.content);
+      setItems(res.content);
       setLoading(false);
     });
     return () => {
@@ -51,10 +74,10 @@ export default function MyOrdersPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!orders) return [];
-    if (activeTab === "전체") return orders;
-    return orders.filter((o) => deriveStatus(o.startDate, o.endDate) === activeTab);
-  }, [orders, activeTab]);
+    if (!items) return [];
+    if (activeTab === "전체") return items;
+    return items.filter((o) => deriveStatus(o.startDate, o.endDate) === activeTab);
+  }, [items, activeTab]);
 
   return (
     <div className="mx-auto max-w-[800px]">
@@ -62,9 +85,9 @@ export default function MyOrdersPage() {
         {STATUS_TABS.map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveTab(tab)}
             className={`tag${activeTab === tab ? " is-selected" : ""}`}
-            type="button"
           >
             {tab}
           </button>
@@ -74,27 +97,27 @@ export default function MyOrdersPage() {
       {loading ? (
         <div className="text-center py-20">
           <p className="t-small" style={{ color: "var(--ink-light)" }}>
-            주문 내역을 불러오는 중...
+            구독 내역을 불러오는 중...
           </p>
         </div>
       ) : error ? (
         <div className="text-center py-20">
-          <Package size={40} color="var(--neutral-stone)" className="inline-block mb-3" />
+          <CalendarRange size={40} color="var(--neutral-stone)" className="inline-block mb-3" />
           <p className="t-small" style={{ color: "var(--alert-red)" }}>
-            주문 내역을 불러오지 못했습니다.
+            구독 내역을 불러오지 못했습니다.
           </p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
-          <Package size={40} color="var(--neutral-stone)" className="inline-block mb-3" />
+          <CalendarRange size={40} color="var(--neutral-stone)" className="inline-block mb-3" />
           <p className="t-small" style={{ color: "var(--ink-light)" }}>
-            {activeTab === "전체" ? "주문 내역이 없습니다." : "해당 상태의 주문이 없습니다."}
+            {activeTab === "전체" ? "구독 내역이 없습니다." : "해당 상태의 구독이 없습니다."}
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {filtered.map((order) => (
-            <OrderCard key={order.orderId} order={order} />
+          {filtered.map((sub) => (
+            <SubscriptionCard key={sub.orderId} item={sub} />
           ))}
         </div>
       )}
@@ -102,14 +125,13 @@ export default function MyOrdersPage() {
   );
 }
 
-function OrderCard({ order }: { order: OrderHistoryItem }) {
+function SubscriptionCard({ item }: { item: OrderHistoryItem }) {
   const router = useRouter();
-  const status = deriveStatus(order.startDate, order.endDate);
-  const itemCount = order.products.reduce((sum, p) => sum + p.quantity, 0);
+  const status = deriveStatus(item.startDate, item.endDate);
+  const progress = deriveProgress(item.startDate, item.endDate);
+  const itemCount = item.products.reduce((sum, p) => sum + p.quantity, 0);
 
-  const handleClick = () => {
-    router.push(`/mypage/orders/${order.orderId}`);
-  };
+  const handleClick = () => router.push(`/mypage/subscriptions/${item.orderId}`);
 
   return (
     <div
@@ -130,30 +152,70 @@ function OrderCard({ order }: { order: OrderHistoryItem }) {
       }}
     >
       <header
-        className="flex items-center justify-between px-5 py-4"
+        className="flex items-start justify-between gap-3 px-5 py-4"
         style={{ borderBottom: "1px solid var(--neutral-stone)" }}
       >
-        <div>
-          <p className="t-small" style={{ color: "var(--ink)" }}>{order.orderNumber}</p>
-          <p className="t-caption mt-0.5" style={{ color: "var(--ink-light)" }}>
-            {formatDate(order.orderDate)} · {formatDate(order.startDate)} ~ {formatDate(order.endDate)}
+        <div className="min-w-0">
+          <p
+            className="t-caption"
+            style={{ color: "var(--ink-light)", letterSpacing: "0.04em" }}
+          >
+            구독 #{item.orderNumber}
           </p>
+          <p className="t-h3 mt-1" style={{ color: "var(--ink)" }}>
+            {formatDate(item.startDate)} – {formatDate(item.endDate)}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <Repeat size={12} color="var(--ink-light)" />
+            <span className="t-caption" style={{ color: "var(--ink-light)" }}>
+              배송 주기 · {item.deliveryCycle}
+            </span>
+          </div>
         </div>
-        <OrderStatusBadge status={status} />
+        <SubscriptionStatusBadge status={status} />
       </header>
 
-      <ProductList products={order.products} />
+      {status === "진행중" && (
+        <div className="px-5 pt-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="t-caption" style={{ color: "var(--ink-light)" }}>
+              {progress.elapsed}일 / {progress.total}일 경과
+            </span>
+            <span className="t-caption" style={{ color: "var(--ink)" }}>
+              D-{progress.remaining}
+            </span>
+          </div>
+          <div
+            style={{
+              height: 4,
+              background: "var(--bg-off)",
+              borderRadius: "var(--r-pill)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${progress.pct}%`,
+                height: "100%",
+                background: "var(--ink)",
+                transition: "width 0.3s ease",
+              }}
+            />
+          </div>
+        </div>
+      )}
 
+      <ProductList products={item.products} />
 
       <div
         className="flex items-center justify-between px-5 py-3"
         style={{ borderTop: "1px solid var(--neutral-stone)" }}
       >
         <span className="t-small" style={{ color: "var(--ink-light)" }}>
-          총 {itemCount}끼 · 합계
+          총 {itemCount}끼 · 결제 {formatDate(item.orderDate)}
         </span>
         <span className="t-h3" style={{ color: "var(--ink)" }}>
-          {order.finalAmount.toLocaleString()}원
+          {item.finalAmount.toLocaleString()}원
         </span>
       </div>
     </div>
@@ -176,7 +238,9 @@ function ProductList({ products }: { products: OrderHistoryProduct[] }) {
             <p className="t-small" style={{ color: "var(--ink)" }}>
               {item.name}
               {item.quantity > 1 && (
-                <span className="ml-1.5" style={{ color: "var(--ink-light)" }}>×{item.quantity}</span>
+                <span className="ml-1.5" style={{ color: "var(--ink-light)" }}>
+                  ×{item.quantity}
+                </span>
               )}
             </p>
           </li>
@@ -212,16 +276,16 @@ function ProductList({ products }: { products: OrderHistoryProduct[] }) {
   );
 }
 
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const variant: Record<OrderStatus, { bg: string; color: string }> = {
+function SubscriptionStatusBadge({ status }: { status: SubscriptionStatus }) {
+  const variant: Record<SubscriptionStatus, { bg: string; color: string }> = {
     "준비중": { bg: "var(--point)", color: "var(--ink)" },
-    "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
-    "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+    "진행중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
+    "종료됨": { bg: "var(--bg-off)", color: "var(--ink-light)" },
   };
   const v = variant[status];
   return (
     <span
-      className="inline-flex items-center"
+      className="inline-flex items-center shrink-0"
       style={{
         background: v.bg,
         color: v.color,
