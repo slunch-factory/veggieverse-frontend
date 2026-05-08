@@ -42,6 +42,8 @@ export interface SubscribePlannerState {
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
   snackbarMsg: string | null;
+  /** 스피릿 추천 식단에서 1개 이상 변경됐으면 true. 추천 없이 직접 구성한 경우도 true. */
+  isMealPlanModified: boolean;
 }
 
 export interface SubscribePlannerActions {
@@ -87,6 +89,8 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   const [draggingMealId, setDraggingMealId] = useState<string | null>(null);
   const [dragOverDayKey, setDragOverDayKey] = useState<string | null>(null);
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
+  /** 스피릿 추천 적용 직후의 슬롯→메뉴ID 스냅샷. 추천 없으면 null. */
+  const [recommendedSnapshot, setRecommendedSnapshot] = useState<Record<string, string> | null>(null);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -202,15 +206,18 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     if (spiritRecommended.length === 0 || allDays.length === 0) return;
     spiritAppliedRef.current = true;
     const plan: Record<string, DisplayMenuData> = {};
+    const snapshot: Record<string, string> = {};
     let i = 0;
     allDays.forEach((day) =>
       day.slots.forEach((slot) => {
         const menu = spiritRecommended[i % spiritRecommended.length];
         plan[slot.slotId] = { ...menu, displayName: menu.name, isVariation: false };
+        snapshot[slot.slotId] = String(menu.id);
         i++;
       }),
     );
     setMealPlan(plan);
+    setRecommendedSnapshot(snapshot);
   }, [spiritRecommended, allDays]);
 
   const filteredMeals = useMemo(() => {
@@ -253,6 +260,18 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   );
   const filledSlots = Object.keys(mealPlan).length;
   const totalSlots = 14;
+
+  const isMealPlanModified = useMemo(() => {
+    // 추천 스냅샷 없음 → 직접 구성 → 수정됨으로 간주
+    if (!recommendedSnapshot) return true;
+    const snapshotKeys = Object.keys(recommendedSnapshot);
+    const currentKeys = Object.keys(mealPlan);
+    if (snapshotKeys.length !== currentKeys.length) return true;
+    return snapshotKeys.some(
+      (slot) => recommendedSnapshot[slot] !== String(mealPlan[slot]?.id ?? ""),
+    );
+  }, [recommendedSnapshot, mealPlan]);
+
   const variationCount = useMemo(
     () => Object.values(mealPlan).filter((m) => m.isVariation).length,
     [mealPlan],
@@ -386,6 +405,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     dragOverDayKey,
     listScrollRef,
     snackbarMsg,
+    isMealPlanModified,
     setStartDate,
     setDietType,
     toggleNutritionGoal,
