@@ -3,9 +3,11 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Minus, Plus, ShoppingCart, Check } from "lucide-react";
+import { ChevronLeft, Minus, Plus, ShoppingCart, Check, Trash2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { deleteCartItem, updateCartItemQuantity } from "@/lib/api/cart";
+import { useUser } from "@/contexts/UserContext";
+import { deleteCartItem, getCart, syncCartAfterLogin, updateCartItemQuantity } from "@/lib/api/cart";
+import { LoginModal } from "@/components/modals/LoginModal";
 
 const SHIPPING_FEE = 3500;
 const FREE_SHIPPING_THRESHOLD = 55000;
@@ -16,10 +18,13 @@ function formatPrice(n: number) {
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, updateQuantity, removeItem } = useCart();
+  const { items, updateQuantity, removeItem, syncFromServer } = useCart();
+  const { isLoggedIn } = useUser();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState<Set<number>>(new Set());
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const hydrated = useRef(false);
+  const cartFetched = useRef(false);
 
   useEffect(() => {
     if (!hydrated.current && items.length > 0) {
@@ -27,6 +32,27 @@ export default function CartPage() {
       hydrated.current = true;
     }
   }, [items]);
+
+  useEffect(() => {
+    // 장바구니 페이지 진입 시 서버 카트 조회 → 백엔드를 진실 원천으로 화면 동기화
+    // StrictMode 이중 실행 방지
+    if (cartFetched.current) return;
+    cartFetched.current = true;
+    // 비회원 카트 병합이 아직 안 끝났을 수 있으므로 GET 전에 먼저 보장
+    (async () => {
+      const mergeResult = await syncCartAfterLogin();
+      if (mergeResult === "failed") {
+        // 병합 실패 시 백엔드 멤버 카트는 비어있을 수 있으므로 화면을 덮어쓰지 않음.
+        // localStorage 캐시 데이터를 그대로 유지 → 비회원 추가 상품이 사라지지 않음.
+        console.warn(
+          "[cart] 비회원 카트 병합 실패 — localStorage 카트를 유지합니다.",
+        );
+        return;
+      }
+      const response = await getCart();
+      syncFromServer(response);
+    })();
+  }, [syncFromServer]);
 
   const allChecked = items.length > 0 && selected.size === items.length;
 
@@ -91,6 +117,15 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={() => {
+          setIsLoginModalOpen(false);
+          const ids = [...selected].join(",");
+          router.push(`/order?items=${ids}`);
+        }}
+      />
       <div className="mx-auto max-w-5xl px-4 py-6">
         <Link href="/store" className="inline-flex items-center gap-1 t-small mb-6" style={{ color: "var(--ink-light)" }}>
           <ChevronLeft size={16} />
@@ -194,10 +229,11 @@ export default function CartPage() {
                         <button
                           onClick={() => handleDelete(item.productId)}
                           disabled={isDeleting}
-                          className="flex-shrink-0 t-caption px-2 py-0.5 disabled:opacity-40"
-                          style={{ color: "var(--neutral-stone)", border: "1px solid var(--neutral-stone)", borderRadius: "var(--r-btn)" }}
+                          className="flex-shrink-0 flex items-center justify-center disabled:opacity-40"
+                          style={{ width: 28, height: 28, color: "var(--neutral-stone)" }}
+                          aria-label="삭제"
                         >
-                          삭제
+                          <Trash2 size={16} />
                         </button>
                       </div>
 
@@ -288,6 +324,10 @@ export default function CartPage() {
                 className="btn btn-dark w-full btn-lg"
                 disabled={selectedItems.length === 0}
                 onClick={() => {
+                  if (!isLoggedIn) {
+                    setIsLoginModalOpen(true);
+                    return;
+                  }
                   const ids = [...selected].join(",");
                   router.push(`/order?items=${ids}`);
                 }}

@@ -17,16 +17,17 @@ import type { StoreProductDetail } from "@/lib/api/store";
 import { useCart } from "@/contexts/CartContext";
 import { addCartItem } from "@/lib/api/cart";
 import { useRouter } from "next/navigation";
+import { ProductDetailTemplate } from "./ProductDetailTemplate";
+import { PRODUCT_TEMPLATE_DATA } from "../_data/templateData";
 
 /* ------------------------------------------------------------------ */
 /*  Tabs                                                               */
 /* ------------------------------------------------------------------ */
 
 const TABS = [
-  { key: "review",   label: "리뷰" },
-  { key: "detail",   label: "상세정보" },
-  { key: "return",   label: "반품/교환정보" },
-  { key: "inquiry",  label: "상품문의" },
+  { key: "review",  label: "리뷰" },
+  { key: "detail",  label: "상세정보" },
+  { key: "return",  label: "반품/교환정보" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -98,7 +99,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
   const [tabSticky, setTabSticky] = useState(false);
 
   const sectionRefs = useRef<Record<TabKey, HTMLDivElement | null>>({
-    review: null, detail: null, return: null, inquiry: null,
+    review: null, detail: null, return: null,
   });
   const tabBarRef = useRef<HTMLDivElement | null>(null);
   const tabSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -374,18 +375,23 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
         {/* 상세정보 */}
         <div ref={(el) => { sectionRefs.current.detail = el; }} className="pt-8">
           <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>상세정보</h2>
-          {product.description && (
-            <div className="p-6 t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--ink-light)", lineHeight: 1.65 }}>
-              {product.description}
-            </div>
-          )}
-          {product.images.details.length > 0 && (
-            <div className="mt-4 flex flex-col gap-2">
-              {product.images.details.map((img, i) => (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img key={i} src={img.url} alt={img.altText} className="w-full" style={{ borderRadius: "var(--r-btn)" }} />
-              ))}
-            </div>
+          <ProductDetailTemplate data={PRODUCT_TEMPLATE_DATA[product.slug]} />
+          {!PRODUCT_TEMPLATE_DATA[product.slug] && (
+            <>
+              {product.description && (
+                <div className="p-6 t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--ink-light)", lineHeight: 1.65 }}>
+                  {product.description}
+                </div>
+              )}
+              {product.images.details.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2">
+                  {product.images.details.map((img, i) => (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img key={i} src={img.url} alt={img.altText} className="w-full" style={{ borderRadius: "var(--r-btn)" }} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -408,13 +414,6 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
           </div>
         </div>
 
-        {/* 상품문의 */}
-        <div ref={(el) => { sectionRefs.current.inquiry = el; }} className="pt-8">
-          <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>상품문의</h2>
-          <div className="p-6 text-center t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--neutral-stone)" }}>
-            등록된 문의가 없습니다.
-          </div>
-        </div>
       </div>
 
       {/* mobile fixed bottom bar */}
