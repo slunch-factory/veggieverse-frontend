@@ -67,41 +67,6 @@ async function cartFetch(
   return apiFetch(url, { ...options, auth: "none" });
 }
 
-/**
- * 로그인 직후 명시적으로 호출: 비회원 sessionId를 한 번만 백엔드에 전달하여
- * 익명 카트 + 멤버 카트 병합을 트리거한다. 성공 시 localStorage의 sessionId 제거.
- * 이후 모든 카트 API 호출은 JWT만 사용.
- *
- * @returns 병합 시도 결과
- *   - "merged":   병합 성공 (또는 sessionId 없어 병합 불필요)
- *   - "skipped":  로그인 상태가 아니어서 패스
- *   - "failed":   백엔드 에러 — 화면 갱신을 보류해 데이터 손실 방지
- */
-export async function syncCartAfterLogin(): Promise<"merged" | "skipped" | "failed"> {
-  const sessionId = getCartSessionId();
-  if (!sessionId) return "merged"; // 병합할 비회원 카트 없음
-
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) return "skipped";
-
-  const url = withSessionId("/api/v1/veggieverse/store/cart", sessionId);
-  const res = await apiFetch(url, { method: "GET", auth: "required" });
-  if (res.ok) {
-    console.log(
-      "%c[syncCartAfterLogin] ✅ 비회원 카트 병합 완료",
-      "color: #4A7F52; font-weight: bold;",
-    );
-    clearCartSessionId();
-    return "merged";
-  }
-  console.error(
-    "[syncCartAfterLogin] HTTP error:",
-    res.status,
-    res.statusText,
-  );
-  return "failed";
-}
-
 export interface CartResponseItem {
   productId: number;
   productName: string;
@@ -115,6 +80,48 @@ export interface CartResponse {
   totalOriginalAmount: number;
   totalDiscountedAmount: number;
   cartType: "MEMBER" | "ANONYMOUS";
+}
+
+export type SyncCartResult =
+  | { status: "merged"; cart: CartResponse | null }
+  | { status: "skipped" }
+  | { status: "failed" };
+
+/**
+ * 로그인 직후 한 번만 호출: `POST /cart/merge?sessionId={A}`로 비회원 카트를
+ * 멤버 카트에 병합한다(같은 productId는 수량 합산, 비회원 카트는 백엔드에서 삭제).
+ * 성공 시 localStorage의 sessionId를 제거하고 병합된 카트 응답을 반환.
+ *
+ * @returns
+ *   - status="merged":   병합 성공 (sessionId 없으면 cart=null로 노옵 처리)
+ *   - status="skipped":  로그인 상태가 아니어서 패스
+ *   - status="failed":   백엔드 에러 — 화면 갱신 보류로 데이터 손실 방지
+ */
+export async function syncCartAfterLogin(): Promise<SyncCartResult> {
+  const sessionId = getCartSessionId();
+  if (!sessionId) return { status: "merged", cart: null };
+
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) return { status: "skipped" };
+
+  const url = withSessionId("/api/v1/veggieverse/store/cart/merge", sessionId);
+  const res = await apiFetch(url, { method: "POST", auth: "required" });
+  if (res.ok) {
+    const cart: CartResponse | null = await res.json().catch(() => null);
+    console.log(
+      "%c[syncCartAfterLogin] ✅ 비회원 카트 병합 완료",
+      "color: #4A7F52; font-weight: bold;",
+      cart,
+    );
+    clearCartSessionId();
+    return { status: "merged", cart };
+  }
+  console.error(
+    "[syncCartAfterLogin] HTTP error:",
+    res.status,
+    res.statusText,
+  );
+  return { status: "failed" };
 }
 
 export async function getCart(): Promise<CartResponse | null> {

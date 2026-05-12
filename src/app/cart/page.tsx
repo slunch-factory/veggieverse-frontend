@@ -41,12 +41,17 @@ export default function CartPage() {
     // 비회원 카트 병합이 아직 안 끝났을 수 있으므로 GET 전에 먼저 보장
     (async () => {
       const mergeResult = await syncCartAfterLogin();
-      if (mergeResult === "failed") {
+      if (mergeResult.status === "failed") {
         // 병합 실패 시 백엔드 멤버 카트는 비어있을 수 있으므로 화면을 덮어쓰지 않음.
         // localStorage 캐시 데이터를 그대로 유지 → 비회원 추가 상품이 사라지지 않음.
         console.warn(
           "[cart] 비회원 카트 병합 실패 — localStorage 카트를 유지합니다.",
         );
+        return;
+      }
+      // 병합 응답에 카트 데이터가 포함되어 있으면 즉시 반영, 아니면 GET으로 fallback
+      if (mergeResult.status === "merged" && mergeResult.cart) {
+        syncFromServer(mergeResult.cart);
         return;
       }
       const response = await getCart();

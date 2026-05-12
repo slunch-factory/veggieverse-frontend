@@ -32,6 +32,32 @@ const CartContext = createContext<CartContextType | null>(null);
 
 const STORAGE_KEY = "veggieverse-cart";
 
+/**
+ * 백엔드 카트 응답을 화면 CartItem 배열로 변환.
+ * 응답에 부족한 메타(slug, tagline, imageUrl, discountRate)는 prev(localStorage 캐시)에서 보강.
+ */
+function mergeServerCart(prev: CartItem[], response: CartResponse): CartItem[] {
+  const prevById = new Map(prev.map((i) => [i.productId, i]));
+  return response.items.map((srv) => {
+    const cached = prevById.get(srv.productId);
+    const discountRate =
+      srv.unitPrice > 0
+        ? Math.round(((srv.unitPrice - srv.discountedUnitPrice) / srv.unitPrice) * 100)
+        : cached?.discountRate ?? 0;
+    return {
+      productId: srv.productId,
+      slug: cached?.slug ?? "",
+      name: srv.productName,
+      tagline: cached?.tagline ?? "",
+      price: srv.unitPrice,
+      discountRate,
+      discountedPrice: srv.discountedUnitPrice,
+      imageUrl: cached?.imageUrl ?? "",
+      quantity: srv.quantity,
+    };
+  });
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const suppressNextSave = useRef(false);
@@ -61,8 +87,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (saved) {
           try { setItems(JSON.parse(saved)); } catch {}
         }
-        // 로그인 직후 비회원 카트 → 멤버 카트 명시적 병합
-        void syncCartAfterLogin();
+        // 로그인 직후 비회원 카트 → 멤버 카트 명시적 병합 + 응답으로 화면 동기화
+        void (async () => {
+          const result = await syncCartAfterLogin();
+          if (result.status === "merged" && result.cart) {
+            const cartResponse = result.cart;
+            setItems((prev) => mergeServerCart(prev, cartResponse));
+          }
+        })();
       }
     });
 
@@ -109,29 +141,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const syncFromServer = useCallback((response: CartResponse | null) => {
     if (!response) return;
-    setItems((prev) => {
-      const prevById = new Map(prev.map((i) => [i.productId, i]));
-      // 백엔드 응답에 부족한 메타(slug, tagline, imageUrl, discountRate)는
-      // 캐시(localStorage)에 있던 값으로 보강. 캐시에 없으면 빈 값.
-      return response.items.map((srv) => {
-        const cached = prevById.get(srv.productId);
-        const discountRate =
-          srv.unitPrice > 0
-            ? Math.round(((srv.unitPrice - srv.discountedUnitPrice) / srv.unitPrice) * 100)
-            : cached?.discountRate ?? 0;
-        return {
-          productId: srv.productId,
-          slug: cached?.slug ?? "",
-          name: srv.productName,
-          tagline: cached?.tagline ?? "",
-          price: srv.unitPrice,
-          discountRate,
-          discountedPrice: srv.discountedUnitPrice,
-          imageUrl: cached?.imageUrl ?? "",
-          quantity: srv.quantity,
-        };
-      });
-    });
+    setItems((prev) => mergeServerCart(prev, response));
   }, []);
 
   const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
