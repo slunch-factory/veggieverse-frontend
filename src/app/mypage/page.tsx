@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
-import { FIXED_USER_ID } from "@/lib/api/payment";
+import { getUserProfile } from "@/lib/api/user";
 
 type OrderStatus = "준비중" | "배송중" | "배송완료";
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
@@ -52,23 +52,39 @@ const QUICK_MENU = [
 
 export default function MyPageHome() {
   const router = useRouter();
-  const { user, userProfile } = useUser();
-  const profileImage = userProfile.profileImage;
+  const { user, userProfile, isLoggedIn, isLoadingSession } = useUser();
   const username = user?.name || "Guest";
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
 
+  const [profileImage, setProfileImage] = useState<string | null>(userProfile.profileImage);
   const [recentOrders, setRecentOrders] = useState<OrderHistoryItem[] | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [recentSubs, setRecentSubs] = useState<OrderHistoryItem[] | null>(null);
   const [subsLoading, setSubsLoading] = useState(true);
 
   useEffect(() => {
+    if (isLoadingSession || !isLoggedIn) return;
+    getUserProfile().then((profile) => {
+      if (profile?.profileImageUrl) setProfileImage(profile.profileImageUrl);
+    });
+  }, [isLoggedIn, isLoadingSession]);
+
+  useEffect(() => {
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      setRecentOrders([]);
+      setRecentSubs([]);
+      setOrdersLoading(false);
+      setSubsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setOrdersLoading(true);
     setSubsLoading(true);
 
-    getOrderHistory(FIXED_USER_ID).then((res) => {
+    getOrderHistory().then((res) => {
       if (cancelled) return;
       const all = res?.content ?? [];
       setRecentOrders(all.slice(0, 2));
@@ -86,7 +102,7 @@ export default function MyPageHome() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isLoggedIn, isLoadingSession]);
 
   return (
     <div className="mx-auto max-w-[720px] flex flex-col gap-4 sm:gap-5">

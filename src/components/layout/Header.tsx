@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Menu } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { useCart } from "@/contexts/CartContext";
+import { getUserProfile } from "@/lib/api/user";
 import { NavigationDrawer } from "./NavigationDrawer";
 import { LoginModal } from "../modals/LoginModal";
 import { SearchModal } from "../modals/SearchModal";
@@ -15,12 +17,25 @@ interface HeaderProps {
 }
 
 export function Header({ showTopBanner = false }: HeaderProps) {
-  const { user, isLoggedIn } = useUser();
+  const router = useRouter();
+  const { user, isLoggedIn, isLoadingSession } = useUser();
   const { totalCount } = useCart();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      setProfileImageUrl(null);
+      return;
+    }
+    getUserProfile().then((profile) => {
+      setProfileImageUrl(profile?.profileImageUrl ?? null);
+    });
+  }, [isLoggedIn, isLoadingSession]);
 
   const getSpiritImageUrl = (spiritName: string | null): string | null => {
     if (!spiritName) return null;
@@ -29,6 +44,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
   };
 
   const spiritImageUrl = user?.spiritName ? getSpiritImageUrl(user.spiritName) : null;
+  const avatarUrl = profileImageUrl ?? spiritImageUrl;
 
   return (
     <>
@@ -70,17 +86,18 @@ export function Header({ showTopBanner = false }: HeaderProps) {
             </Link>
 
             {/* User Profile */}
-            <Link
-              href="/mypage"
-              className="w-10 h-10 flex items-center justify-center"
+            <button
+              type="button"
+              onClick={() => isLoggedIn ? router.push("/mypage") : setIsLoginModalOpen(true)}
+              className="w-10 h-10 flex items-center justify-center bg-transparent border-none cursor-pointer p-0"
               aria-label="마이페이지"
             >
-              {isLoggedIn && spiritImageUrl ? (
+              {isLoggedIn && avatarUrl ? (
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-black">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={spiritImageUrl}
-                    alt={user?.spiritName || "Profile"}
+                    src={avatarUrl}
+                    alt="프로필"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
@@ -92,7 +109,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
                   <User size={16} strokeWidth={1} color="#666" />
                 </div>
               )}
-            </Link>
+            </button>
           </div>
         </div>
       </header>

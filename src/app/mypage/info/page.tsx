@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -10,31 +11,34 @@ import {
 } from "react";
 import {
   AtSign,
+  CalendarDays,
   Image as ImageIcon,
   Lock,
   MapPin,
+  ShieldCheck,
   Upload,
   User,
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
+import { getUserProfile, updateUserProfile } from "@/lib/api/user";
 
 interface FormState {
-  userId: string;
   password: string;
   passwordConfirm: string;
   email: string;
   phone: string;
   name: string;
+  birthday: string;
   postalCode: string;
   address: string;
   addressDetail: string;
-  profileImageUrl: string;
+  marketingSms: boolean;
+  marketingEmail: boolean;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^01[0-9]-\d{3,4}-\d{4}$/;
-const URL_RE = /^(https?:\/\/|data:image\/).+/i;
 const NAME_RE = /^[가-힣a-zA-Z\s]+$/;
 
 function filterLetters(v: string) {
@@ -48,27 +52,58 @@ function formatPhone(v: string) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
+function stripPhoneDashes(v: string) {
+  return v.replace(/-/g, "");
+}
+
 export default function EditProfilePage() {
   const { user, userProfile } = useUser();
 
-  const [form, setForm] = useState<FormState>(() => ({
-    userId: user?.id || "vegan_user",
+  const [form, setForm] = useState<FormState>({
     password: "",
     passwordConfirm: "",
     email: user?.email || "",
-    phone: "010-0000-0000",
+    phone: "",
     name: user?.name || "",
+    birthday: "",
     postalCode: "",
     address: "",
     addressDetail: "",
-    profileImageUrl: userProfile.profileImage || "",
-  }));
+    marketingSms: false,
+    marketingEmail: false,
+  });
 
+  const [profileImageUrl, setProfileImageUrl] = useState<string>(
+    userProfile.profileImage || "",
+  );
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [imagePreviewError, setImagePreviewError] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    getUserProfile().then((profile) => {
+      if (profile) {
+        setForm((prev) => ({
+          ...prev,
+          email: profile.email || prev.email,
+          name: profile.name || prev.name,
+          phone: formatPhone(profile.phoneNumber || ""),
+          birthday: profile.birthday || "",
+          postalCode: profile.address?.zipCode || "",
+          address: profile.address?.street || "",
+          addressDetail: profile.address?.detail || "",
+          marketingSms: profile.marketingSms ?? false,
+          marketingEmail: profile.marketingEmail ?? false,
+        }));
+        setProfileImageUrl(profile.profileImageUrl || userProfile.profileImage || "");
+      }
+      setLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const update = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -80,8 +115,8 @@ export default function EditProfilePage() {
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      alert("이미지 파일만 업로드할 수 있습니다.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      alert("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
@@ -93,9 +128,8 @@ export default function EditProfilePage() {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setForm((prev) => ({ ...prev, profileImageUrl: reader.result as string }));
-        setUploadedFileName(file.name);
-        setImagePreviewError(false);
+        setProfileImagePreview(reader.result);
+        setProfileImageFile(file);
       }
     };
     reader.readAsDataURL(file);
@@ -103,9 +137,8 @@ export default function EditProfilePage() {
   };
 
   const clearProfileImage = () => {
-    setForm((prev) => ({ ...prev, profileImageUrl: "" }));
-    setUploadedFileName(null);
-    setImagePreviewError(false);
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
   };
 
   const errors = useMemo(() => {
@@ -114,23 +147,24 @@ export default function EditProfilePage() {
       e.password = "비밀번호는 8자 이상이어야 합니다.";
     if (form.passwordConfirm && form.password !== form.passwordConfirm)
       e.passwordConfirm = "비밀번호가 일치하지 않습니다.";
-    if (form.email && !EMAIL_RE.test(form.email))
-      e.email = "올바른 이메일 형식이 아닙니다.";
     if (form.phone && !PHONE_RE.test(form.phone))
       e.phone = "010-0000-0000 형식으로 입력해 주세요.";
     if (form.name && !NAME_RE.test(form.name))
       e.name = "한글/영문만 사용할 수 있습니다.";
-    if (form.profileImageUrl && !URL_RE.test(form.profileImageUrl))
-      e.profileImageUrl = "올바른 이미지 URL이 아닙니다.";
+    if (form.birthday) {
+      const d = new Date(form.birthday);
+      if (Number.isNaN(d.getTime()) || d > new Date())
+        e.birthday = "올바른 생년월일을 입력해 주세요.";
+    }
     return e;
   }, [form]);
 
   const canSubmit = useMemo(() => {
-    if (Object.keys(errors).length > 0) return false;
+    if (Object.values(errors).some(Boolean)) return false;
     return Boolean(
-      form.email.trim() &&
-        form.phone.trim() &&
+      form.phone.trim() &&
         form.name.trim() &&
+        form.birthday.trim() &&
         form.postalCode.trim() &&
         form.address.trim(),
     );
@@ -140,15 +174,45 @@ export default function EditProfilePage() {
     e.preventDefault();
     if (!canSubmit || submitting) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 500));
+
+    if (form.password) {
+      const { error } = await supabase.auth.updateUser({ password: form.password });
+      if (error) {
+        console.error("[editProfile/password]", error.message);
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    const result = await updateUserProfile({
+      name: form.name.trim(),
+      phoneNumber: stripPhoneDashes(form.phone),
+      birthday: form.birthday,
+      locale: "ko",
+      marketingSms: form.marketingSms,
+      marketingEmail: form.marketingEmail,
+      address: {
+        zipCode: form.postalCode,
+        street: form.address,
+        detail: form.addressDetail,
+      },
+    });
+
     setSubmitting(false);
+    if (!result) return;
+
     alert("회원정보가 수정되었습니다.");
   };
 
-  const showImagePreview =
-    form.profileImageUrl.trim().length > 0 &&
-    URL_RE.test(form.profileImageUrl) &&
-    !imagePreviewError;
+  const displayImage = profileImagePreview || profileImageUrl;
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[560px] flex justify-center items-center py-20">
+        <p className="t-body" style={{ color: "var(--ink-light)" }}>불러오는 중...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -156,33 +220,24 @@ export default function EditProfilePage() {
         isOpen={postcodeOpen}
         onClose={() => setPostcodeOpen(false)}
         onSelect={({ postalCode, address }) => {
-          setForm((prev) => ({
-            ...prev,
-            postalCode,
-            address,
-            addressDetail: "",
-          }));
+          setForm((prev) => ({ ...prev, postalCode, address, addressDetail: "" }));
           setPostcodeOpen(false);
         }}
       />
 
       <div className="mx-auto max-w-[560px]">
-        <form
-          onSubmit={handleSubmit}
-          className="edit-profile-form flex flex-col gap-5"
-        >
+        <form onSubmit={handleSubmit} className="edit-profile-form flex flex-col gap-5">
+
           {/* 계정 정보 */}
           <FormSection icon={<User size={16} strokeWidth={1.5} />} title="계정 정보">
-            <FormField label="로그인 아이디">
+            <FormField label="이메일" required>
               <input
+                type="email"
                 className="ds-input"
-                value={form.userId}
+                value={form.email}
                 readOnly
                 style={{ background: "var(--bg-off)", color: "var(--ink-light)" }}
               />
-              <p className="t-caption mt-1.5" style={{ color: "var(--neutral-stone)" }}>
-                아이디는 변경할 수 없습니다.
-              </p>
             </FormField>
 
             <FormField label="비밀번호" errorMessage={errors.password}>
@@ -227,17 +282,6 @@ export default function EditProfilePage() {
               />
             </FormField>
 
-            <FormField label="이메일" required errorMessage={errors.email}>
-              <input
-                type="email"
-                className={`ds-input${errors.email ? " is-error" : ""}`}
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                placeholder="example@slunch.com"
-                autoComplete="email"
-              />
-            </FormField>
-
             <FormField label="전화번호" required errorMessage={errors.phone}>
               <input
                 type="tel"
@@ -249,6 +293,25 @@ export default function EditProfilePage() {
                 inputMode="numeric"
                 maxLength={13}
               />
+            </FormField>
+
+            <FormField label="생년월일" required errorMessage={errors.birthday}>
+              <div className="flex items-stretch gap-2">
+                <input
+                  type="date"
+                  className={`ds-input${errors.birthday ? " is-error" : ""}`}
+                  value={form.birthday}
+                  onChange={(e) => update("birthday", e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+                <span
+                  className="edit-aligned-btn flex items-center justify-center px-3 flex-shrink-0"
+                  style={{ color: "var(--ink-light)" }}
+                  aria-hidden
+                >
+                  <CalendarDays size={16} />
+                </span>
+              </div>
             </FormField>
           </FormSection>
 
@@ -286,6 +349,32 @@ export default function EditProfilePage() {
             </FormField>
           </FormSection>
 
+          {/* 마케팅 수신 동의 */}
+          <FormSection icon={<ShieldCheck size={16} strokeWidth={1.5} />} title="마케팅 수신 동의">
+            <label className="chk-wrap">
+              <input
+                type="checkbox"
+                checked={form.marketingSms}
+                onChange={(e) => update("marketingSms", e.target.checked)}
+              />
+              <span className="t-small" style={{ color: "var(--ink)" }}>
+                SMS 마케팅 수신 동의{" "}
+                <span style={{ color: "var(--neutral-stone)" }}>(선택)</span>
+              </span>
+            </label>
+            <label className="chk-wrap">
+              <input
+                type="checkbox"
+                checked={form.marketingEmail}
+                onChange={(e) => update("marketingEmail", e.target.checked)}
+              />
+              <span className="t-small" style={{ color: "var(--ink)" }}>
+                이메일 마케팅 수신 동의{" "}
+                <span style={{ color: "var(--neutral-stone)" }}>(선택)</span>
+              </span>
+            </label>
+          </FormSection>
+
           {/* 프로필 사진 */}
           <FormSection icon={<ImageIcon size={16} strokeWidth={1.5} />} title="프로필 사진">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -299,26 +388,25 @@ export default function EditProfilePage() {
                   border: "1px solid var(--ink)",
                 }}
               >
-                {showImagePreview ? (
+                {displayImage ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    src={form.profileImageUrl}
+                    src={displayImage}
                     alt="프로필 미리보기"
                     className="w-full h-full object-cover"
-                    onError={() => setImagePreviewError(true)}
                   />
                 ) : (
                   <User size={32} color="var(--neutral-stone)" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <FormField label="프로필 이미지" errorMessage={errors.profileImageUrl}>
-                  {uploadedFileName ? (
+                <FormField label="프로필 이미지">
+                  {profileImageFile ? (
                     <div className="flex items-stretch gap-2">
                       <input
                         type="text"
                         className="ds-input"
-                        value={`📎 ${uploadedFileName}`}
+                        value={`📎 ${profileImageFile.name}`}
                         readOnly
                       />
                       <button
@@ -331,40 +419,26 @@ export default function EditProfilePage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-stretch gap-2">
-                      <input
-                        type="url"
-                        className={`ds-input${errors.profileImageUrl ? " is-error" : ""}`}
-                        value={form.profileImageUrl}
-                        onChange={(e) => {
-                          update("profileImageUrl", e.target.value);
-                          setImagePreviewError(false);
-                        }}
-                        placeholder="https://..."
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="btn btn-ghost edit-aligned-btn flex-shrink-0 gap-1.5"
-                        style={{ border: "1px solid var(--neutral-stone)" }}
-                      >
-                        <Upload size={14} />
-                        업로드
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="btn btn-ghost edit-aligned-btn w-full gap-1.5"
+                      style={{ border: "1px solid var(--neutral-stone)" }}
+                    >
+                      <Upload size={14} />
+                      이미지 업로드
+                    </button>
                   )}
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
-                  {!uploadedFileName && (
-                    <p className="t-caption mt-1.5" style={{ color: "var(--neutral-stone)" }}>
-                      URL 입력 또는 이미지 파일 업로드 (최대 5MB)
-                    </p>
-                  )}
+                  <p className="t-caption mt-1.5" style={{ color: "var(--neutral-stone)" }}>
+                    JPG / PNG / WebP, 최대 5MB
+                  </p>
                 </FormField>
               </div>
             </div>

@@ -8,7 +8,7 @@ import {
   type OrderHistoryItem,
   type OrderHistoryProduct,
 } from "@/lib/api/subscription";
-import { FIXED_USER_ID } from "@/lib/api/payment";
+import { useUser } from "@/contexts/UserContext";
 
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
 
@@ -49,16 +49,23 @@ function deriveProgress(startDate: string, endDate: string) {
 }
 
 export default function MySubscriptionsPage() {
+  const { isLoggedIn, isLoadingSession } = useUser();
   const [activeTab, setActiveTab] = useState<(typeof STATUS_TABS)[number]>("전체");
   const [items, setItems] = useState<OrderHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(false);
-    getOrderHistory(FIXED_USER_ID).then((res) => {
+    getOrderHistory().then((res) => {
       if (cancelled) return;
       if (!res) {
         setError(true);
@@ -71,7 +78,7 @@ export default function MySubscriptionsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isLoggedIn, isLoadingSession]);
 
   const filtered = useMemo(() => {
     if (!items) return [];

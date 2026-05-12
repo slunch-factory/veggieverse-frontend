@@ -9,7 +9,7 @@ import {
   type OrderDetailProduct,
   type OrderDetailResponse,
 } from "@/lib/api/subscription";
-import { FIXED_USER_ID } from "@/lib/api/payment";
+import { useUser } from "@/contexts/UserContext";
 import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
 
 function formatDate(iso: string) {
@@ -103,16 +103,23 @@ function slotLabel(slotsPerDay: number, slotIdx: number): string {
 export function SubscriptionDetailClient() {
   const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
+  const { isLoggedIn, isLoadingSession } = useUser();
   const [data, setData] = useState<OrderDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(false);
-    getOrderDetail(orderId, FIXED_USER_ID).then((res) => {
+    getOrderDetail(orderId).then((res) => {
       if (cancelled) return;
       if (!res) {
         setError(true);
@@ -125,7 +132,7 @@ export function SubscriptionDetailClient() {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, isLoggedIn, isLoadingSession]);
 
   const weeks = useMemo(
     () =>
