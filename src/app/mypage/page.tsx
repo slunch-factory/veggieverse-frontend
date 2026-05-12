@@ -6,19 +6,24 @@ import { useRouter } from "next/navigation";
 import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
+import {
+  getStoreOrderHistory,
+  type StoreOrderHistoryItem,
+} from "@/lib/api/store";
 import { getUserProfile } from "@/lib/api/user";
 
-type OrderStatus = "준비중" | "배송중" | "배송완료";
+type OrderStatus = "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
 
-function deriveOrderStatus(startDate: string, endDate: string): OrderStatus {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  if (today < start) return "준비중";
-  if (today > end) return "배송완료";
-  return "배송중";
+const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
+  PENDING: "결제완료",
+  COMPLETED: "배송완료",
+  SHIPPING: "배송중",
+  CANCELED: "취소됨",
+};
+
+function mapStoreOrderStatus(status: string): OrderStatus {
+  return STORE_STATUS_LABEL[status] ?? "기타";
 }
 
 function deriveSubscriptionStatus(startDate: string, endDate: string): SubscriptionStatus {
@@ -36,7 +41,7 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function getProductSummary(order: OrderHistoryItem) {
+function getProductSummary(order: OrderHistoryItem | StoreOrderHistoryItem) {
   const names = order.products.slice(0, 2).map((p) => p.name).join(", ");
   const remaining = Math.max(0, order.products.length - 2);
   return { names, remaining };
@@ -58,7 +63,7 @@ export default function MyPageHome() {
   const veganType = userProfile.veganType ?? null;
 
   const [profileImage, setProfileImage] = useState<string | null>(userProfile.profileImage);
-  const [recentOrders, setRecentOrders] = useState<OrderHistoryItem[] | null>(null);
+  const [recentOrders, setRecentOrders] = useState<StoreOrderHistoryItem[] | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [recentSubs, setRecentSubs] = useState<OrderHistoryItem[] | null>(null);
   const [subsLoading, setSubsLoading] = useState(true);
@@ -84,12 +89,17 @@ export default function MyPageHome() {
     setOrdersLoading(true);
     setSubsLoading(true);
 
+    // 최근 상품 주문 — store API
+    getStoreOrderHistory().then((res) => {
+      if (cancelled) return;
+      setRecentOrders((res?.content ?? []).slice(0, 2));
+      setOrdersLoading(false);
+    });
+
+    // 최근 구독 — subscription API
     getOrderHistory().then((res) => {
       if (cancelled) return;
       const all = res?.content ?? [];
-      setRecentOrders(all.slice(0, 2));
-      setOrdersLoading(false);
-
       const active = all.filter((o) => {
         const s = deriveSubscriptionStatus(o.startDate, o.endDate);
         return s === "진행중" || s === "준비중";
@@ -275,7 +285,7 @@ export default function MyPageHome() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <OrderStatusBadge status={deriveOrderStatus(order.startDate, order.endDate)} />
+                      <OrderStatusBadge status={mapStoreOrderStatus(order.status)} />
                       <p className="t-small" style={{ color: "var(--ink)" }}>
                         {order.finalAmount.toLocaleString()}원
                       </p>
@@ -348,9 +358,11 @@ function SectionHeader({ title, moreLink }: { title: string; moreLink?: string }
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const variant: Record<OrderStatus, { bg: string; color: string }> = {
-    "준비중": { bg: "var(--point)", color: "var(--ink)" },
+    "결제완료": { bg: "var(--point)", color: "var(--ink)" },
     "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
     "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+    "취소됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
+    "기타": { bg: "var(--bg-off)", color: "var(--ink-light)" },
   };
   const v = variant[status];
   return (

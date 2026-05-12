@@ -3,21 +3,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, ChevronDown } from "lucide-react";
-import { getOrderHistory, type OrderHistoryItem, type OrderHistoryProduct } from "@/lib/api/subscription";
+import {
+  getStoreOrderHistory,
+  type StoreOrderHistoryItem,
+  type StoreOrderHistoryProduct,
+} from "@/lib/api/store";
 import { useUser } from "@/contexts/UserContext";
 
-type OrderStatus = "준비중" | "배송중" | "배송완료";
+type OrderStatus = "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 
-const STATUS_TABS = ["전체", "준비중", "배송중", "배송완료"] as const;
+const STATUS_TABS = ["전체", "결제완료", "배송중", "배송완료", "취소됨"] as const;
 
-function deriveStatus(startDate: string, endDate: string): OrderStatus {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  if (today < start) return "준비중";
-  if (today > end) return "배송완료";
-  return "배송중";
+const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
+  PENDING: "결제완료",
+  COMPLETED: "배송완료",
+  SHIPPING: "배송중",
+  CANCELED: "취소됨",
+};
+
+function mapStatus(status: string): OrderStatus {
+  return STORE_STATUS_LABEL[status] ?? "기타";
 }
 
 function formatDate(iso: string) {
@@ -28,7 +33,7 @@ function formatDate(iso: string) {
 export default function MyOrdersPage() {
   const { isLoggedIn, isLoadingSession } = useUser();
   const [activeTab, setActiveTab] = useState<(typeof STATUS_TABS)[number]>("전체");
-  const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
+  const [orders, setOrders] = useState<StoreOrderHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -42,7 +47,7 @@ export default function MyOrdersPage() {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    getOrderHistory().then((res) => {
+    getStoreOrderHistory().then((res) => {
       if (cancelled) return;
       if (!res) {
         setError(true);
@@ -60,7 +65,7 @@ export default function MyOrdersPage() {
   const filtered = useMemo(() => {
     if (!orders) return [];
     if (activeTab === "전체") return orders;
-    return orders.filter((o) => deriveStatus(o.startDate, o.endDate) === activeTab);
+    return orders.filter((o) => mapStatus(o.status) === activeTab);
   }, [orders, activeTab]);
 
   return (
@@ -109,9 +114,9 @@ export default function MyOrdersPage() {
   );
 }
 
-function OrderCard({ order }: { order: OrderHistoryItem }) {
+function OrderCard({ order }: { order: StoreOrderHistoryItem }) {
   const router = useRouter();
-  const status = deriveStatus(order.startDate, order.endDate);
+  const status = mapStatus(order.status);
   const itemCount = order.products.reduce((sum, p) => sum + p.quantity, 0);
 
   const handleClick = () => {
@@ -143,7 +148,7 @@ function OrderCard({ order }: { order: OrderHistoryItem }) {
         <div>
           <p className="t-small" style={{ color: "var(--ink)" }}>{order.orderNumber}</p>
           <p className="t-caption mt-0.5" style={{ color: "var(--ink-light)" }}>
-            {formatDate(order.orderDate)} · {formatDate(order.startDate)} ~ {formatDate(order.endDate)}
+            {formatDate(order.orderDate)}
           </p>
         </div>
         <OrderStatusBadge status={status} />
@@ -151,13 +156,12 @@ function OrderCard({ order }: { order: OrderHistoryItem }) {
 
       <ProductList products={order.products} />
 
-
       <div
         className="flex items-center justify-between px-5 py-3"
         style={{ borderTop: "1px solid var(--neutral-stone)" }}
       >
         <span className="t-small" style={{ color: "var(--ink-light)" }}>
-          총 {itemCount}끼 · 합계
+          총 {itemCount}개 · 합계
         </span>
         <span className="t-h3" style={{ color: "var(--ink)" }}>
           {order.finalAmount.toLocaleString()}원
@@ -169,18 +173,37 @@ function OrderCard({ order }: { order: OrderHistoryItem }) {
 
 const VISIBLE_COUNT = 3;
 
-function ProductList({ products }: { products: OrderHistoryProduct[] }) {
+function ProductList({ products }: { products: StoreOrderHistoryProduct[] }) {
   const [expanded, setExpanded] = useState(false);
   const hiddenCount = Math.max(0, products.length - VISIBLE_COUNT);
   const visible = expanded ? products : products.slice(0, VISIBLE_COUNT);
   const hasMore = hiddenCount > 0;
 
   return (
-    <div className="px-5 py-4 flex flex-col gap-2">
-      <ul className="flex flex-col gap-2">
+    <div className="px-5 py-4 flex flex-col gap-3">
+      <ul className="flex flex-col gap-3">
         {visible.map((item, idx) => (
-          <li key={idx} className="flex items-center justify-between">
-            <p className="t-small" style={{ color: "var(--ink)" }}>
+          <li key={idx} className="flex items-center gap-3">
+            <div
+              className="shrink-0 overflow-hidden"
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "var(--r-btn)",
+                background: "var(--bg-off)",
+                border: "1px solid var(--neutral-stone)",
+              }}
+            >
+              {item.imageUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+            <p className="t-small flex-1 min-w-0 truncate" style={{ color: "var(--ink)" }}>
               {item.name}
               {item.quantity > 1 && (
                 <span className="ml-1.5" style={{ color: "var(--ink-light)" }}>×{item.quantity}</span>
@@ -221,9 +244,11 @@ function ProductList({ products }: { products: OrderHistoryProduct[] }) {
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const variant: Record<OrderStatus, { bg: string; color: string }> = {
-    "준비중": { bg: "var(--point)", color: "var(--ink)" },
+    "결제완료": { bg: "var(--point)", color: "var(--ink)" },
     "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
     "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+    "취소됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
+    "기타": { bg: "var(--bg-off)", color: "var(--ink-light)" },
   };
   const v = variant[status];
   return (
