@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 /** Kakao 브랜드 컬러 — 디자인 시스템 외 3rd-party 예외 */
 const KAKAO_YELLOW = "#FEE500";
@@ -10,25 +11,49 @@ const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
 export function LoginClient() {
   const router = useRouter();
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const canSubmit = Boolean(userId.trim() && password.trim());
+  const canSubmit = Boolean(email.trim() && password.trim());
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!canSubmit || submitting) return;
     setSubmitting(true);
-    // TODO: 실제 로그인 API 연동
-    await new Promise((r) => setTimeout(r, 500));
+    setErrorMessage(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
     setSubmitting(false);
+    if (error) {
+      setErrorMessage(
+        error.message === "Invalid login credentials"
+          ? "이메일 또는 비밀번호가 일치하지 않습니다."
+          : error.message,
+      );
+      return;
+    }
     router.push("/");
   };
 
-  const handleKakaoLogin = () => {
-    // TODO: Kakao OAuth 연동
-    alert("카카오 로그인 (mock)");
+  const handleKakaoLogin = async () => {
+    setErrorMessage(null);
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    if (data.url) {
+      window.location.href = data.url;
+    }
   };
 
   return (
@@ -46,12 +71,13 @@ export function LoginClient() {
 
         <form onSubmit={handleSubmit} className="login-form flex flex-col gap-3">
           <input
-            type="text"
+            type="email"
             className="ds-input"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="아이디를 입력해주세요"
-            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일을 입력해주세요"
+            autoComplete="email"
+            inputMode="email"
           />
 
           <input
@@ -63,19 +89,15 @@ export function LoginClient() {
             autoComplete="current-password"
           />
 
+          {errorMessage && (
+            <p className="ds-input-msg is-error">{errorMessage}</p>
+          )}
+
           {/* 찾기 링크 */}
           <div
             className="flex justify-end items-center gap-2 mt-1 mb-2"
             style={{ color: "var(--ink-light)" }}
           >
-            <Link
-              href="/find-id"
-              className="t-caption"
-              style={{ color: "var(--ink-light)" }}
-            >
-              아이디 찾기
-            </Link>
-            <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>|</span>
             <Link
               href="/find-password"
               className="t-caption"

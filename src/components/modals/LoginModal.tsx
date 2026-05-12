@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -15,24 +16,53 @@ const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
   const router = useRouter();
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const canSubmit = Boolean(userId.trim() && password.trim());
+  const canSubmit = Boolean(email.trim() && password.trim()) && !submitting;
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
+    setSubmitting(true);
+    setErrorMessage(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setSubmitting(false);
+    if (error) {
+      setErrorMessage(
+        error.message === "Invalid login credentials"
+          ? "이메일 또는 비밀번호가 일치하지 않습니다."
+          : error.message,
+      );
+      return;
+    }
     onLoginSuccess?.();
     onClose();
   };
 
-  const handleKakaoLogin = () => {
-    onLoginSuccess?.();
-    onClose();
+  const handleKakaoLogin = async () => {
+    setErrorMessage(null);
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    if (data.url) {
+      window.location.href = data.url;
+    }
   };
 
   const navigate = (path: string) => {
@@ -63,12 +93,13 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
 
         <form onSubmit={handleSubmit} className="login-form flex flex-col gap-3">
           <input
-            type="text"
+            type="email"
             className="ds-input"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="아이디 또는 이메일"
-            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일"
+            autoComplete="email"
+            inputMode="email"
           />
 
           <input
@@ -80,6 +111,10 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
             autoComplete="current-password"
           />
 
+          {errorMessage && (
+            <p className="ds-input-msg is-error">{errorMessage}</p>
+          )}
+
           <div className="flex items-center justify-between mt-1 mb-2">
             <label className="chk-wrap">
               <input
@@ -88,7 +123,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <span className="t-small" style={{ color: "var(--ink)" }}>
-                아이디 저장
+                이메일 저장
               </span>
             </label>
             <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
@@ -101,7 +136,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
             disabled={!canSubmit}
             className="btn btn-dark btn-lg w-full"
           >
-            로그인
+            {submitting ? "처리 중..." : "로그인"}
           </button>
 
           <button
@@ -115,16 +150,6 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
         </form>
 
         <div className="flex items-center justify-center gap-2 mt-5 mb-5">
-          <button
-            type="button"
-            onClick={() => navigate("/find-id")}
-            className="t-caption login-link"
-          >
-            아이디 찾기
-          </button>
-          <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
-            |
-          </span>
           <button
             type="button"
             onClick={() => navigate("/find-password")}

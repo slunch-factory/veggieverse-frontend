@@ -1,96 +1,130 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ChevronLeft, User, AtSign, MapPin, Image as ImageIcon, ShieldCheck, Upload } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  AtSign,
+  CalendarDays,
+  ChevronLeft,
+  Image as ImageIcon,
+  MapPin,
+  ShieldCheck,
+  Upload,
+  User,
+} from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api/client";
+import { saveCartSessionId } from "@/lib/api/cart";
+import { useUser } from "@/contexts/UserContext";
 
 interface FormState {
-  userId: string;
+  email: string;
   password: string;
   passwordConfirm: string;
-  email: string;
   phone: string;
   name: string;
+  birthday: string; // yyyy-MM-dd
   postalCode: string;
   address: string;
   addressDetail: string;
-  profileImageUrl: string;
   agreeAge: boolean;
   agreeTerms: boolean;
   agreePrivacy: boolean;
-  agreeMarketing: boolean;
+  agreeMarketingSms: boolean;
+  agreeMarketingEmail: boolean;
 }
 
 const INITIAL_FORM: FormState = {
-  userId: "",
+  email: "",
   password: "",
   passwordConfirm: "",
-  email: "",
   phone: "",
   name: "",
+  birthday: "",
   postalCode: "",
   address: "",
   addressDetail: "",
-  profileImageUrl: "",
   agreeAge: false,
   agreeTerms: false,
   agreePrivacy: false,
-  agreeMarketing: false,
+  agreeMarketingSms: false,
+  agreeMarketingEmail: false,
 };
-
-type UserIdCheckStatus = "unchecked" | "checking" | "available" | "duplicate";
-
-/** 임시 중복 ID 목록 — 실제 API 연동 시 교체 */
-const RESERVED_IDS = ["admin", "test", "user", "slunch", "guest"];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^01[0-9]-\d{3,4}-\d{4}$/;
-const URL_RE = /^(https?:\/\/|data:image\/).+/i;
-const USERID_RE = /^[a-zA-Z0-9]+$/;
 const NAME_RE = /^[가-힣a-zA-Z\s]+$/;
 
-/** 입력 시 비허용 문자를 즉시 걸러냄 */
-function filterAlphanumeric(v: string) {
-  return v.replace(/[^a-zA-Z0-9]/g, "");
-}
 function filterLetters(v: string) {
   return v.replace(/[^가-힣a-zA-Z\s]/g, "");
 }
-/** 숫자만 남기고 010-XXXX-XXXX 형태로 자동 포맷 (최대 11자리) */
 function formatPhone(v: string) {
   const digits = v.replace(/\D/g, "").slice(0, 11);
   if (digits.length < 4) return digits;
   if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
+function stripPhoneDashes(v: string) {
+  return v.replace(/-/g, "");
+}
 
 export function SignupClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isLinkMode = searchParams.get("link") === "1";
+  const { isLoggedIn, isLoadingSession, user: currentUser } = useUser();
+
+  const [step, setStep] = useState<1 | 2>(1);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [imagePreviewError, setImagePreviewError] = useState(false);
-  const [userIdCheck, setUserIdCheck] = useState<UserIdCheckStatus>("unchecked");
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  // Kakao 플로우: 이미 세션이 있으면 2단계(프로필)부터 시작
+  useEffect(() => {
+    if (!isLoadingSession && isLoggedIn && step === 1) {
+      setStep(2);
+    }
+  }, [isLoadingSession, isLoggedIn, step]);
 
-  const updateUserId = (value: string) => {
-    const filtered = filterAlphanumeric(value);
-    setForm((prev) => ({ ...prev, userId: filtered }));
-    setUserIdCheck("unchecked");
-  };
+  // Kakao 이름 자동 채우기
+  useEffect(() => {
+    if (currentUser?.name) {
+      setForm((prev) => (prev.name ? prev : { ...prev, name: currentUser.name }));
+    }
+  }, [currentUser?.name]);
+
+  const update = useCallback(
+    <K extends keyof FormState>(key: K, value: FormState[K]) => {
+      setForm((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       alert("이미지 파일만 업로드할 수 있습니다.");
+      e.target.value = "";
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      alert("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
@@ -102,9 +136,8 @@ export function SignupClient() {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setForm((prev) => ({ ...prev, profileImageUrl: reader.result as string }));
-        setUploadedFileName(file.name);
-        setImagePreviewError(false);
+        setProfileImagePreview(reader.result);
+        setProfileImageFile(file);
       }
     };
     reader.readAsDataURL(file);
@@ -112,83 +145,304 @@ export function SignupClient() {
   };
 
   const clearProfileImage = () => {
-    setForm((prev) => ({ ...prev, profileImageUrl: "" }));
-    setUploadedFileName(null);
-    setImagePreviewError(false);
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
   };
 
-  const checkUserIdDuplicate = async () => {
-    if (userIdCheck === "checking") return;
-    if (!form.userId.trim() || form.userId.length < 4) return;
-    setUserIdCheck("checking");
-    // TODO: 실제 중복확인 API 연동
-    await new Promise((r) => setTimeout(r, 400));
-    const isReserved = RESERVED_IDS.includes(form.userId.trim().toLowerCase());
-    setUserIdCheck(isReserved ? "duplicate" : "available");
-  };
-
-  const allAgreed = form.agreeAge && form.agreeTerms && form.agreePrivacy && form.agreeMarketing;
+  const allAgreed =
+    form.agreeAge &&
+    form.agreeTerms &&
+    form.agreePrivacy &&
+    form.agreeMarketingSms &&
+    form.agreeMarketingEmail;
   const toggleAllAgreements = (checked: boolean) => {
     setForm((prev) => ({
       ...prev,
       agreeAge: checked,
       agreeTerms: checked,
       agreePrivacy: checked,
-      agreeMarketing: checked,
+      agreeMarketingSms: checked,
+      agreeMarketingEmail: checked,
     }));
   };
 
   const errors = useMemo(() => {
     const e: Partial<Record<keyof FormState, string>> = {};
-    if (form.userId && form.userId.length < 4) e.userId = "아이디는 4자 이상이어야 합니다.";
-    else if (form.userId && !USERID_RE.test(form.userId))
-      e.userId = "영문/숫자만 사용할 수 있습니다.";
+    if (form.email && !EMAIL_RE.test(form.email)) e.email = "올바른 이메일 형식이 아닙니다.";
     if (form.password && form.password.length < 8) e.password = "비밀번호는 8자 이상이어야 합니다.";
     if (form.passwordConfirm && form.password !== form.passwordConfirm)
       e.passwordConfirm = "비밀번호가 일치하지 않습니다.";
-    if (form.email && !EMAIL_RE.test(form.email)) e.email = "올바른 이메일 형식이 아닙니다.";
     if (form.phone && !PHONE_RE.test(form.phone)) e.phone = "010-0000-0000 형식으로 입력해 주세요.";
     if (form.name && !NAME_RE.test(form.name)) e.name = "한글/영문만 사용할 수 있습니다.";
-    if (form.profileImageUrl && !URL_RE.test(form.profileImageUrl))
-      e.profileImageUrl = "올바른 이미지 URL이 아닙니다.";
+    if (form.birthday) {
+      const today = new Date();
+      const d = new Date(form.birthday);
+      if (Number.isNaN(d.getTime()) || d > today) e.birthday = "올바른 생년월일을 입력해 주세요.";
+    }
     return e;
   }, [form]);
 
-  const canSubmit = useMemo(() => {
-    if (Object.keys(errors).length > 0) return false;
-    return Boolean(
-      form.userId.trim() &&
-      userIdCheck === "available" &&
+  const canStep1 = Boolean(
+    form.email.trim() &&
       form.password.trim() &&
       form.passwordConfirm.trim() &&
       form.password === form.passwordConfirm &&
-      form.email.trim() &&
-      form.phone.trim() &&
+      !errors.email &&
+      !errors.password &&
+      !errors.passwordConfirm,
+  );
+
+  const canStep2 = Boolean(
+    form.phone.trim() &&
       form.name.trim() &&
+      form.birthday.trim() &&
       form.postalCode.trim() &&
       form.address.trim() &&
-      form.profileImageUrl.trim() &&
+      profileImageFile &&
       form.agreeAge &&
       form.agreeTerms &&
-      form.agreePrivacy,
-    );
-  }, [form, errors, userIdCheck]);
+      form.agreePrivacy &&
+      !errors.phone &&
+      !errors.name &&
+      !errors.birthday,
+  );
 
-  const handleSubmit = async (e: FormEvent) => {
+  // ── 1단계: Supabase 계정 생성 → /api/v1/veggieverse/auth/token JWT 발급 ──
+  const handleStep1Submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || submitting) return;
+    if (!canStep1 || submitting) return;
     setSubmitting(true);
-    // TODO: 회원가입 API 연동
-    await new Promise((r) => setTimeout(r, 600));
+
+    // 1) Supabase 계정 생성
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: form.email.trim(),
+      password: form.password,
+    });
+
+    if (signUpError) {
+      console.error("[signup/supabase]", signUpError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    // 2) 백엔드 JWT 발급
+    const res = await apiFetch("/api/v1/veggieverse/auth/token", {
+      method: "POST",
+      body: { email: form.email.trim(), password: form.password },
+      auth: "none",
+    });
+
     setSubmitting(false);
-    alert("회원가입이 완료되었습니다.");
-    router.push("/");
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error("[signup/token]", res.status, errBody);
+      return;
+    }
+
+    const data = await res.json().catch(() => null) as Record<string, unknown> | null;
+    const token =
+      typeof data?.accessToken === "string"
+        ? data.accessToken
+        : typeof data?.token === "string"
+          ? data.token
+          : null;
+    setAuthToken(token);
+    if (token) saveCartSessionId(token);
+    setStep(2);
   };
 
-  const showImagePreview =
-    form.profileImageUrl.trim().length > 0 &&
-    URL_RE.test(form.profileImageUrl) &&
-    !imagePreviewError;
+  // ── 2단계: 프로필 정보 → /api/v1/veggieverse/users/profile ────────────
+  const handleStep2Submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!canStep2 || submitting) return;
+    setSubmitting(true);
+
+    const fd = new FormData();
+    fd.append("name", form.name.trim());
+    fd.append("phoneNumber", stripPhoneDashes(form.phone));
+    fd.append("birthday", form.birthday);
+    fd.append("locale", "ko");
+    fd.append("marketingSms", String(form.agreeMarketingSms));
+    fd.append("marketingEmail", String(form.agreeMarketingEmail));
+    fd.append("address.zipCode", form.postalCode);
+    fd.append("address.street", form.address);
+    fd.append("address.detail", form.addressDetail);
+    if (profileImageFile) fd.append("image", profileImageFile);
+
+    // 자사몰 가입 흐름: Supabase 메타데이터에 이름 추가 후 name 클레임이 포함된 JWT 재발급
+    let effectiveToken = authToken;
+    if (authToken) {
+      await supabase.auth.updateUser({ data: { full_name: form.name.trim() } });
+      const tokenRes = await apiFetch("/api/v1/veggieverse/auth/token", {
+        method: "POST",
+        body: { email: form.email.trim(), password: form.password },
+        auth: "none",
+      });
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json().catch(() => null) as Record<string, unknown> | null;
+        effectiveToken =
+          typeof tokenData?.accessToken === "string"
+            ? tokenData.accessToken
+            : typeof tokenData?.token === "string"
+              ? tokenData.token
+              : authToken;
+      }
+    }
+
+    const res = await apiFetch("/api/v1/veggieverse/users/profile", {
+      method: "POST",
+      body: fd,
+      auth: effectiveToken ? "none" : "required",
+      ...(effectiveToken ? { headers: { Authorization: `Bearer ${effectiveToken}` } } : {}),
+    });
+
+    setSubmitting(false);
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error("[signup/profile]", res.status, errBody);
+      return;
+    }
+
+    setSignupSuccess(true);
+  };
+
+  // ── 계정 연동 모드 (Kakao 계정 + 자사몰 비밀번호 추가) ────────────────
+  const [linkPassword, setLinkPassword] = useState("");
+  const [linkPasswordConfirm, setLinkPasswordConfirm] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const linkPasswordError =
+    linkPassword && linkPassword.length < 8 ? "비밀번호는 8자 이상이어야 합니다." : undefined;
+  const linkConfirmError =
+    linkPasswordConfirm && linkPassword !== linkPasswordConfirm
+      ? "비밀번호가 일치하지 않습니다."
+      : undefined;
+  const canLink = Boolean(
+    linkPassword.length >= 8 &&
+      linkPassword === linkPasswordConfirm &&
+      !linkPasswordError &&
+      !linkConfirmError,
+  );
+
+  const handleLinkSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!canLink || submitting) return;
+    setSubmitting(true);
+    setLinkError(null);
+    const { error } = await supabase.auth.updateUser({ password: linkPassword });
+    setSubmitting(false);
+    if (error) {
+      setLinkError(error.message);
+      return;
+    }
+    setSignupSuccess(true);
+  };
+  // ─────────────────────────────────────────────────────────────────────
+
+  if (isLoadingSession) {
+    return (
+      <div
+        className="flex justify-center items-center"
+        style={{ minHeight: "60vh", background: "var(--bg-pale)" }}
+      />
+    );
+  }
+
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
+        <div className="mx-auto max-w-[480px] px-4 py-12 text-center">
+          <h1 className="t-h2 mb-4" style={{ color: "var(--ink)" }}>
+            회원가입이 완료되었습니다
+          </h1>
+          <p className="t-body" style={{ color: "var(--ink-light)" }}>
+            베지버스 회원이 되신 것을 환영합니다!
+          </p>
+          <Link href="/" className="btn btn-dark btn-lg mt-8 inline-flex">
+            홈으로 이동
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 계정 연동 모드: 카카오 계정에 자사몰 비밀번호 추가
+  if (isLinkMode && isLoggedIn) {
+    return (
+      <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
+        <div className="mx-auto max-w-[480px] px-4 py-12">
+          <h1 className="t-h2 text-center mb-2" style={{ color: "var(--ink)" }}>
+            자사몰 계정 연동
+          </h1>
+          <p className="t-body text-center mb-8" style={{ color: "var(--ink-light)" }}>
+            카카오 계정에 비밀번호를 설정하면 이메일로도 로그인할 수 있습니다.
+          </p>
+
+          <form onSubmit={handleLinkSubmit} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="t-small" style={{ color: "var(--ink)" }}>이메일</span>
+              <input
+                type="email"
+                className="ds-input"
+                value={currentUser?.email ?? ""}
+                readOnly
+                style={{ height: 48, paddingTop: 0, paddingBottom: 0, background: "var(--bg-off)" }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <span className="t-small" style={{ color: "var(--ink)" }}>
+                비밀번호<span className="ml-1" style={{ color: "var(--alert-red)" }}>*</span>
+              </span>
+              <input
+                type="password"
+                className={`ds-input${linkPasswordError ? " is-error" : ""}`}
+                value={linkPassword}
+                onChange={(e) => setLinkPassword(e.target.value)}
+                placeholder="8자 이상"
+                autoComplete="new-password"
+                style={{ height: 48, paddingTop: 0, paddingBottom: 0 }}
+              />
+              {linkPasswordError && <p className="ds-input-msg is-error">{linkPasswordError}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <span className="t-small" style={{ color: "var(--ink)" }}>
+                비밀번호 확인<span className="ml-1" style={{ color: "var(--alert-red)" }}>*</span>
+              </span>
+              <input
+                type="password"
+                className={`ds-input${linkConfirmError ? " is-error" : ""}`}
+                value={linkPasswordConfirm}
+                onChange={(e) => setLinkPasswordConfirm(e.target.value)}
+                placeholder="비밀번호를 한 번 더 입력해 주세요"
+                autoComplete="new-password"
+                style={{ height: 48, paddingTop: 0, paddingBottom: 0 }}
+              />
+              {linkConfirmError && <p className="ds-input-msg is-error">{linkConfirmError}</p>}
+              {!linkConfirmError && linkPasswordConfirm && linkPassword === linkPasswordConfirm && (
+                <p className="t-caption mt-0.5" style={{ color: "var(--primary)" }}>
+                  비밀번호가 일치합니다.
+                </p>
+              )}
+            </div>
+
+            {linkError && <p className="ds-input-msg is-error">{linkError}</p>}
+
+            <button
+              type="submit"
+              disabled={!canLink || submitting}
+              className="btn btn-dark btn-lg w-full mt-2"
+            >
+              {submitting ? "처리 중..." : "연동하기"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -196,12 +450,7 @@ export function SignupClient() {
         isOpen={postcodeOpen}
         onClose={() => setPostcodeOpen(false)}
         onSelect={({ postalCode, address }) => {
-          setForm((prev) => ({
-            ...prev,
-            postalCode,
-            address,
-            addressDetail: "",
-          }));
+          setForm((prev) => ({ ...prev, postalCode, address, addressDetail: "" }));
           setPostcodeOpen(false);
         }}
       />
@@ -217,289 +466,301 @@ export function SignupClient() {
             홈으로
           </Link>
 
-          <h1 className="flex justify-center t-h2 mb-6 sm:mb-8" style={{ color: "var(--ink)" }}>회원가입</h1>
+          <h1 className="flex justify-center t-h2 mb-4 sm:mb-6" style={{ color: "var(--ink)" }}>
+            회원가입
+          </h1>
 
-          <form onSubmit={handleSubmit} className="signup-form flex flex-col gap-5">
-            {/* 계정 정보 */}
-            <FormSection icon={<User size={16} strokeWidth={1.5} />} title="계정 정보">
-              <FormField label="아이디" required errorMessage={errors.userId}>
-                <div className="flex items-stretch gap-2">
+          {/* 단계 표시 — Kakao 플로우는 2단계만 있으므로 숨김 */}
+          {!isLoggedIn && (
+            <div className="flex items-center justify-center gap-3 mb-6 sm:mb-8">
+              <StepIndicator num={1} active={step === 1} done={step > 1} label="계정 정보" />
+              <div
+                style={{ flex: 1, maxWidth: 48, height: 1, background: "var(--neutral-stone)" }}
+              />
+              <StepIndicator num={2} active={step === 2} done={false} label="프로필 정보" />
+            </div>
+          )}
+
+          {/* ── 1단계: 계정 정보 ── */}
+          {step === 1 && (
+            <form onSubmit={handleStep1Submit} className="signup-form flex flex-col gap-5">
+              <FormSection icon={<User size={16} strokeWidth={1.5} />} title="계정 정보">
+                <FormField label="이메일" required errorMessage={errors.email}>
                   <input
-                    className={`ds-input${errors.userId ? " is-error" : ""}`}
-                    value={form.userId}
-                    onChange={(e) => updateUserId(e.target.value)}
-                    placeholder="4자 이상의 영문/숫자"
-                    autoComplete="username"
+                    type="email"
+                    className={`ds-input${errors.email ? " is-error" : ""}`}
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                    placeholder="example@slunch.com"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                </FormField>
+
+                <FormField label="비밀번호" required errorMessage={errors.password}>
+                  <input
+                    type="password"
+                    className={`ds-input${errors.password ? " is-error" : ""}`}
+                    value={form.password}
+                    onChange={(e) => update("password", e.target.value)}
+                    placeholder="8자 이상"
+                    autoComplete="new-password"
+                  />
+                </FormField>
+
+                <FormField label="비밀번호 확인" required errorMessage={errors.passwordConfirm}>
+                  <input
+                    type="password"
+                    className={`ds-input${errors.passwordConfirm ? " is-error" : ""}`}
+                    value={form.passwordConfirm}
+                    onChange={(e) => update("passwordConfirm", e.target.value)}
+                    placeholder="비밀번호를 한 번 더 입력해 주세요"
+                    autoComplete="new-password"
+                  />
+                  {!errors.passwordConfirm &&
+                    form.passwordConfirm.length > 0 &&
+                    form.password === form.passwordConfirm && (
+                      <p className="t-caption mt-1.5" style={{ color: "var(--primary)" }}>
+                        비밀번호가 일치합니다.
+                      </p>
+                    )}
+                </FormField>
+              </FormSection>
+
+              <button
+                type="submit"
+                disabled={!canStep1 || submitting}
+                className="btn btn-dark btn-lg w-full mt-2"
+              >
+                {submitting ? "처리 중..." : "다음"}
+              </button>
+            </form>
+          )}
+
+          {/* ── 2단계: 프로필 정보 ── */}
+          {step === 2 && (
+            <form onSubmit={handleStep2Submit} className="signup-form flex flex-col gap-5">
+              <FormSection icon={<AtSign size={16} strokeWidth={1.5} />} title="기본 정보">
+                <FormField label="이름" required errorMessage={errors.name}>
+                  <input
+                    className={`ds-input${errors.name ? " is-error" : ""}`}
+                    value={form.name}
+                    onChange={(e) => update("name", filterLetters(e.target.value))}
+                    placeholder="홍길동"
+                    autoComplete="name"
                     inputMode="text"
                   />
-                  <button
-                    type="button"
-                    onClick={checkUserIdDuplicate}
-                    disabled={
-                      !form.userId.trim() ||
-                      form.userId.length < 4 ||
-                      userIdCheck === "checking" ||
-                      userIdCheck === "available"
-                    }
-                    className="btn btn-ghost signup-aligned-btn flex-shrink-0"
-                    style={{ border: "1px solid var(--neutral-stone)" }}
-                  >
-                    {userIdCheck === "checking" ? "확인 중..." : "중복확인"}
-                  </button>
-                </div>
-                {!errors.userId && userIdCheck === "available" && (
-                  <p className="t-caption mt-1.5" style={{ color: "var(--primary)" }}>
-                    사용 가능한 아이디입니다.
-                  </p>
-                )}
-                {!errors.userId && userIdCheck === "duplicate" && (
-                  <p className="ds-input-msg is-error">이미 사용 중인 아이디입니다.</p>
-                )}
-              </FormField>
+                </FormField>
 
-              <FormField label="비밀번호" required errorMessage={errors.password}>
-                <input
-                  type="password"
-                  className={`ds-input${errors.password ? " is-error" : ""}`}
-                  value={form.password}
-                  onChange={(e) => update("password", e.target.value)}
-                  placeholder="8자 이상"
-                  autoComplete="new-password"
-                />
-              </FormField>
-
-              <FormField label="비밀번호 확인" required errorMessage={errors.passwordConfirm}>
-                <input
-                  type="password"
-                  className={`ds-input${errors.passwordConfirm ? " is-error" : ""}`}
-                  value={form.passwordConfirm}
-                  onChange={(e) => update("passwordConfirm", e.target.value)}
-                  placeholder="비밀번호를 한 번 더 입력해 주세요"
-                  autoComplete="new-password"
-                />
-                {!errors.passwordConfirm &&
-                  form.passwordConfirm.length > 0 &&
-                  form.password === form.passwordConfirm && (
-                    <p className="t-caption mt-1.5" style={{ color: "var(--primary)" }}>
-                      비밀번호가 일치합니다.
-                    </p>
-                  )}
-              </FormField>
-            </FormSection>
-
-            {/* 연락처 */}
-            <FormSection icon={<AtSign size={16} strokeWidth={1.5} />} title="연락처">
-              <FormField label="이름" required errorMessage={errors.name}>
-                <input
-                  className={`ds-input${errors.name ? " is-error" : ""}`}
-                  value={form.name}
-                  onChange={(e) => update("name", filterLetters(e.target.value))}
-                  placeholder="홍길동"
-                  autoComplete="name"
-                  inputMode="text"
-                />
-              </FormField>
-
-              <FormField label="이메일" required errorMessage={errors.email}>
-                <input
-                  type="email"
-                  className={`ds-input${errors.email ? " is-error" : ""}`}
-                  value={form.email}
-                  onChange={(e) => update("email", e.target.value)}
-                  placeholder="example@slunch.com"
-                  autoComplete="email"
-                />
-              </FormField>
-
-              <FormField label="휴대전화" required errorMessage={errors.phone}>
-                <input
-                  type="tel"
-                  className={`ds-input${errors.phone ? " is-error" : ""}`}
-                  value={form.phone}
-                  onChange={(e) => update("phone", formatPhone(e.target.value))}
-                  placeholder="010-0000-0000"
-                  autoComplete="tel"
-                  inputMode="numeric"
-                  maxLength={13}
-                />
-              </FormField>
-            </FormSection>
-
-            {/* 주소 */}
-            <FormSection icon={<MapPin size={16} strokeWidth={1.5} />} title="주소">
-              <FormField label="주소" required>
-                <div className="flex items-stretch gap-2">
+                <FormField label="휴대전화" required errorMessage={errors.phone}>
                   <input
-                    value={form.postalCode}
-                    readOnly
-                    placeholder="우편번호"
-                    className="ds-input signup-postal-input"
+                    type="tel"
+                    className={`ds-input${errors.phone ? " is-error" : ""}`}
+                    value={form.phone}
+                    onChange={(e) => update("phone", formatPhone(e.target.value))}
+                    placeholder="010-0000-0000"
+                    autoComplete="tel"
+                    inputMode="numeric"
+                    maxLength={13}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setPostcodeOpen(true)}
-                    className="btn btn-ghost signup-aligned-btn flex-shrink-0"
-                    style={{ border: "1px solid var(--neutral-stone)" }}
-                  >
-                    주소 검색
-                  </button>
-                </div>
-                <input
-                  value={form.address}
-                  readOnly
-                  placeholder="기본 주소"
-                  className="ds-input mt-2"
-                />
-                <input
-                  value={form.addressDetail}
-                  onChange={(e) => update("addressDetail", e.target.value)}
-                  placeholder="상세 주소 (동·호수)"
-                  className="ds-input mt-2"
-                />
-              </FormField>
-            </FormSection>
+                </FormField>
 
-            {/* 프로필 사진 */}
-            <FormSection icon={<ImageIcon size={16} strokeWidth={1.5} />} title="프로필 사진">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div
-                  className="flex shrink-0 items-center justify-center overflow-hidden self-center sm:self-auto"
-                  style={{
-                    width: 84,
-                    height: 84,
-                    borderRadius: "50%",
-                    background: "var(--bg-off)",
-                    border: "1px solid var(--ink)",
-                  }}
-                >
-                  {showImagePreview ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={form.profileImageUrl}
-                      alt="프로필 미리보기"
-                      className="w-full h-full object-cover"
-                      onError={() => setImagePreviewError(true)}
+                <FormField label="생년월일" required errorMessage={errors.birthday}>
+                  <div className="flex items-stretch gap-2">
+                    <input
+                      type="date"
+                      className={`ds-input${errors.birthday ? " is-error" : ""}`}
+                      value={form.birthday}
+                      onChange={(e) => update("birthday", e.target.value)}
+                      max={new Date().toISOString().slice(0, 10)}
                     />
-                  ) : (
-                    <User size={32} color="var(--neutral-stone)" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <FormField label="프로필 사진" required errorMessage={errors.profileImageUrl}>
-                    {uploadedFileName ? (
-                      <div className="flex items-stretch gap-2">
-                        <input
-                          type="text"
-                          className="ds-input"
-                          value={`📎 ${uploadedFileName}`}
-                          readOnly
-                        />
-                        <button
-                          type="button"
-                          onClick={clearProfileImage}
-                          className="btn btn-ghost signup-aligned-btn flex-shrink-0"
-                          style={{ border: "1px solid var(--neutral-stone)" }}
-                        >
-                          삭제
-                        </button>
-                      </div>
+                    <span
+                      className="signup-aligned-btn flex items-center justify-center px-3 flex-shrink-0"
+                      style={{ color: "var(--ink-light)" }}
+                      aria-hidden
+                    >
+                      <CalendarDays size={16} />
+                    </span>
+                  </div>
+                </FormField>
+              </FormSection>
+
+              <FormSection icon={<MapPin size={16} strokeWidth={1.5} />} title="주소">
+                <FormField label="주소" required>
+                  <div className="flex items-stretch gap-2">
+                    <input
+                      value={form.postalCode}
+                      readOnly
+                      placeholder="우편번호"
+                      className="ds-input signup-postal-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPostcodeOpen(true)}
+                      className="btn btn-ghost signup-aligned-btn flex-shrink-0"
+                      style={{ border: "1px solid var(--neutral-stone)" }}
+                    >
+                      주소 검색
+                    </button>
+                  </div>
+                  <input
+                    value={form.address}
+                    readOnly
+                    placeholder="기본 주소"
+                    className="ds-input mt-2"
+                  />
+                  <input
+                    value={form.addressDetail}
+                    onChange={(e) => update("addressDetail", e.target.value)}
+                    placeholder="상세 주소 (동·호수)"
+                    className="ds-input mt-2"
+                  />
+                </FormField>
+              </FormSection>
+
+              <FormSection icon={<ImageIcon size={16} strokeWidth={1.5} />} title="프로필 사진">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div
+                    className="flex shrink-0 items-center justify-center overflow-hidden self-center sm:self-auto"
+                    style={{
+                      width: 84,
+                      height: 84,
+                      borderRadius: "50%",
+                      background: "var(--bg-off)",
+                      border: "1px solid var(--ink)",
+                    }}
+                  >
+                    {profileImagePreview ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={profileImagePreview}
+                        alt="프로필 미리보기"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className="flex items-stretch gap-2">
-                        <input
-                          type="url"
-                          className={`ds-input${errors.profileImageUrl ? " is-error" : ""}`}
-                          value={form.profileImageUrl}
-                          onChange={(e) => {
-                            update("profileImageUrl", e.target.value);
-                            setImagePreviewError(false);
-                          }}
-                          placeholder="https://..."
-                        />
+                      <User size={32} color="var(--neutral-stone)" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <FormField label="프로필 사진" required>
+                      {profileImageFile ? (
+                        <div className="flex items-stretch gap-2">
+                          <input
+                            type="text"
+                            className="ds-input"
+                            value={`📎 ${profileImageFile.name}`}
+                            readOnly
+                          />
+                          <button
+                            type="button"
+                            onClick={clearProfileImage}
+                            className="btn btn-ghost signup-aligned-btn flex-shrink-0"
+                            style={{ border: "1px solid var(--neutral-stone)" }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="btn btn-ghost signup-aligned-btn flex-shrink-0 gap-1.5"
+                          className="btn btn-ghost signup-aligned-btn w-full gap-1.5"
                           style={{ border: "1px solid var(--neutral-stone)" }}
                         >
                           <Upload size={14} />
-                          업로드
+                          이미지 업로드
                         </button>
-                      </div>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    {!uploadedFileName && (
-                      <p className="t-caption mt-1.5" style={{ color: "var(--neutral-stone)" }}>
-                        URL 입력 또는 이미지 파일 업로드 (최대 5MB)
-                      </p>
-                    )}
-                  </FormField>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      {!profileImageFile && (
+                        <p className="t-caption mt-1.5" style={{ color: "var(--neutral-stone)" }}>
+                          JPG / PNG / WebP, 최대 5MB
+                        </p>
+                      )}
+                    </FormField>
+                  </div>
                 </div>
+              </FormSection>
+
+              <FormSection icon={<ShieldCheck size={16} strokeWidth={1.5} />} title="약관 동의">
+                <label
+                  className="chk-wrap pb-3"
+                  style={{ borderBottom: "1px solid var(--neutral-stone)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={allAgreed}
+                    onChange={(e) => toggleAllAgreements(e.target.checked)}
+                  />
+                  <span className="t-body" style={{ color: "var(--ink)" }}>
+                    전체 동의
+                  </span>
+                </label>
+                <div className="flex flex-col gap-2 mt-1">
+                  <AgreementRow
+                    checked={form.agreeAge}
+                    onChange={(v) => update("agreeAge", v)}
+                    label="만 14세 이상입니다"
+                    required
+                  />
+                  <AgreementRow
+                    checked={form.agreeTerms}
+                    onChange={(v) => update("agreeTerms", v)}
+                    label="이용약관 동의"
+                    required
+                  />
+                  <AgreementRow
+                    checked={form.agreePrivacy}
+                    onChange={(v) => update("agreePrivacy", v)}
+                    label="개인정보 수집·이용 동의"
+                    required
+                  />
+                  <AgreementRow
+                    checked={form.agreeMarketingSms}
+                    onChange={(v) => update("agreeMarketingSms", v)}
+                    label="SMS 마케팅 수신 동의"
+                  />
+                  <AgreementRow
+                    checked={form.agreeMarketingEmail}
+                    onChange={(v) => update("agreeMarketingEmail", v)}
+                    label="이메일 마케팅 수신 동의"
+                  />
+                </div>
+              </FormSection>
+
+              <div className="flex gap-3 mt-2">
+                {!isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={() => { setStep(1); }}
+                    className="btn btn-ghost btn-lg"
+                    style={{ border: "1px solid var(--ink)", flex: "0 0 auto" }}
+                  >
+                    이전
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={!canStep2 || submitting}
+                  className="btn btn-dark btn-lg w-full"
+                >
+                  {submitting ? "처리 중..." : "회원가입"}
+                </button>
               </div>
-            </FormSection>
 
-            {/* 약관 동의 */}
-            <FormSection icon={<ShieldCheck size={16} strokeWidth={1.5} />} title="약관 동의">
-              <label
-                className="chk-wrap pb-3"
-                style={{ borderBottom: "1px solid var(--neutral-stone)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={allAgreed}
-                  onChange={(e) => toggleAllAgreements(e.target.checked)}
-                />
-                <span className="t-body" style={{ color: "var(--ink)" }}>
-                  전체 동의
-                </span>
-              </label>
-              <div className="flex flex-col gap-2 mt-1">
-                <AgreementRow
-                  checked={form.agreeAge}
-                  onChange={(v) => update("agreeAge", v)}
-                  label="만 14세 이상입니다"
-                  required
-                />
-                <AgreementRow
-                  checked={form.agreeTerms}
-                  onChange={(v) => update("agreeTerms", v)}
-                  label="이용약관 동의"
-                  required
-                />
-                <AgreementRow
-                  checked={form.agreePrivacy}
-                  onChange={(v) => update("agreePrivacy", v)}
-                  label="개인정보 수집·이용 동의"
-                  required
-                />
-                <AgreementRow
-                  checked={form.agreeMarketing}
-                  onChange={(v) => update("agreeMarketing", v)}
-                  label="마케팅 정보 수신 동의"
-                />
-              </div>
-            </FormSection>
-
-            {/* 제출 */}
-            <button
-              type="submit"
-              disabled={!canSubmit || submitting}
-              className="btn btn-dark btn-lg w-full mt-2"
-            >
-              {submitting ? "처리 중..." : "회원가입"}
-            </button>
-
-            {!canSubmit && !submitting && (
-              <p className="t-caption text-center" style={{ color: "var(--ink-light)" }}>
-                모든 필수 항목을 정확히 입력해주세요
-              </p>
-            )}
-          </form>
+              {!canStep2 && !submitting && (
+                <p className="t-caption text-center" style={{ color: "var(--ink-light)" }}>
+                  모든 필수 항목을 정확히 입력해주세요
+                </p>
+              )}
+            </form>
+          )}
         </div>
       </div>
 
@@ -542,6 +803,44 @@ export function SignupClient() {
 }
 
 /* ─── 보조 컴포넌트 ─── */
+
+function StepIndicator({
+  num,
+  active,
+  done,
+  label,
+}: {
+  num: number;
+  active: boolean;
+  done: boolean;
+  label: string;
+}) {
+  const filled = active || done;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div
+        className="flex items-center justify-center t-small"
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: "50%",
+          background: filled ? "var(--ink)" : "transparent",
+          border: `1.5px solid ${filled ? "var(--ink)" : "var(--neutral-stone)"}`,
+          color: filled ? "var(--bg-white)" : "var(--neutral-stone)",
+          fontWeight: 600,
+        }}
+      >
+        {num}
+      </div>
+      <span
+        className="t-caption"
+        style={{ color: filled ? "var(--ink)" : "var(--neutral-stone)", whiteSpace: "nowrap" }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
 
 function FormSection({
   icon,
