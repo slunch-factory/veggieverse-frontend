@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type MenuData } from "../_data/subscription";
 import { postPlan } from "@/lib/api/subscription";
@@ -12,6 +12,7 @@ import { PlannerColumn } from "./PlannerColumn";
 import { CheckoutBar } from "./CheckoutBar";
 import { MobileCheckoutBar } from "./MobileCheckoutBar";
 import { Snackbar } from "./Snackbar";
+import { AllergyWarningModal } from "./AllergyWarningModal";
 
 interface SubscribeClientProps {
   menus: MenuData[];
@@ -20,8 +21,12 @@ interface SubscribeClientProps {
 export function SubscribeClient({ menus }: SubscribeClientProps) {
   const router = useRouter();
   const p = useSubscribePlanner(menus);
+  const [showAllergyModal, setShowAllergyModal] = useState(false);
 
-  const handleOrderSubmit = useCallback(async () => {
+  // 실제 주문 제출 (팝업 확인 후 또는 수정 없을 때 바로 호출)
+  const proceedToOrder = useCallback(async () => {
+    setShowAllergyModal(false);
+
     const items = p.allDays.map((day) => ({
       date: day.dateKey,
       lunch: p.mealPlan[`${day.dateKey}-0`] ? Number(p.mealPlan[`${day.dateKey}-0`].id) : 0,
@@ -53,6 +58,15 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
     p.totalPrice,
     router,
   ]);
+
+  // 구매 버튼 클릭: 수정 여부에 따라 분기
+  const handleOrderSubmit = useCallback(() => {
+    if (p.isMealPlanModified) {
+      setShowAllergyModal(true);
+    } else {
+      proceedToOrder();
+    }
+  }, [p.isMealPlanModified, proceedToOrder]);
 
   const menuColumn = (
     <MenuLibrary
@@ -120,6 +134,11 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
         )}
       />
       <Snackbar message={p.snackbarMsg} onClose={p.clearSnackbar} />
+      <AllergyWarningModal
+        open={showAllergyModal}
+        onClose={() => setShowAllergyModal(false)}
+        onConfirm={proceedToOrder}
+      />
     </>
   );
 }
