@@ -20,7 +20,6 @@ import { getCustomedPlan, type CustomPlanResponse } from "@/lib/api/subscription
 import { getUserProfile } from "@/lib/api/user";
 import {
   postPayment,
-  FIXED_USER_ID,
   PAYMENT_RESULT_KEY,
 } from "@/lib/api/payment";
 import { OrderSummaryCard } from "./OrderSummaryCard";
@@ -80,6 +79,13 @@ const DELIVERY_NOTE_PRESETS = [
   "직접 전달해 주세요",
 ];
 
+function formatPhone(v: string) {
+  const digits = v.replace(/\D/g, "").slice(0, 11);
+  if (digits.length < 4) return digits;
+  if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
 export function OrderClient() {
   const router = useRouter();
   const order = useSyncExternalStore(
@@ -92,6 +98,7 @@ export function OrderClient() {
   const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
   const [confirmedPlan, setConfirmedPlan] = useState<CustomPlanResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     if (order === null || Object.keys(order.mealPlan).length === 0) {
@@ -109,16 +116,18 @@ export function OrderClient() {
 
   useEffect(() => {
     getUserProfile().then((profile) => {
-      if (!profile) return;
-      setForm((prev) => ({
-        ...prev,
-        ...(profile.name && { customerName: profile.name }),
-        ...(profile.phone && { customerPhone: profile.phone }),
-        ...(profile.email && { customerEmail: profile.email }),
-        ...(profile.postalCode && { customerPostalCode: profile.postalCode }),
-        ...(profile.address && { customerAddress: profile.address }),
-        ...(profile.addressDetail && { customerAddressDetail: profile.addressDetail }),
-      }));
+      if (profile) {
+        setForm((prev) => ({
+          ...prev,
+          customerName: profile.name || "",
+          customerPhone: formatPhone(profile.phoneNumber || ""),
+          customerEmail: profile.email || "",
+          customerPostalCode: profile.address?.zipCode || "",
+          customerAddress: profile.address?.street || "",
+          customerAddressDetail: profile.address?.detail || "",
+        }));
+      }
+      setProfileLoading(false);
     });
   }, []);
 
@@ -185,7 +194,6 @@ export function OrderClient() {
     };
 
     const result = await postPayment({
-      userId: FIXED_USER_ID,
       planId,
       subscriptionStartDate: toDateStr(startD),
       subscriptionEndDate: toDateStr(endD),
@@ -250,60 +258,66 @@ export function OrderClient() {
             {/* 좌: 폼 */}
             <div className="flex-1 flex flex-col gap-5">
 
-              {/* 주문자 정보 */}
+              {/* 주문자 정보 — 회원정보에서 자동 조회 */}
               <FormSection
                 icon={<User size={16} strokeWidth={1.5} />}
                 title="주문자 정보"
               >
-                <div className="flex flex-col md:flex-row gap-4">
-                  <FormField label="이름" required className="flex-1">
-                    <input
-                      value={form.customerName}
-                      onChange={(e) => update("customerName", e.target.value)}
-                      placeholder="홍길동"
-                      className="order-input"
-                    />
-                  </FormField>
-                  <FormField label="휴대전화" required className="flex-1">
-                    <input
-                      type="tel"
-                      value={form.customerPhone}
-                      onChange={(e) => update("customerPhone", e.target.value)}
-                      placeholder="010-0000-0000"
-                      className="order-input"
-                    />
-                  </FormField>
-                </div>
-                <FormField label="이메일" required>
-                  <input
-                    type="email"
-                    value={form.customerEmail}
-                    onChange={(e) => update("customerEmail", e.target.value)}
-                    placeholder="order@example.com"
-                    className="order-input"
-                  />
-                </FormField>
-                <FormField label="주소">
-                  <input
-                    value={form.customerPostalCode}
-                    readOnly
-                    placeholder="우편번호"
-                    className="order-input"
-                    style={{ width: 120, flexShrink: 0 }}
-                  />
-                  <input
-                    value={form.customerAddress}
-                    readOnly
-                    placeholder="기본 주소"
-                    className="order-input mt-2"
-                  />
-                  <input
-                    value={form.customerAddressDetail}
-                    readOnly
-                    placeholder="상세 주소 (동·호수)"
-                    className="order-input mt-2"
-                  />
-                </FormField>
+                {profileLoading ? (
+                  <p className="t-small text-center py-4" style={{ color: "var(--ink-light)" }}>
+                    불러오는 중...
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <FormField label="이름" className="flex-1">
+                        <input
+                          value={form.customerName}
+                          readOnly
+                          className="order-input order-input-readonly"
+                          placeholder="이름"
+                        />
+                      </FormField>
+                      <FormField label="휴대전화" className="flex-1">
+                        <input
+                          value={form.customerPhone}
+                          readOnly
+                          className="order-input order-input-readonly"
+                          placeholder="010-0000-0000"
+                        />
+                      </FormField>
+                    </div>
+                    <FormField label="이메일">
+                      <input
+                        value={form.customerEmail}
+                        readOnly
+                        className="order-input order-input-readonly"
+                        placeholder="이메일"
+                      />
+                    </FormField>
+                    <FormField label="주소">
+                      <input
+                        value={form.customerPostalCode}
+                        readOnly
+                        placeholder="우편번호"
+                        className="order-input order-input-readonly"
+                        style={{ width: 120, flexShrink: 0 }}
+                      />
+                      <input
+                        value={form.customerAddress}
+                        readOnly
+                        placeholder="기본 주소"
+                        className="order-input order-input-readonly mt-2"
+                      />
+                      <input
+                        value={form.customerAddressDetail}
+                        readOnly
+                        placeholder="상세 주소"
+                        className="order-input order-input-readonly mt-2"
+                      />
+                    </FormField>
+                  </>
+                )}
               </FormSection>
 
               {/* 배송지 정보 */}
@@ -537,6 +551,11 @@ export function OrderClient() {
           background: var(--bg-off);
           color: var(--ink-light);
           cursor: not-allowed;
+        }
+        .order-input-readonly {
+          background: var(--bg-off) !important;
+          color: var(--ink-light);
+          cursor: default;
         }
         .order-select {
           appearance: none;
