@@ -1,4 +1,5 @@
 import type { ExcludeCategory, MenuCategory, MenuData, MenuNutrition } from "@/app/subscribe/_data/subscription";
+import { apiFetch } from "@/lib/api/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
@@ -151,20 +152,20 @@ export interface OrderHistoryResponse {
 }
 
 export async function getOrderHistory(
-  userId: number,
   options?: { page?: number; size?: number },
 ): Promise<OrderHistoryResponse | null> {
-  const params = new URLSearchParams({ userId: String(userId) });
+  // 백엔드는 JWT `sub` 클레임으로 사용자를 식별 — userId 파라미터는 더 이상 보내지 않음
+  const params = new URLSearchParams();
   if (options?.page !== undefined) params.set("page", String(options.page));
   if (options?.size !== undefined) params.set("size", String(options.size));
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/users/orderHistory?${params.toString()}`;
+  const query = params.toString();
+  const path = `/api/v1/veggieverse/subscription/users/orderHistory${query ? `?${query}` : ""}`;
   try {
-    const res = await fetch(url, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
+    const res = await apiFetch(path, { cache: "no-store", auth: "required" });
     if (!res.ok) {
-      console.error("[getOrderHistory] HTTP error:", res.status, res.statusText);
+      if (res.status !== 401) {
+        console.error("[getOrderHistory] HTTP error:", res.status, res.statusText);
+      }
       return null;
     }
     const data: OrderHistoryResponse = await res.json();
@@ -214,17 +215,15 @@ export interface OrderDetailResponse {
 
 export async function getOrderDetail(
   orderId: number | string,
-  userId: number,
 ): Promise<OrderDetailResponse | null> {
-  const params = new URLSearchParams({ userId: String(userId) });
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/users/orderHistory/${encodeURIComponent(String(orderId))}?${params.toString()}`;
+  // 백엔드는 JWT `sub` 클레임으로 사용자를 식별 — userId 파라미터는 더 이상 보내지 않음
+  const path = `/api/v1/veggieverse/subscription/users/orderHistory/${encodeURIComponent(String(orderId))}`;
   try {
-    const res = await fetch(url, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
+    const res = await apiFetch(path, { cache: "no-store", auth: "required" });
     if (!res.ok) {
-      console.error("[getOrderDetail] HTTP error:", res.status, res.statusText);
+      if (res.status !== 401) {
+        console.error("[getOrderDetail] HTTP error:", res.status, res.statusText);
+      }
       return null;
     }
     const data: OrderDetailResponse = await res.json();

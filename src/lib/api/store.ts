@@ -9,7 +9,7 @@ function resolveImageUrl(imageUrl: string): string {
 
   if (process.env.NODE_ENV === "development") {
     const match = imageUrl.match(CDN_PATTERN);
-    if (match) return match[1];
+    if (match) return `${API_BASE}${match[1]}`;
   }
 
   if (imageUrl.startsWith("http")) return imageUrl;
