@@ -8,6 +8,9 @@ import type { SurveyQuestion, SurveyOption } from '@/app/spirit/_data/surveyQues
 import type { SurveyAnswers } from '@/app/spirit/_types';
 import TarotCarousel3DSurvey, { type CarouselOption } from './TarotCarousel3DSurvey';
 import { getAutoPlan } from '@/lib/api/spirit';
+import { AmbientParticles } from './AmbientParticles';
+import { SelectRipple, type Ripple } from './SelectRipple';
+import { QuestionHeadline } from './QuestionHeadline';
 
 const _backBase = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
 const BACK_CARD: CarouselOption = {
@@ -48,6 +51,7 @@ export function SpiritStepClient3D({ questions }: Props) {
   const [centerOpt, setCenterOpt] = useState<CarouselOption | null>(null);
   const [nextBtnState, setNextBtnState] = useState<'idle' | 'hover' | 'active' | 'focus'>('idle');
   const [backBtnState, setBackBtnState] = useState<'idle' | 'hover' | 'active' | 'focus'>('idle');
+  const [ripples, setRipples] = useState<Ripple[]>([]);
 
   const deckRef = useRef<HTMLDivElement>(null);
 
@@ -85,6 +89,13 @@ export function SpiritStepClient3D({ questions }: Props) {
 
   // ── Fly animation trigger ─────────────────────────────────────────
   const triggerFly = useCallback((option: SurveyOption, screenX: number, screenY: number) => {
+    // ripple은 카드 이미지 유무와 관계없이 발생 (선택 피드백)
+    const rippleId = Date.now() + Math.random();
+    setRipples((prev) => [...prev, { id: rippleId, x: screenX, y: screenY }]);
+    setTimeout(() => {
+      setRipples((prev) => prev.filter((r) => r.id !== rippleId));
+    }, 900);
+
     if (!option.tarot?.image) return;
     const id = Date.now() + Math.random();
     const spin = (Math.random() - 0.5) * 40; // random tilt during flight
@@ -217,8 +228,16 @@ export function SpiritStepClient3D({ questions }: Props) {
       : { x: (typeof window !== 'undefined' ? window.innerWidth : 800) - 50, y: 60 };
   };
 
+  const progressPct = (stepNum / totalSteps) * 100;
+
   return (
     <div style={{ position: 'relative', width: '100%', height: 'calc(100dvh - var(--header-area-h, 96px))', overflow: 'hidden', background: '#212121' }}>
+
+      {/* ── 배경 ambient 파티클 ─────────────────────────────────── */}
+      <AmbientParticles count={28} />
+
+      {/* ── 선택 ripple 글로우 ──────────────────────────────────── */}
+      <SelectRipple ripples={ripples} />
 
       {/* ── 3D Carousel — fills entire screen ───────────────────── */}
       <AnimatePresence mode="wait">
@@ -280,19 +299,36 @@ export function SpiritStepClient3D({ questions }: Props) {
         }}
       >
         {deckGroups.length === 0 ? (
-          <div style={{
-            width: isMobile ? 45 : 44,
-            height: isMobile ? 72 : 72,
-            borderRadius: 8,
-            border: '1.5px dashed rgba(136,100,255,0.3)',
-            background: 'rgba(33,33,33,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(6px)',
-          }}>
-            <span style={{ fontSize: 16, color: 'rgba(136,100,255,0.45)' }}>✦</span>
-          </div>
+          <motion.div
+            animate={{
+              boxShadow: [
+                '0 0 0 rgba(136,100,255,0.0)',
+                '0 0 14px rgba(136,100,255,0.45)',
+                '0 0 0 rgba(136,100,255,0.0)',
+              ],
+              scale: [1, 1.04, 1],
+            }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              width: isMobile ? 45 : 44,
+              height: isMobile ? 72 : 72,
+              borderRadius: 8,
+              border: '1.5px dashed rgba(136,100,255,0.3)',
+              background: 'rgba(33,33,33,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(6px)',
+            }}
+          >
+            <motion.span
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+              style={{ fontSize: 16, color: 'rgba(136,100,255,0.7)', display: 'inline-block' }}
+            >
+              ✦
+            </motion.span>
+          </motion.div>
         ) : (
           deckGroups.map((group) => {
             const n = group.cards.length;
@@ -306,8 +342,12 @@ export function SpiritStepClient3D({ questions }: Props) {
               const ROW_W = isMobile ? 60 : 60;
               const OVERLAP = isMobile ? 8 : 10; // visible strip per stacked card
               return (
-                <div
+                <motion.div
                   key={group.questionId}
+                  layout
+                  initial={{ opacity: 0, scale: 0.6, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 360, damping: 22 }}
                   style={{
                     position: 'relative',
                     width: ROW_W + (n - 1) * OVERLAP,
@@ -318,8 +358,12 @@ export function SpiritStepClient3D({ questions }: Props) {
                   {group.cards.map((card, cardIdx) => {
                     const offset = n - 1 - cardIdx; // 0 = right (oldest), n-1 = left (newest)
                     return (
-                      <div
+                      <motion.div
                         key={card.value}
+                        layout
+                        initial={{ opacity: 0, scale: 0.5, rotate: -8 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 22 }}
                         style={{
                           position: 'absolute',
                           top: 0,
@@ -360,17 +404,21 @@ export function SpiritStepClient3D({ questions }: Props) {
                         }}>
                           {card.label}
                         </span>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               );
             }
 
             // Single card (or single-select group): original style
             return (
-              <div
+              <motion.div
                 key={group.questionId}
+                layout
+                initial={{ opacity: 0, scale: 0.55, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                 style={{
                   display: 'flex',
                   flexDirection: isMobile ? 'row' : 'column',
@@ -446,7 +494,7 @@ export function SpiritStepClient3D({ questions }: Props) {
                     </div>
                   )
                 ))}
-              </div>
+              </motion.div>
             );
           })
         )}
@@ -503,41 +551,83 @@ export function SpiritStepClient3D({ questions }: Props) {
             exit={{ y: -22, opacity: 0 }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* Step counter */}
-            <p style={{
-              margin: '0 0 0.6rem',
-              fontSize: 'clamp(0.65rem, 1.3vw, 0.78rem)',
-              fontWeight: 600,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: 'rgba(213,254,0,0.45)',
+            {/* Step counter + progress bar (게임 HUD) */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              margin: '0 0 1rem',
+              maxWidth: 360,
+              pointerEvents: 'auto',
             }}>
-              {String(stepNum).padStart(2, '0')} / {String(totalSteps).padStart(2, '0')}
-            </p>
+              <motion.p
+                style={{
+                  margin: 0,
+                  fontSize: 'clamp(0.65rem, 1.3vw, 0.78rem)',
+                  fontWeight: 700,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: '#D5FE00',
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                  textShadow: '0 0 12px rgba(213,254,0,0.35)',
+                }}
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 18 }}
+              >
+                {String(stepNum).padStart(2, '0')} / {String(totalSteps).padStart(2, '0')}
+              </motion.p>
+              {/* progress bar 트랙 */}
+              <div style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 2,
+                background: 'rgba(213,254,0,0.12)',
+                overflow: 'hidden',
+                position: 'relative',
+                boxShadow: 'inset 0 0 6px rgba(0,0,0,0.4)',
+              }}>
+                <motion.div
+                  style={{
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #D5FE00 0%, #cbed7f 100%)',
+                    borderRadius: 2,
+                    boxShadow: '0 0 12px rgba(213,254,0,0.7)',
+                  }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                />
+                {/* shimmer */}
+                <motion.div
+                  style={{
+                    position: 'absolute', top: 0, bottom: 0, width: 60,
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)',
+                    pointerEvents: 'none',
+                  }}
+                  animate={{ x: ['-60px', '320px'] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </div>
+            </div>
 
-            <h2 style={{
-              margin: '0 0 0.55rem',
-              fontSize: 'clamp(1.6rem, 4vw, 2rem)',
-              fontWeight: 800,
-              color: '#D5FE00',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-              wordBreak: 'keep-all',
-              maxWidth: '55%',
-            }}>
-              {q.question}
-            </h2>
+            {/* 글자 wave 헤드라인 */}
+            <QuestionHeadline text={q.question} stepKey={currentStep} />
 
             {(q.subtitle || isMulti) && (
-              <p style={{
-                margin: 0,
-                fontSize: 'clamp(0.7rem, 1.5vw, 0.88rem)',
-                color: 'rgba(213,254,0,0.55)',
-                letterSpacing: '0.03em',
-                wordBreak: 'keep-all',
-              }}>
+              <motion.p
+                style={{
+                  margin: 0,
+                  fontSize: 'clamp(0.7rem, 1.5vw, 0.88rem)',
+                  color: 'rgba(213,254,0,0.55)',
+                  letterSpacing: '0.03em',
+                  wordBreak: 'keep-all',
+                }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              >
                 {q.subtitle}{isMulti ? ' · 복수 선택 가능' : ''}
-              </p>
+              </motion.p>
             )}
           </motion.div>
         </AnimatePresence>
@@ -608,7 +698,7 @@ export function SpiritStepClient3D({ questions }: Props) {
         gap: 10,
         userSelect: 'none',
       }}>
-        <button
+        <motion.button
           type="button"
           onClick={handleBack}
           onMouseEnter={() => setBackBtnState('hover')}
@@ -617,6 +707,9 @@ export function SpiritStepClient3D({ questions }: Props) {
           onMouseUp={() => setBackBtnState('hover')}
           onFocus={() => setBackBtnState('focus')}
           onBlur={() => setBackBtnState('idle')}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.94 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 18 }}
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             padding: '11px 22px',
@@ -642,10 +735,10 @@ export function SpiritStepClient3D({ questions }: Props) {
           }}
         >
           ← 이전
-        </button>
+        </motion.button>
 
         {showNext && (
-          <button
+          <motion.button
             type="button"
             onClick={handleNext}
             disabled={nextDisabled}
@@ -655,6 +748,23 @@ export function SpiritStepClient3D({ questions }: Props) {
             onMouseUp={() => { if (!nextDisabled) setNextBtnState('hover'); }}
             onFocus={() => { if (!nextDisabled) setNextBtnState('focus'); }}
             onBlur={() => setNextBtnState('idle')}
+            whileHover={!nextDisabled ? { scale: 1.06 } : undefined}
+            whileTap={!nextDisabled ? { scale: 0.93 } : undefined}
+            // 마지막 단계에서 활성화되면 펄스 글로우로 시선 유도
+            animate={
+              isLastStep && !nextDisabled
+                ? { boxShadow: [
+                    '0 0 0 rgba(213,254,0,0.0)',
+                    '0 0 22px rgba(213,254,0,0.85)',
+                    '0 0 0 rgba(213,254,0,0.0)',
+                  ] }
+                : { boxShadow: '0 0 0 rgba(213,254,0,0.0)' }
+            }
+            transition={
+              isLastStep && !nextDisabled
+                ? { boxShadow: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } }
+                : { type: 'spring', stiffness: 400, damping: 18 }
+            }
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               padding: '11px 22px',
@@ -684,49 +794,104 @@ export function SpiritStepClient3D({ questions }: Props) {
                   : '#250a00',
             }}
           >
-            {isLastStep ? '완료' : '다음'} →
-          </button>
+            {isLastStep ? '✦ 완료' : '다음'} →
+          </motion.button>
         )}
       </div>
 
       {/* ── Plan loading overlay ─────────────────────────────────── */}
-      {isPreparingPlan && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 50,
-          background: 'rgba(33,33,33,0.82)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '1.5rem',
-        }}>
-          <div style={{
-            width: '100%', maxWidth: 420,
-            borderRadius: 20,
-            background: 'rgba(28,28,28,0.96)',
-            border: '1px solid rgba(136,100,255,0.3)',
-            padding: '2rem',
-            textAlign: 'center',
-            boxShadow: '0 0 60px rgba(136,100,255,0.2)',
-          }}>
-            {planLoadingAnim && (
-              <div style={{ margin: '0 auto 1rem', width: 140, height: 140 }}>
-                <Lottie animationData={planLoadingAnim} loop style={{ width: '100%', height: '100%' }} />
+      <AnimatePresence>
+        {isPreparingPlan && (
+          <motion.div
+            key="loading-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 50,
+              background: 'rgba(33,33,33,0.82)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1.5rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+              style={{
+                width: '100%', maxWidth: 420,
+                borderRadius: 20,
+                background: 'rgba(28,28,28,0.96)',
+                border: '1px solid rgba(136,100,255,0.3)',
+                padding: '2rem',
+                textAlign: 'center',
+                boxShadow: '0 0 60px rgba(136,100,255,0.2)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* 카드 셔플 모션 (Lottie 위에 떠있는 작은 카드 3장) */}
+              <div style={{ position: 'relative', height: 140, marginBottom: '1rem' }}>
+                {planLoadingAnim && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 140, height: 140 }}>
+                      <Lottie animationData={planLoadingAnim} loop style={{ width: '100%', height: '100%' }} />
+                    </div>
+                  </div>
+                )}
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      width: 28,
+                      height: 42,
+                      borderRadius: 4,
+                      background: 'linear-gradient(135deg, #D5FE00 0%, #cbed7f 100%)',
+                      border: '1px solid rgba(213,254,0,0.6)',
+                      boxShadow: '0 4px 18px rgba(213,254,0,0.45)',
+                      marginLeft: -14,
+                      marginTop: -21,
+                    }}
+                    animate={{
+                      x: [0, (i - 1) * 60, 0],
+                      y: [0, -4, 0],
+                      rotate: [0, (i - 1) * 25, 0],
+                      opacity: [0.4, 1, 0.4],
+                    }}
+                    transition={{
+                      duration: 1.8,
+                      delay: i * 0.18,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                ))}
               </div>
-            )}
-            <p style={{
-              fontSize: 'clamp(0.9rem,2vw,1.1rem)',
-              color: '#D5FE00',
-              letterSpacing: '0.05em',
-              margin: 0,
-            }}>
-              사용자 맞춤형 구독 플랜을 생성 중입니다...
-            </p>
-            <p style={{ marginTop: '0.6rem', fontSize: '0.85rem', color: 'rgba(213,254,0,0.45)' }}>
-              잠시만 기다려 주세요.
-            </p>
-          </div>
-        </div>
-      )}
+              <motion.p
+                style={{
+                  fontSize: 'clamp(0.9rem,2vw,1.1rem)',
+                  color: '#D5FE00',
+                  letterSpacing: '0.05em',
+                  margin: 0,
+                }}
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                당신의 식취향을 분석 중입니다...
+              </motion.p>
+              <p style={{ marginTop: '0.6rem', fontSize: '0.85rem', color: 'rgba(213,254,0,0.45)' }}>
+                카드를 펼쳐 운명의 식탁을 그리는 중
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
