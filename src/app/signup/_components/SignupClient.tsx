@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   AtSign,
   CalendarDays,
+  Check,
   ChevronLeft,
   Image as ImageIcon,
   MapPin,
@@ -22,9 +23,15 @@ import {
   User,
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+import { AlreadyRegisteredModal } from "@/components/modals/AlreadyRegisteredModal";
 import { supabase } from "@/lib/supabase";
+import {
+  isAlreadyRegisteredError,
+  translateSupabaseAuthError,
+} from "@/lib/supabase-errors";
 import { apiFetch } from "@/lib/api/client";
 import { saveCartSessionId } from "@/lib/api/cart";
+import { checkEmailExists } from "@/lib/api/user";
 import { useUser } from "@/contexts/UserContext";
 
 interface FormState {
@@ -92,6 +99,8 @@ export function SignupClient() {
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [step1Error, setStep1Error] = useState<string | null>(null);
+  const [existingEmailModalOpen, setExistingEmailModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Kakao 플로우: 이미 세션이 있으면 2단계(프로필)부터 시작
@@ -207,11 +216,41 @@ export function SignupClient() {
       !errors.birthday,
   );
 
-  // ── 1단계: Supabase 계정 생성 → /api/v1/veggieverse/auth/token JWT 발급 ──
+  // 카카오 OAuth 트리거 — 모달에서 '카카오로 계속하기' 선택 시 호출.
+  const startKakaoLogin = async () => {
+    setStep1Error(null);
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) {
+      setStep1Error(error.message);
+      return;
+    }
+    if (data.url) window.location.href = data.url;
+  };
+
+  // ── 1단계: 이메일 중복(카카오) 확인 → Supabase 계정 생성 → JWT 발급 ──
   const handleStep1Submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!canStep1 || submitting) return;
     setSubmitting(true);
+    setStep1Error(null);
+
+    // 0) 이메일 가입 여부 사전 확인 — 카카오로 이미 가입된 이메일이면 안내 모달로 분기
+    const emailCheck = await checkEmailExists(form.email.trim());
+    if (emailCheck.rateLimited) {
+      setSubmitting(false);
+      setStep1Error("요청이 많아 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    if (emailCheck.exists) {
+      setSubmitting(false);
+      setExistingEmailModalOpen(true);
+      return;
+    }
 
     // 1) Supabase 계정 생성
     const { error: signUpError } = await supabase.auth.signUp({
@@ -220,8 +259,15 @@ export function SignupClient() {
     });
 
     if (signUpError) {
-      console.error("[signup/supabase]", signUpError.message);
       setSubmitting(false);
+      // email-check를 우회한 케이스(백엔드/Supabase 동기화 지연 등) — 동일 모달로 안내
+      if (isAlreadyRegisteredError(signUpError.message)) {
+        setExistingEmailModalOpen(true);
+        return;
+      }
+      // 정상 분기에 해당하지 않는 실제 오류만 warn — error는 dev overlay를 띄움
+      console.warn("[signup/supabase]", signUpError.message);
+      setStep1Error(translateSupabaseAuthError(signUpError.message));
       return;
     }
 
@@ -237,6 +283,7 @@ export function SignupClient() {
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       console.error("[signup/token]", res.status, errBody);
+      setStep1Error("계정 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
       return;
     }
 
@@ -334,7 +381,7 @@ export function SignupClient() {
     const { error } = await supabase.auth.updateUser({ password: linkPassword });
     setSubmitting(false);
     if (error) {
-      setLinkError(error.message);
+      setLinkError(translateSupabaseAuthError(error.message));
       return;
     }
     setSignupSuccess(true);
@@ -352,17 +399,48 @@ export function SignupClient() {
 
   if (signupSuccess) {
     return (
-      <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
-        <div className="mx-auto max-w-[480px] px-4 py-12 text-center">
-          <h1 className="t-h2 mb-4" style={{ color: "var(--ink)" }}>
-            회원가입이 완료되었습니다
+      <div
+        className="min-h-[80vh] flex items-center justify-center px-4 py-12"
+        style={{ background: "var(--bg-pale)" }}
+      >
+        <div
+          className="w-full max-w-[400px] bg-white border border-black rounded-[16px] px-[28px] py-[40px] text-center animate-fadeIn"
+        >
+          <div
+            className="mx-auto mb-[20px] flex items-center justify-center"
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              background: "var(--ink)",
+            }}
+            aria-hidden
+          >
+            <Check size={32} strokeWidth={2.5} color="var(--bg-white)" />
+          </div>
+          <h1 className="t-h2 mb-[8px]" style={{ color: "var(--ink)" }}>
+            회원가입이 완료되었어요
           </h1>
-          <p className="t-body" style={{ color: "var(--ink-light)" }}>
-            베지버스 회원이 되신 것을 환영합니다!
+          <p
+            className="t-body mb-[28px] leading-[1.6]"
+            style={{ color: "var(--ink-light)" }}
+          >
+            빠르고 건강한 식생활의 시작,
+            <br />
+            베지버스하세요.
           </p>
-          <Link href="/" className="btn btn-dark btn-lg mt-8 inline-flex">
-            홈으로 이동
-          </Link>
+          <div className="flex flex-col gap-[8px]">
+            <Link href="/store" className="btn btn-dark btn-lg w-full">
+              쇼핑 시작하기
+            </Link>
+            <Link
+              href="/spirit"
+              className="btn btn-ghost btn-lg w-full"
+              style={{ borderColor: "var(--ink)" }}
+            >
+              구독 식단 추천받기
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -455,6 +533,20 @@ export function SignupClient() {
         }}
       />
 
+      <AlreadyRegisteredModal
+        isOpen={existingEmailModalOpen}
+        email={form.email.trim()}
+        onClose={() => setExistingEmailModalOpen(false)}
+        onContinueWithKakao={() => {
+          setExistingEmailModalOpen(false);
+          void startKakaoLogin();
+        }}
+        onGoToLogin={() => {
+          setExistingEmailModalOpen(false);
+          router.push("/login");
+        }}
+      />
+
       <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
         <div className="mx-auto max-w-[560px] px-4 py-5 sm:py-6">
           <Link
@@ -526,6 +618,10 @@ export function SignupClient() {
                     )}
                 </FormField>
               </FormSection>
+
+              {step1Error && (
+                <p className="ds-input-msg is-error text-center">{step1Error}</p>
+              )}
 
               <button
                 type="submit"

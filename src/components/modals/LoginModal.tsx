@@ -138,15 +138,6 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           >
             {submitting ? "처리 중..." : "로그인"}
           </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-ghost btn-lg w-full"
-            style={{ borderColor: "var(--ink)" }}
-          >
-            비회원 주문
-          </button>
         </form>
 
         <div className="flex items-center justify-center gap-2 mt-5 mb-5">

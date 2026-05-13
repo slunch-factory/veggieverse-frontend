@@ -18,13 +18,15 @@ interface HeaderProps {
 
 export function Header({ showTopBanner = false }: HeaderProps) {
   const router = useRouter();
-  const { user, isLoggedIn, isLoadingSession } = useUser();
+  const { user, userProfile, isLoggedIn, isLoadingSession } = useUser();
   const { totalCount } = useCart();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
+    userProfile.profileImage,
+  );
 
   useEffect(() => {
     if (isLoadingSession) return;
@@ -32,10 +34,12 @@ export function Header({ showTopBanner = false }: HeaderProps) {
       setProfileImageUrl(null);
       return;
     }
+    // localStorage 캐시(스피릿 테스트 결과 등)로 즉시 채운 뒤 백엔드 응답으로 덮어쓰기
+    setProfileImageUrl(userProfile.profileImage);
     getUserProfile().then((profile) => {
-      setProfileImageUrl(profile?.profileImageUrl ?? null);
+      if (profile?.profileImageUrl) setProfileImageUrl(profile.profileImageUrl);
     });
-  }, [isLoggedIn, isLoadingSession]);
+  }, [isLoggedIn, isLoadingSession, userProfile.profileImage]);
 
   const getSpiritImageUrl = (spiritName: string | null): string | null => {
     if (!spiritName) return null;
