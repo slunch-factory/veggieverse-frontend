@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -31,38 +31,32 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     if (!canSubmit) return;
     setSubmitting(true);
     setErrorMessage(null);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+    const result = await signInAction({
+      email,
       password,
+      // 모달은 현재 페이지를 유지해야 하므로 redirect 후 router.refresh()로 데이터만 재요청.
+      next: typeof window !== "undefined" ? window.location.pathname : "/",
     });
     setSubmitting(false);
-    if (error) {
-      setErrorMessage(
-        error.message === "Invalid login credentials"
-          ? "이메일 또는 비밀번호가 일치하지 않습니다."
-          : error.message,
-      );
+    if (!result.ok) {
+      setErrorMessage(result.error);
       return;
     }
     onLoginSuccess?.();
     onClose();
+    router.refresh();
   };
 
   const handleKakaoLogin = async () => {
     setErrorMessage(null);
-    const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
-    if (error) {
-      setErrorMessage(error.message);
+    const next =
+      typeof window !== "undefined" ? window.location.pathname : "/";
+    const result = await signInWithKakaoAction(next);
+    if (!result.ok) {
+      setErrorMessage(result.error);
       return;
     }
-    if (data.url) {
-      window.location.href = data.url;
-    }
+    window.location.href = result.url;
   };
 
   const navigate = (path: string) => {
