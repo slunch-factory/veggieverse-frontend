@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "";
 
@@ -27,6 +27,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
 }
 
 async function getAccessToken(): Promise<string | null> {
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
@@ -98,8 +99,9 @@ export async function apiFetch(
 
   let res = await fetch(url, init);
 
-  // 401 → 토큰 갱신 시도 후 1회 재시도 (직접 호출 모드 한정 — 프록시 모드는 middleware가 갱신)
+  // 401 → 토큰 갱신 시도 후 1회 재시도 (직접 호출 모드 한정 — 프록시 모드는 proxy.ts가 갱신)
   if (!USE_PROXY && res.status === 401 && token && auth !== "none") {
+    const supabase = getSupabaseBrowserClient();
     const { data: refreshed } = await supabase.auth.refreshSession();
     const newToken = refreshed.session?.access_token ?? null;
     if (newToken && newToken !== token) {

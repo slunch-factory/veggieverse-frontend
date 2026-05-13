@@ -141,7 +141,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setSession(null);
     setBackendUserId(null);
-    // 2) Server Action — 쿠키 삭제 후 홈으로 redirect
+    // 2) localStorage에 남은 앱 자체 키 일괄 정리 (veggieverse-* 모두)
+    if (typeof window !== "undefined") {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("veggieverse-")) localStorage.removeItem(key);
+      }
+    }
+    setUserProfile(DEFAULT_PROFILE);
+    // 3) Server Action — 쿠키 삭제 후 홈으로 redirect
     await signOutAction();
   }, []);
 
