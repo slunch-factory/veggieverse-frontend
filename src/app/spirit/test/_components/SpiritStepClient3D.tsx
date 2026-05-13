@@ -6,6 +6,7 @@ import Lottie from 'lottie-react';
 import { useRouter } from 'next/navigation';
 import type { SurveyQuestion, SurveyOption } from '@/app/spirit/_data/surveyQuestions';
 import type { SurveyAnswers } from '@/app/spirit/_types';
+import type { MenuData } from '@/app/subscribe/_data/subscription';
 import TarotCarousel3DSurvey, { type CarouselOption } from './TarotCarousel3DSurvey';
 import { getAutoPlan } from '@/lib/api/spirit';
 import { AmbientParticles } from './AmbientParticles';
@@ -23,6 +24,27 @@ const BACK_CARD: CarouselOption = {
 const ALLERGY_QUESTION_ID = 3;
 const _base = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
 const PLAN_LOADING_LOTTIE_SRC = `${_base}/Loading%20Animation.json`;
+
+/** Lottie를 최소 노출하는 시간 — speculative prefetch가 시작된 시점부터 측정 */
+const MIN_LOADING_MS = 1500;
+
+interface SpeculativeCache {
+  key: string;
+  promise: Promise<MenuData[]>;
+  ctrl: AbortController;
+  startedAt: number;
+}
+
+/** 답변을 캐시 키로 직렬화. 배열은 정렬하여 선택 순서 차이로 인한 false miss 방지. */
+function buildAnswerKey(answers: SurveyAnswers): string {
+  const normalized = Object.fromEntries(
+    Object.entries(answers).map(([k, v]) => [
+      k,
+      Array.isArray(v) ? [...v].sort() : v,
+    ]),
+  );
+  return JSON.stringify(normalized);
+}
 
 interface FlyCard {
   id: number;
@@ -55,9 +77,47 @@ export function SpiritStepClient3D({ questions }: Props) {
 
   const deckRef = useRef<HTMLDivElement>(null);
 
+  /** Speculative prefetching: 마지막 단계 진입 시점에 부분 답변으로 추천 API를 미리 호출.
+   *  사용자가 마지막 질문에 답하는 시간(평균 수 초)을 네트워크 왕복 시간으로 흡수한다. */
+  const speculativeRef = useRef<SpeculativeCache | null>(null);
+
   useEffect(() => {
     localStorage.removeItem('spirit-finder-answers');
   }, []);
+
+  /** 마지막 단계 진입 + 답변 변경 시 speculative 요청 발사/갱신 */
+  useEffect(() => {
+    if (currentStep !== questions.length - 1) return;
+
+    const key = buildAnswerKey(answers);
+    if (speculativeRef.current?.key === key) return;
+
+    speculativeRef.current?.ctrl.abort();
+    const ctrl = new AbortController();
+    const perfStart = performance.now();
+    const promise = getAutoPlan(answers, { signal: ctrl.signal })
+      .then((result) => {
+        console.log(
+          `%c[spirit] 📊 speculative API 응답 ${(performance.now() - perfStart).toFixed(0)}ms`,
+          'color: #2563eb; font-weight: bold;',
+        );
+        return result;
+      })
+      .catch(() => [] as MenuData[]);
+    speculativeRef.current = { key, promise, ctrl, startedAt: Date.now() };
+    console.log(
+      '%c[spirit] speculative prefetch 시작',
+      'color: #2563eb; font-weight: bold;',
+    );
+  }, [currentStep, questions.length, answers]);
+
+  /** 언마운트 시 in-flight 요청 정리 */
+  useEffect(
+    () => () => {
+      speculativeRef.current?.ctrl.abort();
+    },
+    [],
+  );
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -165,17 +225,68 @@ export function SpiritStepClient3D({ questions }: Props) {
     if (currentStep < questions.length - 1) {
       setCenterOpt(null);
       setCurrentStep((s) => s + 1);
-    } else {
-      setIsPreparingPlan(true);
-      const [recommended] = await Promise.all([
-        getAutoPlan(answers).catch(() => []),
-        new Promise<void>((r) => setTimeout(r, 1500)),
-      ]);
-      if (recommended.length > 0) {
-        sessionStorage.setItem('spirit-auto-plan', JSON.stringify(recommended));
-      }
-      router.push('/subscribe');
+      return;
     }
+
+    /** 📊 측정: 사용자가 "다음" 클릭한 시점 (= 체감 로딩 시작) */
+    const clickedAt = performance.now();
+    setIsPreparingPlan(true);
+
+    const key = buildAnswerKey(answers);
+    const cached = speculativeRef.current;
+    const cacheHit = cached?.key === key;
+    // 최소 로딩 시간은 speculative 시작 시점부터 측정 — 사용자가 마지막 단계에서
+    // 오래 머물렀다면 이미 prefetch가 완료되어 추가 로딩 없이 즉시 이동 가능.
+    const loadingStartedAt = cached?.startedAt ?? Date.now();
+
+    let recommended: MenuData[] = [];
+    if (cacheHit) {
+      console.log(
+        '%c[spirit] cache HIT — speculative 결과 await',
+        'color: #4A7F52; font-weight: bold;',
+      );
+      try {
+        recommended = await cached!.promise;
+      } catch {
+        /* abort 또는 실패 — fresh fetch로 fallback */
+      }
+    } else {
+      console.log(
+        '%c[spirit] cache MISS — fresh fetch',
+        'color: #d97706; font-weight: bold;',
+      );
+    }
+
+    if (recommended.length === 0) {
+      recommended = await getAutoPlan(answers).catch(() => []);
+    }
+
+    const elapsed = Date.now() - loadingStartedAt;
+    const remainingWait = Math.max(0, MIN_LOADING_MS - elapsed);
+    if (remainingWait > 0) {
+      await new Promise<void>((r) => setTimeout(r, remainingWait));
+    }
+
+    if (recommended.length > 0) {
+      sessionStorage.setItem('spirit-auto-plan', JSON.stringify(recommended));
+    }
+
+    /** 📊 측정: 클릭 → 이동까지의 총 체감 로딩 시간 + P50 자동 집계 */
+    const clickToNavigate = performance.now() - clickedAt;
+    type Sample = { ms: number; cacheHit: boolean };
+    const w = window as Window & { __spiritMetrics?: Sample[] };
+    w.__spiritMetrics ??= [];
+    w.__spiritMetrics.push({ ms: clickToNavigate, cacheHit });
+    const sorted = [...w.__spiritMetrics].sort((a, b) => a.ms - b.ms);
+    const p50 = sorted[Math.floor(sorted.length / 2)].ms;
+    const hitRate =
+      (w.__spiritMetrics.filter((m) => m.cacheHit).length / w.__spiritMetrics.length) * 100;
+    console.log(
+      `%c[spirit] 📊 클릭→이동 ${clickToNavigate.toFixed(0)}ms (cache ${cacheHit ? 'HIT' : 'MISS'}) | n=${w.__spiritMetrics.length} P50=${p50.toFixed(0)}ms hitRate=${hitRate.toFixed(0)}%`,
+      'color: #7c3aed; font-weight: bold; font-size: 13px;',
+    );
+
+    router.push('/subscribe');
   };
 
   const handleBack = () => {

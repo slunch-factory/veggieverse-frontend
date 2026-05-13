@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const MYPAGE_TABS = [
   { path: "/mypage", label: "홈" },
   { path: "/mypage/orders", label: "주문 내역" },
+  { path: "/mypage/subscriptions", label: "구독 내역" },
   { path: "/mypage/bookmarks", label: "레시피 북마크" },
   { path: "/mypage/wishlist", label: "관심상품" },
   { path: "/mypage/reviews", label: "상품 리뷰" },

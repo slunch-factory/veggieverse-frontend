@@ -1,6 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
-
-export const FIXED_USER_ID = 52;
+import { apiFetch } from "@/lib/api/client";
 
 const DELIVERY_CYCLE_MAP: Record<string, string> = {
   "1month": "MONTHLY",
@@ -12,7 +10,6 @@ export function mapDeliveryCycle(cycle: string): string {
 }
 
 export interface PaymentRequest {
-  userId: number;
   planId: string;
   subscriptionStartDate: string;
   subscriptionEndDate: string;
@@ -57,16 +54,17 @@ export interface PaymentResponse {
 export const PAYMENT_RESULT_KEY = "veggieverse-payment-result";
 
 export async function postPayment(req: PaymentRequest): Promise<PaymentResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/payments`;
   try {
-    const res = await fetch(url, {
+    const res = await apiFetch("/api/v1/veggieverse/subscription/payments", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(req),
+      body: req,
+      auth: "required",
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => "(body 없음)");
-      console.error("[postPayment] HTTP error:", res.status, res.statusText, "\n응답 body:", errBody);
+      if (res.status !== 401) {
+        console.error("[postPayment] HTTP error:", res.status, res.statusText, "\n응답 body:", errBody);
+      }
       return null;
     }
     return (await res.json()) as PaymentResponse;

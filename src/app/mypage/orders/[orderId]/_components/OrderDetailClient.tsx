@@ -1,16 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import {
-  getOrderDetail,
-  type OrderDetailProduct,
-  type OrderDetailResponse,
-} from "@/lib/api/subscription";
-import { FIXED_USER_ID } from "@/lib/api/payment";
-import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
+  getStoreOrderDetail,
+  type StoreOrderDetailResponse,
+} from "@/lib/api/store";
+import { useUser } from "@/contexts/UserContext";
+
+type OrderStatus = "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
+
+const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
+  PENDING: "결제완료",
+  COMPLETED: "배송완료",
+  SHIPPING: "배송중",
+  CANCELED: "취소됨",
+};
+
+function mapStatus(status: string): OrderStatus {
+  return STORE_STATUS_LABEL[status] ?? "기타";
+}
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -25,94 +36,26 @@ function formatDateTime(iso: string) {
   return `${formatDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-const CYCLE_LABEL: Record<string, string> = {
-  WEEKLY: "주 1회",
-  BIWEEKLY: "격주",
-  MONTHLY: "월 1회",
-  BIMONTHLY: "2개월 1회",
-};
-
-interface DayCol {
-  date: Date;
-  slots: (OrderDetailProduct | null)[];
-}
-
-interface ScheduleWeek {
-  index: number;
-  start: Date;
-  end: Date;
-  days: DayCol[];
-  slotsPerDay: number;
-}
-
-/** 평면 products → 주차별 day×slot 그리드. 슬롯 정보가 없으므로 day-then-slot 순서로 sequential 배치. */
-function buildSchedule(
-  startISO: string,
-  endISO: string,
-  products: OrderDetailProduct[],
-): ScheduleWeek[] {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  const numDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
-
-  // quantity 만큼 펼침
-  const expanded: OrderDetailProduct[] = [];
-  for (const p of products) {
-    for (let i = 0; i < p.quantity; i++) expanded.push(p);
-  }
-
-  const slotsPerDay = expanded.length > 0 ? Math.max(1, Math.ceil(expanded.length / numDays)) : 1;
-  const weekCount = Math.ceil(numDays / 7);
-
-  const weeks: ScheduleWeek[] = [];
-  let mealIdx = 0;
-  for (let w = 0; w < weekCount; w++) {
-    const weekStart = new Date(start);
-    weekStart.setDate(start.getDate() + w * 7);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    if (weekEnd > end) weekEnd.setTime(end.getTime());
-
-    const days: DayCol[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(weekStart);
-      d.setDate(weekStart.getDate() + i);
-      if (d > end) break;
-      const slots: (OrderDetailProduct | null)[] = [];
-      for (let s = 0; s < slotsPerDay; s++) {
-        slots.push(expanded[mealIdx] ?? null);
-        mealIdx++;
-      }
-      days.push({ date: d, slots });
-    }
-    weeks.push({ index: w + 1, start: weekStart, end: weekEnd, days, slotsPerDay });
-  }
-  return weeks;
-}
-
-function slotLabel(slotsPerDay: number, slotIdx: number): string {
-  if (slotsPerDay === 1) return "식사";
-  if (slotsPerDay === 2) return slotIdx === 0 ? "점심" : "저녁";
-  if (slotsPerDay === 3) return ["아침", "점심", "저녁"][slotIdx] ?? `${slotIdx + 1}끼`;
-  return `${slotIdx + 1}끼`;
-}
-
 export function OrderDetailClient() {
   const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
-  const [data, setData] = useState<OrderDetailResponse | null>(null);
+  const { isLoggedIn, isLoadingSession } = useUser();
+  const [data, setData] = useState<StoreOrderDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(false);
-    getOrderDetail(orderId, FIXED_USER_ID).then((res) => {
+    getStoreOrderDetail(orderId).then((res) => {
       if (cancelled) return;
       if (!res) {
         setError(true);
@@ -125,13 +68,7 @@ export function OrderDetailClient() {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
-
-  const weeks = useMemo(
-    () =>
-      data ? buildSchedule(data.startDate, data.endDate, data.products) : [],
-    [data],
-  );
+  }, [orderId, isLoggedIn, isLoadingSession]);
 
   if (loading) {
     return (
@@ -156,10 +93,11 @@ export function OrderDetailClient() {
     );
   }
 
-  const totalMealCount = data.products.reduce((sum, p) => sum + p.quantity, 0);
-  const cycleLabel = CYCLE_LABEL[data.deliveryCycle] ?? data.deliveryCycle;
+  const totalItemCount = data.products.reduce((sum, p) => sum + p.quantity, 0);
   const discount = data.discountInfo?.discountAmount ?? 0;
   const couponName = data.discountInfo?.couponName;
+  const eventName = data.discountInfo?.eventName;
+  const status = mapStatus(data.status);
 
   return (
     <div className="mx-auto max-w-[720px]">
@@ -182,7 +120,10 @@ export function OrderDetailClient() {
 
       {/* 주문 헤더 */}
       <header className="mb-8">
-        <h1 className="t-h2 mb-2" style={{ color: "var(--ink)" }}>주문 상세</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="t-h2" style={{ color: "var(--ink)" }}>주문 상세</h1>
+          <OrderStatusBadge status={status} />
+        </div>
         <p className="t-small" style={{ color: "var(--ink-light)" }}>
           {data.orderNumber}
         </p>
@@ -191,30 +132,74 @@ export function OrderDetailClient() {
         </p>
       </header>
 
-      {/* 구독 기간 */}
-      <SectionCard label="Subscription Period" className="mb-4">
-        <div className="px-5 py-4 flex flex-col gap-2">
-          <SummaryRow label="구독 기간" value={`${formatDate(data.startDate)} ~ ${formatDate(data.endDate)}`} />
-          <SummaryRow label="배송 주기" value={cycleLabel} />
-          <SummaryRow label="총 끼수" value={`${totalMealCount}끼`} />
+      {/* 주문 상품 */}
+      <SectionCard label="Order Items" className="mb-4">
+        <ul>
+          {data.products.map((p, idx) => (
+            <li
+              key={`${p.productId}-${idx}`}
+              className="flex items-center gap-3 px-5 py-4"
+              style={{
+                borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
+              }}
+            >
+              <div
+                className="shrink-0 overflow-hidden"
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "var(--r-btn)",
+                  background: "var(--bg-off)",
+                  border: "1px solid var(--neutral-stone)",
+                }}
+              >
+                {p.imageUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={p.imageUrl}
+                    alt={p.name}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="t-small truncate" style={{ color: "var(--ink)" }}>
+                  {p.name}
+                </p>
+                <p className="t-caption mt-0.5" style={{ color: "var(--ink-light)" }}>
+                  수량 {p.quantity}개
+                  {p.discountLabel && (
+                    <span className="ml-2" style={{ color: "var(--alert-red)" }}>
+                      {p.discountLabel}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                {p.discountedPrice < p.originalPrice && (
+                  <p
+                    className="t-caption line-through"
+                    style={{ color: "var(--neutral-stone)" }}
+                  >
+                    {(p.originalPrice * p.quantity).toLocaleString()}원
+                  </p>
+                )}
+                <p className="t-small" style={{ color: "var(--ink)" }}>
+                  {(p.discountedPrice * p.quantity).toLocaleString()}원
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div
+          className="flex items-center justify-between px-5 py-3"
+          style={{ borderTop: "1px solid var(--neutral-stone)", background: "var(--bg-pale)" }}
+        >
+          <span className="t-caption" style={{ color: "var(--ink-light)" }}>
+            총 {totalItemCount}개
+          </span>
         </div>
       </SectionCard>
-
-      {/* 식단 일정 */}
-      {weeks.length > 0 && (
-        <SectionCard label="Meal Schedule" className="mb-4">
-          <div className="flex flex-col">
-            {weeks.map((week) => (
-              <WeekBlock
-                key={week.index}
-                week={week}
-                isLast={week.index === weeks.length}
-                showWeekHeader={weeks.length > 1}
-              />
-            ))}
-          </div>
-        </SectionCard>
-      )}
 
       {/* 배송지 */}
       <SectionCard label="Delivery" className="mb-4">
@@ -231,7 +216,13 @@ export function OrderDetailClient() {
           <PriceRow label="상품 금액" value={`${data.originalAmount.toLocaleString()}원`} />
           {discount > 0 && (
             <PriceRow
-              label={couponName ? `할인 (${couponName})` : "할인"}
+              label={
+                couponName
+                  ? `할인 (${couponName})`
+                  : eventName
+                  ? `할인 (${eventName})`
+                  : "할인"
+              }
               value={`- ${discount.toLocaleString()}원`}
               valueColor="var(--alert-red)"
             />
@@ -324,184 +315,29 @@ function PriceRow({
   );
 }
 
-/* ─── 식단 일정 그리드 ─── */
-
-function WeekBlock({
-  week,
-  isLast,
-  showWeekHeader,
-}: {
-  week: ScheduleWeek;
-  isLast: boolean;
-  showWeekHeader: boolean;
-}) {
-  const mealCount = week.days.reduce(
-    (sum, d) => sum + d.slots.filter((s) => s !== null).length,
-    0,
-  );
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  const variant: Record<OrderStatus, { bg: string; color: string }> = {
+    "결제완료": { bg: "var(--point)", color: "var(--ink)" },
+    "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
+    "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+    "취소됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
+    "기타": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+  };
+  const v = variant[status];
   return (
-    <div
+    <span
+      className="inline-flex items-center"
       style={{
-        borderBottom: !isLast ? "1px solid var(--neutral-stone)" : undefined,
+        background: v.bg,
+        color: v.color,
+        padding: "3px 10px",
+        borderRadius: "var(--r-pill)",
+        border: "1px solid var(--ink)",
+        fontSize: 11,
+        letterSpacing: "0.02em",
       }}
     >
-      {showWeekHeader && (
-        <header
-          className="px-5 py-4 flex items-start justify-between gap-3"
-          style={{ background: "var(--bg-pale)" }}
-        >
-          <div className="flex flex-col gap-1">
-            <p
-              className="t-caption"
-              style={{
-                color: "var(--ink-light)",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
-            >
-              Week {String(week.index).padStart(2, "0")}
-            </p>
-            <p className="t-h3" style={{ color: "var(--ink)" }}>
-              {formatDate(week.start.toISOString())} — {formatDate(week.end.toISOString())}
-            </p>
-          </div>
-          <div className="text-right">
-            <span className="t-caption" style={{ color: "var(--ink-light)" }}>
-              {mealCount}끼
-            </span>
-          </div>
-        </header>
-      )}
-      <MealGrid days={week.days} slotsPerDay={week.slotsPerDay} />
-    </div>
-  );
-}
-
-function MealGrid({ days, slotsPerDay }: { days: DayCol[]; slotsPerDay: number }) {
-  const columns = `48px repeat(${days.length}, minmax(0, 1fr))`;
-
-  return (
-    <div className="overflow-x-auto" style={{ background: "var(--ink)" }}>
-      <div
-        className="grid"
-        style={{
-          gridTemplateColumns: columns,
-          gap: 1,
-          background: "var(--ink)",
-        }}
-      >
-        {/* 헤더 행: 빈 셀 + 요일/일자 */}
-        <HeaderCell />
-        {days.map((d) => {
-          const dow = d.date.getDay();
-          const tone =
-            dow === 0
-              ? "var(--alert-red)"
-              : dow === 6
-              ? "var(--neutral-blue)"
-              : "var(--ink)";
-          return (
-            <div
-              key={`h-${d.date.toISOString()}`}
-              className="flex flex-col items-center justify-center py-2"
-              style={{ background: "var(--bg-pale)", color: tone }}
-            >
-              <span className="t-caption" style={{ color: "inherit" }}>
-                {WEEKDAY_KO[dow]}
-              </span>
-              <span className="t-small" style={{ color: "inherit" }}>
-                {d.date.getDate()}
-              </span>
-            </div>
-          );
-        })}
-
-        {/* 슬롯별 행 */}
-        {Array.from({ length: slotsPerDay }).map((_, slotIdx) => (
-          <SlotRow
-            key={slotIdx}
-            label={slotLabel(slotsPerDay, slotIdx)}
-            cells={days.map((d) => d.slots[slotIdx] ?? null)}
-            keyPrefix={`s${slotIdx}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SlotRow({
-  label,
-  cells,
-  keyPrefix,
-}: {
-  label: string;
-  cells: (OrderDetailProduct | null)[];
-  keyPrefix: string;
-}) {
-  return (
-    <>
-      <div
-        className="flex items-center justify-center"
-        style={{ background: "var(--bg-pale)" }}
-      >
-        <span className="t-caption" style={{ color: "var(--ink-light)" }}>
-          {label}
-        </span>
-      </div>
-      {cells.map((meal, i) => (
-        <MealCell key={`${keyPrefix}-${i}`} meal={meal} />
-      ))}
-    </>
-  );
-}
-
-function HeaderCell() {
-  return (
-    <div
-      className="flex items-center justify-center"
-      style={{ background: "var(--bg-pale)" }}
-    />
-  );
-}
-
-function MealCell({ meal }: { meal: OrderDetailProduct | null }) {
-  if (!meal) {
-    return (
-      <div
-        style={{
-          aspectRatio: "1 / 1",
-          background: "var(--bg-off)",
-        }}
-      />
-    );
-  }
-  return (
-    <div
-      title={meal.name}
-      className="relative overflow-hidden"
-      style={{
-        aspectRatio: "1 / 1",
-        background: "var(--bg-off)",
-      }}
-    >
-      {meal.imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={meal.imageUrl}
-          alt={meal.name}
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center px-1 text-center">
-          <span className="t-caption" style={{ color: "var(--ink-light)", lineHeight: 1.2 }}>
-            {meal.name}
-          </span>
-        </div>
-      )}
-    </div>
+      {status}
+    </span>
   );
 }

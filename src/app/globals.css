@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "pretendard/dist/web/variable/pretendardvariable.css";
 
 /* ============================================
    SLUNCH DESIGN SYSTEM v2 - DESIGN TOKENS
@@ -74,7 +75,7 @@
   --white: var(--cream);
 
   /* Font Family */
-  --font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Typography Scale */
   --font-size-display: 40px;
@@ -200,7 +201,7 @@ html.mm-open .scroll-lock-compensate {
   input, textarea, select, label,
   li, td, th, dt, dd,
   strong, b, em, i {
-    font-weight: 400 !important;
+    font-weight: 400;
   }
 
   html {
@@ -212,6 +213,7 @@ html.mm-open .scroll-lock-compensate {
     font-size: 16px;
     line-height: 1.5;
     -webkit-text-size-adjust: 100%;
+    font-family: var(--font-family);
   }
 
   body {

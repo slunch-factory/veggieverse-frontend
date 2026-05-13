@@ -42,7 +42,7 @@ export default function TopControlBar({
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortBtnRef = useRef<HTMLButtonElement>(null);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortPos, setSortPos] = useState<{ top: number; right: number } | null>(null);
+  const [sortPos, setSortPos] = useState<{ top: number; right: number; width: number } | null>(null);
 
   const currentSortLabel =
     sortOptions.find((o) => o.value === currentSort)?.label ?? "정렬";
@@ -52,8 +52,9 @@ export default function TopControlBar({
       const rect = sortBtnRef.current?.getBoundingClientRect();
       if (rect) {
         setSortPos({
-          top: rect.bottom + 4,
+          top: rect.bottom,
           right: window.innerWidth - rect.right,
+          width: rect.width,
         });
       }
     }
@@ -136,9 +137,7 @@ export default function TopControlBar({
               onClick={handleSortToggle}
               aria-haspopup="listbox"
               aria-expanded={sortOpen}
-              className={`flex items-center gap-1 border border-black px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors ${
-                sortOpen ? "bg-black text-white" : "bg-white text-black hover:bg-[var(--bg-off)]"
-              }`}
+              className="flex items-center justify-between gap-1 border border-black bg-white text-black px-2.5 py-1 text-[13px] whitespace-nowrap"
             >
               <span>{currentSortLabel}</span>
               <ChevronDown
@@ -155,8 +154,8 @@ export default function TopControlBar({
                 />
                 <div
                   role="listbox"
-                  className="fixed z-[191] flex flex-col bg-white border border-black min-w-[120px]"
-                  style={{ top: sortPos.top, right: sortPos.right }}
+                  className="fixed z-[191] flex flex-col bg-white border border-black border-t-0"
+                  style={{ top: sortPos.top, right: sortPos.right, width: sortPos.width }}
                 >
                   {sortOptions.map((option) => {
                     const selected = option.value === currentSort;
@@ -170,7 +169,7 @@ export default function TopControlBar({
                           onSortChange?.(option.value);
                           setSortOpen(false);
                         }}
-                        className={`flex items-center justify-between gap-3 px-3 py-2.5 text-[13px] text-left whitespace-nowrap transition-colors ${
+                        className={`flex items-center justify-between gap-3 px-2.5 py-2.5 text-[13px] text-left whitespace-nowrap transition-colors ${
                           selected
                             ? "bg-black text-white"
                             : "text-black hover:bg-[var(--bg-off)]"

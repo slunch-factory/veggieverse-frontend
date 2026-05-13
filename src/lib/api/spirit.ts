@@ -36,8 +36,15 @@ function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
   };
 }
 
-/** POST /api/v1/veggieverse/autoPlan — 설문 기반 추천 메뉴 조회 */
-export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
+/** POST /api/v1/veggieverse/subscription/autoPlan — 설문 기반 추천 메뉴 조회
+ *
+ * `options.signal`로 AbortController를 받아 in-flight 요청 취소 가능.
+ * Speculative prefetching에서 사용자가 답변을 변경하면 이전 요청을 abort한다.
+ */
+export async function getAutoPlan(
+  answers: SurveyAnswers,
+  options?: { signal?: AbortSignal },
+): Promise<MenuData[]> {
   const body = buildAutoPlanBody(answers);
   if (body.nutritionGoals.length < 2) {
     const defaults = ["plant_based", "low_calorie"].filter(
@@ -47,10 +54,11 @@ export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
   }
   console.log("[getAutoPlan] request:", body);
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggieverse/autoPlan`, {
+    const res = await fetch(`${API_BASE}/api/v1/veggieverse/subscription/autoPlan`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
+      signal: options?.signal,
     });
     if (!res.ok) {
       console.error("[getAutoPlan] HTTP error:", res.status, res.statusText);
@@ -61,6 +69,10 @@ export async function getAutoPlan(answers: SurveyAnswers): Promise<MenuData[]> {
     console.log("%c[getAutoPlan] ✅ 추천 메뉴 수신", "color: #4A7F52; font-weight: bold;", list.length, "개");
     return list.map(mapToMenuData);
   } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      // 정상 취소 — 호출자가 흡수
+      throw err;
+    }
     console.error("[getAutoPlan] fetch failed:", err);
     return [];
   }

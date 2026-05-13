@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CartItem } from "@/contexts/CartContext";
 import Link from "next/link";
+import { getUserProfile } from "@/lib/api/user";
 import {
   ChevronLeft,
   Check,
@@ -17,6 +18,16 @@ import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 
 const SHIPPING_FEE = 3500;
 const FREE_SHIPPING_THRESHOLD = 55000;
+
+export const STORE_ORDER_RESULT_KEY = "veggieverse-store-order-result";
+
+export interface StoreOrderResult {
+  orderDate: string;
+  items: CartItem[];
+  subtotal: number;
+  shippingFee: number;
+  total: number;
+}
 
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR");
@@ -36,10 +47,20 @@ const DELIVERY_NOTE_PRESETS = [
   "직접 전달해 주세요",
 ];
 
+function formatPhone(v: string) {
+  const digits = v.replace(/\D/g, "").slice(0, 11);
+  if (digits.length < 4) return digits;
+  if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
 interface FormState {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  customerPostalCode: string;
+  customerAddress: string;
+  customerAddressDetail: string;
   sameAsCustomer: boolean;
   recipientName: string;
   recipientPhone: string;
@@ -58,6 +79,9 @@ const INITIAL_FORM: FormState = {
   customerName: "",
   customerPhone: "",
   customerEmail: "",
+  customerPostalCode: "",
+  customerAddress: "",
+  customerAddressDetail: "",
   sameAsCustomer: false,
   recipientName: "",
   recipientPhone: "",
@@ -113,6 +137,24 @@ export function OrderClient() {
   const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [postcodeTarget, setPostcodeTarget] = useState<"recipient" | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    getUserProfile().then((profile) => {
+      if (profile) {
+        setForm((prev) => ({
+          ...prev,
+          customerName: profile.name || "",
+          customerPhone: formatPhone(profile.phoneNumber || ""),
+          customerEmail: profile.email || "",
+          customerPostalCode: profile.address?.zipCode || "",
+          customerAddress: profile.address?.street || "",
+          customerAddressDetail: profile.address?.detail || "",
+        }));
+      }
+      setProfileLoading(false);
+    });
+  }, []);
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -125,6 +167,9 @@ export function OrderClient() {
       ...(checked && {
         recipientName: prev.customerName,
         recipientPhone: prev.customerPhone,
+        recipientPostalCode: prev.customerPostalCode,
+        recipientAddress: prev.customerAddress,
+        recipientAddressDetail: prev.customerAddressDetail,
       }),
     }));
   }, []);
@@ -161,9 +206,17 @@ export function OrderClient() {
     // TODO: 결제 API 연동
     await new Promise((r) => setTimeout(r, 800));
     setSubmitting(false);
-    alert("주문이 완료되었습니다!");
-    router.push("/store");
-  }, [canSubmit, submitting, router]);
+
+    const result: StoreOrderResult = {
+      orderDate: new Date().toISOString(),
+      items: orderItems,
+      subtotal,
+      shippingFee,
+      total,
+    };
+    sessionStorage.setItem(STORE_ORDER_RESULT_KEY, JSON.stringify(result));
+    router.push("/order/complete");
+  }, [canSubmit, submitting, router, orderItems, subtotal, shippingFee, total]);
 
   if (orderItems.length === 0) {
     return (
@@ -269,39 +322,66 @@ export function OrderClient() {
                 </ul>
               </div>
 
-              {/* 주문자 정보 */}
+              {/* 주문자 정보 — 회원정보에서 자동 조회 */}
               <FormSection
                 icon={<User size={16} strokeWidth={1.5} />}
                 title="주문자 정보"
               >
-                <div className="flex flex-col md:flex-row gap-4">
-                  <FormField label="이름" required className="flex-1">
-                    <input
-                      value={form.customerName}
-                      onChange={(e) => update("customerName", e.target.value)}
-                      placeholder="홍길동"
-                      className="order-input"
-                    />
-                  </FormField>
-                  <FormField label="휴대전화" required className="flex-1">
-                    <input
-                      type="tel"
-                      value={form.customerPhone}
-                      onChange={(e) => update("customerPhone", e.target.value)}
-                      placeholder="010-0000-0000"
-                      className="order-input"
-                    />
-                  </FormField>
-                </div>
-                <FormField label="이메일" required>
-                  <input
-                    type="email"
-                    value={form.customerEmail}
-                    onChange={(e) => update("customerEmail", e.target.value)}
-                    placeholder="order@example.com"
-                    className="order-input"
-                  />
-                </FormField>
+                {profileLoading ? (
+                  <p className="t-small text-center py-4" style={{ color: "var(--ink-light)" }}>
+                    불러오는 중...
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <FormField label="이름" className="flex-1">
+                        <input
+                          value={form.customerName}
+                          readOnly
+                          placeholder="이름"
+                          className="order-input order-input-readonly"
+                        />
+                      </FormField>
+                      <FormField label="휴대전화" className="flex-1">
+                        <input
+                          value={form.customerPhone}
+                          readOnly
+                          placeholder="010-0000-0000"
+                          className="order-input order-input-readonly"
+                        />
+                      </FormField>
+                    </div>
+                    <FormField label="이메일">
+                      <input
+                        value={form.customerEmail}
+                        readOnly
+                        placeholder="이메일"
+                        className="order-input order-input-readonly"
+                      />
+                    </FormField>
+                    <FormField label="주소">
+                      <input
+                        value={form.customerPostalCode}
+                        readOnly
+                        placeholder="우편번호"
+                        className="order-input order-input-readonly"
+                        style={{ width: 120, flexShrink: 0 }}
+                      />
+                      <input
+                        value={form.customerAddress}
+                        readOnly
+                        placeholder="기본 주소"
+                        className="order-input order-input-readonly mt-2"
+                      />
+                      <input
+                        value={form.customerAddressDetail}
+                        readOnly
+                        placeholder="상세 주소"
+                        className="order-input order-input-readonly mt-2"
+                      />
+                    </FormField>
+                  </>
+                )}
               </FormSection>
 
               {/* 배송지 정보 */}
@@ -576,6 +656,11 @@ export function OrderClient() {
           background: var(--bg-off);
           color: var(--ink-light);
           cursor: not-allowed;
+        }
+        .order-input-readonly {
+          background: var(--bg-off) !important;
+          color: var(--ink-light);
+          cursor: default;
         }
         .order-select {
           appearance: none;

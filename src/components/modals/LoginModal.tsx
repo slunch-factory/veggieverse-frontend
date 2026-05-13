@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,128 +11,240 @@ interface LoginModalProps {
   onLoginSuccess?: () => void;
 }
 
+const KAKAO_YELLOW = "#FEE500";
+const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
+
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const canSubmit = Boolean(email.trim() && password.trim()) && !submitting;
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: 실제 로그인 API 연동
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setErrorMessage(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setSubmitting(false);
+    if (error) {
+      setErrorMessage(
+        error.message === "Invalid login credentials"
+          ? "이메일 또는 비밀번호가 일치하지 않습니다."
+          : error.message,
+      );
+      return;
+    }
     onLoginSuccess?.();
     onClose();
   };
 
-  const handleSocialLogin = () => {
-    // TODO: 소셜 로그인 API 연동
-    onLoginSuccess?.();
+  const handleKakaoLogin = async () => {
+    setErrorMessage(null);
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  };
+
+  const navigate = (path: string) => {
     onClose();
+    router.push(path);
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
-      onClick={onClose}
-    >
+    <div className="sl-modal-overlay login-modal-overlay" onClick={onClose}>
       <div
-        className="w-full max-w-[400px] bg-white border border-black rounded-2xl p-8 relative"
+        className="login-modal"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
-        {/* 닫기 버튼 */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-transparent border-none cursor-pointer p-0"
+          className="login-modal-close"
           aria-label="닫기"
         >
-          <X size={20} strokeWidth={1} color="#000" />
+          <X size={20} strokeWidth={1.5} color="var(--ink)" />
         </button>
 
-        {/* 헤더 */}
-        <h2 className="text-center mb-8 text-[20px] text-black">
-          Log-in
+        <h2 className="t-h2 text-center mb-6" style={{ color: "var(--ink)" }}>
+          로그인
         </h2>
 
-        {/* 폼 */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="login-form flex flex-col gap-3">
           <input
-            type="text"
-            placeholder="이메일 또는 아이디"
+            type="email"
+            className="ds-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-[14px] mb-3 border border-black rounded-lg text-[14px] outline-none box-border"
-            required
+            placeholder="이메일"
+            autoComplete="email"
+            inputMode="email"
           />
 
           <input
             type="password"
-            placeholder="비밀번호"
+            className="ds-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-[14px] mb-4 border border-black rounded-lg text-[14px] outline-none box-border"
-            required
+            placeholder="비밀번호"
+            autoComplete="current-password"
           />
 
-          {/* 옵션 */}
-          <div className="flex items-center justify-between mb-5">
-            <label className="flex items-center gap-2 cursor-pointer">
+          {errorMessage && (
+            <p className="ds-input-msg is-error">{errorMessage}</p>
+          )}
+
+          <div className="flex items-center justify-between mt-1 mb-2">
+            <label className="chk-wrap">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 accent-black"
               />
-              <span className="text-[13px] text-black">아이디 저장</span>
+              <span className="t-small" style={{ color: "var(--ink)" }}>
+                이메일 저장
+              </span>
             </label>
-            <span className="text-[13px] text-[#888]">보안접속</span>
+            <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
+              보안접속
+            </span>
           </div>
 
-          {/* 로그인 버튼 */}
           <button
             type="submit"
-            className="w-full p-[14px] mb-3 bg-black border-none rounded-lg text-[14px] text-white cursor-pointer"
+            disabled={!canSubmit}
+            className="btn btn-dark btn-lg w-full"
           >
-            Log-in
-          </button>
-
-          {/* 게스트 주문 버튼 */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full p-[14px] mb-5 bg-transparent border border-black rounded-lg text-[14px] text-black cursor-pointer"
-          >
-            Guest-Order
+            {submitting ? "처리 중..." : "로그인"}
           </button>
         </form>
 
-        {/* 링크 */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-2 text-xs text-[#888]">
-            <button className="bg-transparent border-none cursor-pointer text-[#888] text-xs">
-              아이디 찾기
-            </button>
-            <span>|</span>
-            <button className="bg-transparent border-none cursor-pointer text-[#888] text-xs">
-              비밀번호 찾기
-            </button>
-            <span>|</span>
-            <button className="bg-transparent border-none cursor-pointer text-[#888] text-xs">
-              회원가입
-            </button>
-          </div>
-        </div>
-
-        {/* 소셜 로그인 버튼 */}
-        <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-center gap-2 mt-5 mb-5">
           <button
-            onClick={handleSocialLogin}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-transparent border border-black rounded-lg text-[14px] text-black cursor-pointer"
+            type="button"
+            onClick={() => navigate("/find-password")}
+            className="t-caption login-link"
           >
-            NAVER로 로그인
+            비밀번호 찾기
+          </button>
+          <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>
+            |
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate("/signup")}
+            className="t-caption login-link"
+          >
+            회원가입
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleKakaoLogin}
+          className="login-kakao"
+        >
+          <span className="login-kakao-icon" aria-hidden>
+            K
+          </span>
+          카카오로 계속하기
+        </button>
       </div>
+
+      <style>{`
+        .login-modal-overlay {
+          z-index: 100;
+          padding: 16px;
+        }
+        .login-modal {
+          width: 100%;
+          max-width: 400px;
+          background: var(--bg-white);
+          border: 1px solid var(--ink);
+          border-radius: var(--r-btn);
+          padding: 32px 28px;
+          position: relative;
+        }
+        .login-modal-close {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          padding: 0;
+        }
+        .login-form .ds-input {
+          height: 48px;
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+        .login-link {
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          color: var(--ink-light);
+          padding: 0;
+        }
+        .login-link:hover {
+          color: var(--ink);
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .login-kakao {
+          width: 100%;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: ${KAKAO_YELLOW};
+          color: ${KAKAO_LABEL};
+          border: none;
+          border-radius: var(--r-btn);
+          font-size: 14px;
+          cursor: pointer;
+          transition: opacity 0.15s ease;
+        }
+        .login-kakao:hover { opacity: 0.9; }
+        .login-kakao-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          background: ${KAKAO_LABEL};
+          color: ${KAKAO_YELLOW};
+          border-radius: 50%;
+          font-size: 13px;
+        }
+      `}</style>
     </div>
   );
 }
