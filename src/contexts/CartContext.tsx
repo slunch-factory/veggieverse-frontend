@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { syncCartAfterLogin, type CartResponse } from "@/lib/api/cart";
 
 export interface CartItem {
@@ -64,6 +64,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const hydrated = useRef(false);
 
   useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
     // 초기 로드: 로그인 상태일 때만 localStorage 복원
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {

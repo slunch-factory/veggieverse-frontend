@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const CART_SESSION_KEY = "veggieverse-cart-session";
 
@@ -55,6 +55,7 @@ async function cartFetch(
   path: string,
   options: Parameters<typeof apiFetch>[1] = {},
 ): Promise<Response> {
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   if (data.session) {
     // 로그인 상태: JWT 토큰만 사용. sessionId는 전달하지 않음.
@@ -101,6 +102,7 @@ export async function syncCartAfterLogin(): Promise<SyncCartResult> {
   const sessionId = getCartSessionId();
   if (!sessionId) return { status: "merged", cart: null };
 
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   if (!data.session) return { status: "skipped" };
 

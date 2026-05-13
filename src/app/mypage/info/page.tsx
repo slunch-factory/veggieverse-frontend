@@ -20,7 +20,7 @@ import {
   User,
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
 import { getUserProfile, updateUserProfile } from "@/lib/api/user";
 
@@ -176,9 +176,10 @@ export default function EditProfilePage() {
     setSubmitting(true);
 
     if (form.password) {
+      const supabase = getSupabaseBrowserClient();
       const { error } = await supabase.auth.updateUser({ password: form.password });
       if (error) {
-        console.error("[editProfile/password]", error.message);
+        console.warn("[editProfile/password]", error.message);
         setSubmitting(false);
         return;
       }
