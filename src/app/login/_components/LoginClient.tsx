@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
 
 /** Kakao 브랜드 컬러 — 디자인 시스템 외 3rd-party 예외 */
 const KAKAO_YELLOW = "#FEE500";
@@ -23,37 +23,24 @@ export function LoginClient() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setErrorMessage(null);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const result = await signInAction({ email, password });
+    // 성공 시 server action이 redirect — 아래 코드는 실패 시에만 도달.
     setSubmitting(false);
-    if (error) {
-      setErrorMessage(
-        error.message === "Invalid login credentials"
-          ? "이메일 또는 비밀번호가 일치하지 않습니다."
-          : error.message,
-      );
+    if (!result.ok) {
+      setErrorMessage(result.error);
       return;
     }
-    router.push("/");
+    router.refresh();
   };
 
   const handleKakaoLogin = async () => {
     setErrorMessage(null);
-    const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
-    if (error) {
-      setErrorMessage(error.message);
+    const result = await signInWithKakaoAction("/");
+    if (!result.ok) {
+      setErrorMessage(result.error);
       return;
     }
-    if (data.url) {
-      window.location.href = data.url;
-    }
+    window.location.href = result.url;
   };
 
   return (

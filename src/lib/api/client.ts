@@ -5,12 +5,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "";
 /**
  * httpOnly 쿠키 기반 인증 프록시 사용 여부.
  *
- * - false (기본): 클라이언트가 직접 백엔드를 호출하며 supabase localStorage 세션의
- *   access_token을 Authorization 헤더에 부착한다 (Phase 1~3 시점 기본 동작).
- * - true: `/api/proxy/*` Route Handler를 경유한다. 클라이언트는 토큰을 알 수 없으며
- *   서버가 쿠키에서 토큰을 꺼내 백엔드로 forward한다. Phase 4 이후 활성화.
+ * Phase 5 이후 기본 ON — 클라이언트는 `/api/proxy/*` Route Handler를 경유해
+ * 백엔드를 호출하며, 서버가 쿠키에서 access_token을 꺼내 Authorization으로 forward한다.
+ * 명시적으로 `NEXT_PUBLIC_USE_AUTH_PROXY=false`로 설정하면 (Phase 1~3 시점의)
+ * localStorage 기반 직접 호출 모드로 복귀한다.
  */
-const USE_PROXY = process.env.NEXT_PUBLIC_USE_AUTH_PROXY === "true";
+const USE_PROXY = process.env.NEXT_PUBLIC_USE_AUTH_PROXY !== "false";
 
 /** 인증 정책
  * - "auto": 세션이 있으면 첨부, 없으면 그냥 호출 (공개+보호 둘 다 허용)

@@ -24,15 +24,16 @@ import {
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 import { AlreadyRegisteredModal } from "@/components/modals/AlreadyRegisteredModal";
-import { supabase } from "@/lib/supabase";
-import {
-  isAlreadyRegisteredError,
-  translateSupabaseAuthError,
-} from "@/lib/supabase-errors";
 import { apiFetch } from "@/lib/api/client";
 import { saveCartSessionId } from "@/lib/api/cart";
 import { checkEmailExists } from "@/lib/api/user";
 import { useUser } from "@/contexts/UserContext";
+import {
+  linkPasswordAction,
+  signInWithKakaoAction,
+  signUpAction,
+} from "@/app/auth/actions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface FormState {
   email: string;
@@ -219,17 +220,12 @@ export function SignupClient() {
   // 카카오 OAuth 트리거 — 모달에서 '카카오로 계속하기' 선택 시 호출.
   const startKakaoLogin = async () => {
     setStep1Error(null);
-    const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
-    if (error) {
-      setStep1Error(error.message);
+    const result = await signInWithKakaoAction("/");
+    if (!result.ok) {
+      setStep1Error(result.error);
       return;
     }
-    if (data.url) window.location.href = data.url;
+    window.location.href = result.url;
   };
 
   // ── 1단계: 이메일 중복(카카오) 확인 → Supabase 계정 생성 → JWT 발급 ──
@@ -252,22 +248,21 @@ export function SignupClient() {
       return;
     }
 
-    // 1) Supabase 계정 생성
-    const { error: signUpError } = await supabase.auth.signUp({
+    // 1) Supabase 계정 생성 (Server Action — 쿠키에 세션 자동 저장)
+    const signUpResult = await signUpAction({
       email: form.email.trim(),
       password: form.password,
     });
 
-    if (signUpError) {
+    if (!signUpResult.ok) {
       setSubmitting(false);
       // email-check를 우회한 케이스(백엔드/Supabase 동기화 지연 등) — 동일 모달로 안내
-      if (isAlreadyRegisteredError(signUpError.message)) {
+      if (signUpResult.alreadyRegistered) {
         setExistingEmailModalOpen(true);
         return;
       }
-      // 정상 분기에 해당하지 않는 실제 오류만 warn — error는 dev overlay를 띄움
-      console.warn("[signup/supabase]", signUpError.message);
-      setStep1Error(translateSupabaseAuthError(signUpError.message));
+      console.warn("[signup/supabase]", signUpResult.error);
+      setStep1Error(signUpResult.error);
       return;
     }
 
@@ -320,6 +315,7 @@ export function SignupClient() {
     // 자사몰 가입 흐름: Supabase 메타데이터에 이름 추가 후 name 클레임이 포함된 JWT 재발급
     let effectiveToken = authToken;
     if (authToken) {
+      const supabase = getSupabaseBrowserClient();
       await supabase.auth.updateUser({ data: { full_name: form.name.trim() } });
       const tokenRes = await apiFetch("/api/v1/veggieverse/auth/token", {
         method: "POST",
@@ -378,10 +374,10 @@ export function SignupClient() {
     if (!canLink || submitting) return;
     setSubmitting(true);
     setLinkError(null);
-    const { error } = await supabase.auth.updateUser({ password: linkPassword });
+    const result = await linkPasswordAction(linkPassword);
     setSubmitting(false);
-    if (error) {
-      setLinkError(translateSupabaseAuthError(error.message));
+    if (!result.ok) {
+      setLinkError(result.error);
       return;
     }
     setSignupSuccess(true);

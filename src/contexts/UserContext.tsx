@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { signOutAction } from "@/app/auth/actions";
 
 interface UserProfile {
   profileImage: string | null;
@@ -99,6 +100,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    const supabase = getSupabaseBrowserClient();
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
       setSession(data.session ?? null);
@@ -134,9 +136,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // 1) 클라이언트 상태 우선 정리 — onAuthStateChange도 뒤이어 발화
+    const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
     setSession(null);
     setBackendUserId(null);
+    // 2) Server Action — 쿠키 삭제 후 홈으로 redirect
+    await signOutAction();
   }, []);
 
   const logout = useCallback(() => {
