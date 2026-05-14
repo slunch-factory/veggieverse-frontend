@@ -5,25 +5,80 @@ import { useEffect } from "react";
 const KAKAO_YELLOW = "#FEE500";
 const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
+/**
+ * 모달이 어느 케이스에서 띄워졌는지에 따라 라벨/안내 문구가 달라진다.
+ *
+ * - "from-kakao-flow" (case1-1-II):
+ *   자사몰 회원가입 화면에서 카카오 버튼 → callback → /signup?prompt=existing-email.
+ *   즉 자사몰에 이미 가입한 사용자가 카카오를 시도한 케이스.
+ *   ▸ 카카오 버튼: "카카오 연동하기" — 자사몰 계정에 카카오 추가 (link 흐름)
+ *   ▸ 이메일 버튼: "이메일로 로그인" — 자사몰 이메일/비번 로그인 페이지로
+ *
+ * - "from-email-flow" (case2-1-II):
+ *   자사몰 회원가입 step 1 폼에서 이메일 입력 → checkEmailExists OK.
+ *   즉 카카오로 이미 가입한 사용자가 자사몰을 시도한 케이스.
+ *   ▸ 카카오 버튼: "카카오로 로그인" — 카카오 OAuth로 로그인
+ *   ▸ 이메일 버튼: "이메일 연동하기" — 카카오 OAuth 시작 → callback이 /signup?link=1로 보내 비번 추가
+ */
+export type AlreadyRegisteredModalMode = "from-kakao-flow" | "from-email-flow";
+
 interface AlreadyRegisteredModalProps {
   isOpen: boolean;
+  mode: AlreadyRegisteredModalMode;
   email: string;
   onClose: () => void;
-  onContinueWithKakao: () => void;
-  onGoToLogin: () => void;
+  /** 카카오 버튼 클릭 — mode에 따라 의미가 다름 (위 주석 참고). */
+  onKakaoAction: () => void;
+  /** 이메일 버튼 클릭 — mode에 따라 의미가 다름 (위 주석 참고). */
+  onEmailAction: () => void;
 }
+
+const COPY: Record<
+  AlreadyRegisteredModalMode,
+  {
+    description: React.ReactNode;
+    kakaoLabel: string;
+    emailLabel: string;
+  }
+> = {
+  "from-kakao-flow": {
+    description: (
+      <>
+        이 이메일은 자사몰에 이미 가입되어 있습니다.
+        <br />
+        자사몰 계정으로 <strong style={{ color: "var(--ink)" }}>‘이메일로 로그인’</strong>하거나,
+        <br />
+        자사몰 계정에 카카오를 추가하려면 <strong style={{ color: "var(--ink)" }}>‘카카오 연동하기’</strong>를 선택해 주세요.
+      </>
+    ),
+    kakaoLabel: "카카오 연동하기",
+    emailLabel: "이메일로 로그인",
+  },
+  "from-email-flow": {
+    description: (
+      <>
+        카카오로 가입하셨다면 <strong style={{ color: "var(--ink)" }}>‘카카오로 로그인’</strong>을,
+        <br />
+        자사몰 계정으로 연동하려면{" "}
+        <strong style={{ color: "var(--ink)" }}>‘이메일 연동하기’</strong>를 선택해 주세요.
+      </>
+    ),
+    kakaoLabel: "카카오로 로그인",
+    emailLabel: "이메일 연동하기",
+  },
+};
 
 /**
  * '이미 가입된 이메일' 안내 모달.
- * 카카오 가입자/자사몰 가입자 모두를 안내 — provider 정보 미노출이므로
- * 사용자가 직접 선택할 수 있도록 두 가지 액션을 제공한다.
+ * 진입 case(mode)에 따라 라벨/안내 문구가 달라진다.
  */
 export function AlreadyRegisteredModal({
   isOpen,
+  mode,
   email,
   onClose,
-  onContinueWithKakao,
-  onGoToLogin,
+  onKakaoAction,
+  onEmailAction,
 }: AlreadyRegisteredModalProps) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -34,6 +89,8 @@ export function AlreadyRegisteredModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const copy = COPY[mode];
 
   return (
     <div
@@ -59,16 +116,13 @@ export function AlreadyRegisteredModal({
           className="t-small mb-[24px] leading-[1.6]"
           style={{ color: "var(--ink-light)" }}
         >
-          카카오로 가입하셨다면 <strong style={{ color: "var(--ink)" }}>‘카카오로 계속하기’</strong>를,
-          <br />
-          이메일로 가입하셨다면{" "}
-          <strong style={{ color: "var(--ink)" }}>‘로그인 페이지로 이동’</strong>을 선택해 주세요.
+          {copy.description}
         </p>
 
         <div className="flex flex-col gap-[8px]">
           <button
             type="button"
-            onClick={onContinueWithKakao}
+            onClick={onKakaoAction}
             className="w-full flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-90"
             style={{
               height: 44,
@@ -93,16 +147,16 @@ export function AlreadyRegisteredModal({
             >
               K
             </span>
-            카카오로 계속하기
+            {copy.kakaoLabel}
           </button>
 
           <button
             type="button"
-            onClick={onGoToLogin}
+            onClick={onEmailAction}
             className="btn btn-ghost w-full"
             style={{ height: 44, border: "1px solid var(--ink)", fontSize: 14 }}
           >
-            로그인 페이지로 이동
+            {copy.emailLabel}
           </button>
 
           <button
