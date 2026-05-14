@@ -21,7 +21,12 @@ const BACKEND_BASE =
 
 type AuthMode = "auto" | "required" | "none";
 
-const FORWARD_REQUEST_HEADERS = ["accept", "content-type", "accept-language"];
+/**
+ * 클라이언트 요청에서 백엔드로 그대로 전달할 헤더 목록.
+ * "authorization": 호출부가 직접 토큰을 지정하는 케이스(예: 가입 직후 백엔드 발급 JWT 사용)를 지원.
+ *   이때 proxy는 supabase 쿠키 토큰을 덮어쓰지 않는다.
+ */
+const FORWARD_REQUEST_HEADERS = ["accept", "content-type", "accept-language", "authorization"];
 
 async function handler(
   request: NextRequest,
@@ -51,7 +56,11 @@ async function handler(
     const v = request.headers.get(key);
     if (v) forwardHeaders.set(key, v);
   }
-  if (token) forwardHeaders.set("Authorization", `Bearer ${token}`);
+  // 클라이언트가 직접 Authorization을 보낸 경우(예: 가입 직후 백엔드 JWT)는 그것을 우선.
+  // 그 외에는 supabase 쿠키에서 추출한 토큰을 자동 부착한다.
+  if (token && !forwardHeaders.has("Authorization")) {
+    forwardHeaders.set("Authorization", `Bearer ${token}`);
+  }
 
   // body — GET/HEAD는 없음, 그 외는 arrayBuffer로 통과
   const body = ["GET", "HEAD"].includes(request.method)

@@ -76,7 +76,8 @@ export async function apiFetch(
   let token: string | null = null;
   if (USE_PROXY) {
     // 프록시 모드: 토큰은 서버가 쿠키에서 꺼내 부착. 클라이언트는 정책만 전달.
-    if (auth !== "none") finalHeaders.set("X-Auth-Mode", auth);
+    // "none"도 명시적으로 보내어 프록시가 불필요한 supabase 세션 조회를 하지 않도록 한다.
+    finalHeaders.set("X-Auth-Mode", auth);
   } else if (auth !== "none") {
     token = await getAccessToken();
     if (auth === "required" && !token) {
