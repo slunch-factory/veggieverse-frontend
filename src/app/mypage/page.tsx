@@ -57,7 +57,7 @@ const QUICK_MENU = [
 
 export default function MyPageHome() {
   const router = useRouter();
-  const { user, userProfile, isLoggedIn, isLoadingSession } = useUser();
+  const { user, userProfile, isLoggedIn, isLoadingSession, profileVersion } = useUser();
   const username = user?.name || "Guest";
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
@@ -73,7 +73,7 @@ export default function MyPageHome() {
     getUserProfile().then((profile) => {
       if (profile?.profileImageUrl) setProfileImage(profile.profileImageUrl);
     });
-  }, [isLoggedIn, isLoadingSession]);
+  }, [isLoggedIn, isLoadingSession, profileVersion]);
 
   useEffect(() => {
     if (isLoadingSession) return;

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { syncCartAfterLogin, type CartResponse } from "@/lib/api/cart";
+import { getCart, syncCartAfterLogin, type CartResponse } from "@/lib/api/cart";
 
 export interface CartItem {
   productId: number;
@@ -65,13 +65,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
-    // 초기 로드: 로그인 상태일 때만 localStorage 복원
+    // 초기 로드: 로그인 상태일 때만 localStorage 복원 + 비회원 카트 병합 시도.
+    // 카카오 OAuth처럼 server-side cookies set만 일어나 client supabase의 onAuthStateChange가
+    // SIGNED_IN으로 발화하지 않는 진입 경로를 보정 — mount 시점에도 동기화를 한 번 시도한다.
+    // 비회원 sessionId가 없어 병합이 skip되는 경우엔 GET /cart로 회원 카트를 직접 가져와 화면 동기화.
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           try { setItems(JSON.parse(saved)); } catch {}
         }
+        void (async () => {
+          const result = await syncCartAfterLogin();
+          if (result.status === "merged") {
+            if (result.cart) {
+              const cartResponse = result.cart;
+              setItems((prev) => mergeServerCart(prev, cartResponse));
+            } else {
+              const response = await getCart();
+              if (response) {
+                setItems((prev) => mergeServerCart(prev, response));
+              }
+            }
+          }
+        })();
       }
       // 복원 시도 완료 — 이제부터 items 변경 시 localStorage 저장 허용
       hydrated.current = true;

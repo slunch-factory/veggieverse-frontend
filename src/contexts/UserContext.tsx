@@ -49,6 +49,11 @@ interface UserContextType {
   saveProfile: (profileImage: string, veganType: string) => void;
   resetProfile: () => void;
 
+  /** 백엔드 프로필 재조회 트리거 — 회원가입/프로필 수정 직후 호출.
+   *  값이 바뀌면 이를 구독하는 컴포넌트(Header, mypage 등)가 getUserProfile()을 다시 부른다. */
+  profileVersion: number;
+  refetchProfile: () => void;
+
   /** 인증 액션 */
   signOut: () => Promise<void>;
   /** 호환용 alias — 기존 logout() 호출부를 위해 유지 */
@@ -83,6 +88,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [backendUserId, setBackendUserId] = useState<number | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [profileVersion, setProfileVersion] = useState(0);
 
   /** 로컬 프로필 복원 — Supabase 세션과 무관 */
   useEffect(() => {
@@ -135,6 +141,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setUserProfile(DEFAULT_PROFILE);
   }, []);
 
+  const refetchProfile = useCallback(() => {
+    setProfileVersion((v) => v + 1);
+  }, []);
+
   const signOut = useCallback(async () => {
     // 1) 클라이언트 상태 우선 정리 — onAuthStateChange도 뒤이어 발화
     const supabase = getSupabaseBrowserClient();
@@ -173,6 +183,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       userProfile,
       saveProfile,
       resetProfile,
+      profileVersion,
+      refetchProfile,
       signOut,
       logout,
     }),
@@ -185,6 +197,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       userProfile,
       saveProfile,
       resetProfile,
+      profileVersion,
+      refetchProfile,
       signOut,
       logout,
     ],

@@ -18,7 +18,7 @@ interface HeaderProps {
 
 export function Header({ showTopBanner = false }: HeaderProps) {
   const router = useRouter();
-  const { user, userProfile, isLoggedIn, isLoadingSession } = useUser();
+  const { user, userProfile, isLoggedIn, isLoadingSession, profileVersion } = useUser();
   const { totalCount } = useCart();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -39,7 +39,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
     getUserProfile().then((profile) => {
       if (profile?.profileImageUrl) setProfileImageUrl(profile.profileImageUrl);
     });
-  }, [isLoggedIn, isLoadingSession, userProfile.profileImage]);
+  }, [isLoggedIn, isLoadingSession, userProfile.profileImage, profileVersion]);
 
   const getSpiritImageUrl = (spiritName: string | null): string | null => {
     if (!spiritName) return null;
