@@ -138,23 +138,27 @@ export function SignupClient() {
     }
   }, [isLoadingSession, isLoggedIn, step, isLinkMode, isExistingEmailPrompt]);
 
-  // case1-1-II / 2-1-II 공용 진입 처리. sessionStorage flag 우선 순서:
-  //   1) PENDING_KAKAO_LOGIN_KEY (case2-1-II "카카오로 로그인") → 메인 페이지로 직행
-  //   2) PENDING_LINK_PASSWORD_KEY (case2-1-II "이메일 연동") → link 화면으로 직행
-  //   3) flag 없음 → case1-1-II 모달 표시
+  // case2-1-II "카카오로 로그인" 의도 flag — 진입 URL과 무관하게 메인 페이지로 직행.
+  // callback이 어떤 분기로 보내든(/signup?prompt=existing-email, /signup 등) SignupClient
+  // mount 시 무조건 검사. TTL 이내일 때만 인정하여 OAuth 취소 등 잔존 데이터로 인한 오동작 방지.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(PENDING_KAKAO_LOGIN_KEY);
+    if (!raw) return;
+    const ts = Number(raw);
+    sessionStorage.removeItem(PENDING_KAKAO_LOGIN_KEY);
+    if (ts && Date.now() - ts < PENDING_FLAG_TTL_MS) {
+      router.replace("/");
+    }
+  }, [router]);
+
+  // case1-1-II 공용 진입 처리. sessionStorage flag 우선 순서:
+  //   1) PENDING_LINK_PASSWORD_KEY (case2-1-II "이메일 연동") → link 화면으로 직행
+  //   2) flag 없음 → case1-1-II 모달 표시
   // flag는 TTL 이내일 때만 인정. 만료된 잔존 flag는 그냥 정리하고 통과.
   useEffect(() => {
     if (!isExistingEmailPrompt) return;
     if (typeof window !== "undefined") {
-      const kakaoLoginRaw = sessionStorage.getItem(PENDING_KAKAO_LOGIN_KEY);
-      const kakaoLoginTs = kakaoLoginRaw ? Number(kakaoLoginRaw) : 0;
-      if (kakaoLoginTs && Date.now() - kakaoLoginTs < PENDING_FLAG_TTL_MS) {
-        sessionStorage.removeItem(PENDING_KAKAO_LOGIN_KEY);
-        router.replace("/");
-        return;
-      }
-      if (kakaoLoginRaw) sessionStorage.removeItem(PENDING_KAKAO_LOGIN_KEY);
-
       // case2-1-II "이메일 연동" flag — TTL 이내일 때만 link 화면으로. 만료는 정리만.
       const linkPwdRaw = sessionStorage.getItem(PENDING_LINK_PASSWORD_KEY);
       if (linkPwdRaw) {
