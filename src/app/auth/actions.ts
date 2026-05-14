@@ -10,32 +10,49 @@ import {
 
 /**
  * Server Action 공통 결과 타입 — 클라이언트가 form 응답으로 받음.
- * 성공 시 redirect를 throw하므로 실패 케이스만 직렬화된다.
+ *
+ * 로그인 성공 시 토큰을 함께 반환한다.
+ * 서버가 Set-Cookie로 세션 쿠키를 set해도 client supabase는 onAuthStateChange를
+ * 자체 액션에만 발화하므로 UserContext가 즉시 갱신되지 않는다. 호출자는 토큰을 받아
+ * client supabase의 `setSession()`을 명시 호출하여 onAuthStateChange를 발화시켜야 한다.
  *
  * `alreadyRegistered`는 'User already registered' 케이스 식별용 — 클라이언트에서
  * AlreadyRegisteredModal 분기에 사용한다.
  */
+export type AuthSessionTokens = {
+  access_token: string;
+  refresh_token: string;
+};
+
 export type AuthActionResult =
-  | { ok: true }
+  | { ok: true; session?: AuthSessionTokens | null }
   | { ok: false; error: string; alreadyRegistered?: boolean };
 
 /**
- * 이메일/비밀번호 로그인 — 성공 시 쿠키에 세션 저장 후 next 경로로 redirect.
+ * 이메일/비밀번호 로그인 — 성공 시 쿠키에 세션 저장.
+ * 과거엔 server에서 redirect()를 throw했지만, Next.js 16 + Turbopack dev 환경에서
+ * client 측 navigation 처리가 끊겨 호출자의 await이 영구 대기하는 증상이 있어 결과만 반환한다.
+ * 호출자(LoginClient/LoginModal)가 router.push 또는 router.refresh로 navigation을 처리한다.
  */
 export async function signInAction(formData: {
   email: string;
   password: string;
-  next?: string;
 }): Promise<AuthActionResult> {
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: formData.email.trim(),
     password: formData.password,
   });
   if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
-
-  // redirect는 throws — try/catch로 감싸지 말 것.
-  redirect(formData.next ?? "/");
+  return {
+    ok: true,
+    session: data.session
+      ? {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        }
+      : null,
+  };
 }
 
 /**

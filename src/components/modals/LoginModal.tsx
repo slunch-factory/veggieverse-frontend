@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -31,17 +32,19 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     if (!canSubmit) return;
     setSubmitting(true);
     setErrorMessage(null);
-    const result = await signInAction({
-      email,
-      password,
-      // 모달은 현재 페이지를 유지해야 하므로 redirect 후 router.refresh()로 데이터만 재요청.
-      next: typeof window !== "undefined" ? window.location.pathname : "/",
-    });
-    setSubmitting(false);
+    const result = await signInAction({ email, password });
     if (!result.ok) {
+      setSubmitting(false);
       setErrorMessage(result.error);
       return;
     }
+    // server에서 쿠키는 이미 set됨. client supabase에도 명시적으로 알려 onAuthStateChange 발화 → UserContext 즉시 갱신.
+    if (result.session) {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.setSession(result.session);
+    }
+    setSubmitting(false);
+    // 모달은 현재 페이지를 유지 — 모달 닫고 RSC 데이터만 재요청.
     onLoginSuccess?.();
     onClose();
     router.refresh();

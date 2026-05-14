@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /** Kakao 브랜드 컬러 — 디자인 시스템 외 3rd-party 예외 */
 const KAKAO_YELLOW = "#FEE500";
@@ -24,13 +25,18 @@ export function LoginClient() {
     setSubmitting(true);
     setErrorMessage(null);
     const result = await signInAction({ email, password });
-    // 성공 시 server action이 redirect — 아래 코드는 실패 시에만 도달.
-    setSubmitting(false);
     if (!result.ok) {
+      setSubmitting(false);
       setErrorMessage(result.error);
       return;
     }
-    router.refresh();
+    // server에서 쿠키는 set됨. client supabase에도 알려 onAuthStateChange 발화 → UserContext 즉시 갱신.
+    if (result.session) {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.setSession(result.session);
+    }
+    setSubmitting(false);
+    router.push("/");
   };
 
   const handleKakaoLogin = async () => {
