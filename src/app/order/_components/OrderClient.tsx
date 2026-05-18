@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import type { CartItem } from "@/contexts/CartContext";
 import Link from "next/link";
 import { getUserProfile } from "@/lib/api/user";
@@ -10,19 +10,25 @@ import {
   Check,
   User,
   MapPin,
-  CreditCard,
   ShieldCheck,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
+import { createStoreOrder } from "@/lib/api/store-payment";
 
 const SHIPPING_FEE = 3500;
 const FREE_SHIPPING_THRESHOLD = 55000;
 
-export const STORE_ORDER_RESULT_KEY = "veggieverse-store-order-result";
+const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
 
-export interface StoreOrderResult {
-  orderDate: string;
+export const STORE_ORDER_SNAPSHOT_KEY = "veggieverse-store-order-snapshot";
+
+/** Toss 리다이렉트 직전에 보관하는 결제 컨텍스트. confirm 응답 전까지 UI 복원에 사용. */
+export interface StoreOrderSnapshot {
+  orderDbId: number;
+  tossOrderId: string;
+  amount: number;
   items: CartItem[];
   subtotal: number;
   shippingFee: number;
@@ -32,13 +38,6 @@ export interface StoreOrderResult {
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR");
 }
-
-const PAYMENT_METHODS = [
-  { value: "card", label: "신용/체크카드" },
-  { value: "toss", label: "토스" },
-] as const;
-
-type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
 
 const DELIVERY_NOTE_PRESETS = [
   "문 앞에 놓아주세요",
@@ -68,7 +67,6 @@ interface FormState {
   recipientAddress: string;
   recipientAddressDetail: string;
   deliveryNote: string;
-  paymentMethod: PaymentMethod;
   agreeOrder: boolean;
   agreePrivacy: boolean;
   agreeThirdParty: boolean;
@@ -89,7 +87,6 @@ const INITIAL_FORM: FormState = {
   recipientAddress: "",
   recipientAddressDetail: "",
   deliveryNote: "",
-  paymentMethod: "card",
   agreeOrder: false,
   agreePrivacy: false,
   agreeThirdParty: false,
@@ -97,7 +94,6 @@ const INITIAL_FORM: FormState = {
 };
 
 export function OrderClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { items } = useCart();
 
@@ -136,8 +132,10 @@ export function OrderClient() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [deliveryNoteCustom, setDeliveryNoteCustom] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [postcodeTarget, setPostcodeTarget] = useState<"recipient" | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+
 
   useEffect(() => {
     getUserProfile().then((profile) => {
@@ -202,21 +200,83 @@ export function OrderClient() {
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || submitting) return;
+    if (!TOSS_CLIENT_KEY) {
+      setSubmitError("결제 설정이 누락되어 있습니다 (TOSS_CLIENT_KEY).");
+      return;
+    }
     setSubmitting(true);
-    // TODO: 결제 API 연동
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
+    setSubmitError(null);
 
-    const result: StoreOrderResult = {
-      orderDate: new Date().toISOString(),
-      items: orderItems,
-      subtotal,
-      shippingFee,
-      total,
-    };
-    sessionStorage.setItem(STORE_ORDER_RESULT_KEY, JSON.stringify(result));
-    router.push("/order/complete");
-  }, [canSubmit, submitting, router, orderItems, subtotal, shippingFee, total]);
+    try {
+      // [STEP 1] PENDING 주문 생성
+      const order = await createStoreOrder({
+        items: orderItems.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+        })),
+        deliveryAddress: {
+          zipCode: form.recipientPostalCode || undefined,
+          street: form.recipientAddress || undefined,
+          detail: form.recipientAddressDetail || undefined,
+        },
+        isCartOrder: !isDirectBuy,
+      });
+
+      // BE가 BigDecimal을 "12810.00" 으로 직렬화하더라도 SDK가 정수만 받으므로 강제 변환
+      const amountInt = Math.floor(Number(order.amount));
+
+      // confirm 단계에서 UI 복원에 쓸 스냅샷 저장
+      const snapshot: StoreOrderSnapshot = {
+        orderDbId: order.orderDbId,
+        tossOrderId: order.tossOrderId,
+        amount: amountInt,
+        items: orderItems,
+        subtotal,
+        shippingFee,
+        total,
+      };
+      sessionStorage.setItem(STORE_ORDER_SNAPSHOT_KEY, JSON.stringify(snapshot));
+
+      // [STEP 2] Toss 결제창 호출 — 결제 수단은 토스 결제창 안에서 선택
+      const toss = await loadTossPayments(TOSS_CLIENT_KEY);
+      const payment = toss.payment({ customerKey: ANONYMOUS });
+      await payment.requestPayment({
+        method: "CARD",
+        amount: { currency: order.currency || "KRW", value: amountInt },
+        orderId: order.tossOrderId,
+        orderName: order.orderName,
+        customerEmail: order.customerEmail ?? undefined,
+        customerName: order.customerName ?? undefined,
+        customerMobilePhone: order.customerMobilePhone ?? undefined,
+        successUrl: `${window.location.origin}/order/success`,
+        failUrl: `${window.location.origin}/order/fail`,
+        card: {
+          useEscrow: false,
+          flowMode: "DEFAULT",
+          useCardPoint: false,
+          useAppCardOnly: false,
+        },
+      });
+      // 정상 흐름: Toss가 successUrl 또는 failUrl로 리다이렉트.
+    } catch (err: unknown) {
+      console.error("[order] 결제 실패:", err);
+      const message =
+        err instanceof Error ? err.message : "결제를 시작하지 못했습니다. 잠시 후 다시 시도해주세요.";
+      setSubmitError(message);
+      setSubmitting(false);
+    }
+  }, [
+    canSubmit,
+    submitting,
+    orderItems,
+    isDirectBuy,
+    form.recipientPostalCode,
+    form.recipientAddress,
+    form.recipientAddressDetail,
+    subtotal,
+    shippingFee,
+    total,
+  ]);
 
   if (orderItems.length === 0) {
     return (
@@ -490,37 +550,6 @@ export function OrderClient() {
                 </FormField>
               </FormSection>
 
-              {/* 결제 수단 */}
-              <FormSection
-                icon={<CreditCard size={16} strokeWidth={1.5} />}
-                title="결제 수단"
-              >
-                <div className="grid grid-cols-2 gap-3">
-                  {PAYMENT_METHODS.map((opt) => {
-                    const active = form.paymentMethod === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => update("paymentMethod", opt.value)}
-                        aria-pressed={active}
-                        className="t-small transition-colors cursor-pointer"
-                        style={{
-                          height: 48,
-                          border: `1px solid ${active ? "var(--ink)" : "var(--neutral-stone)"}`,
-                          borderRadius: "var(--r-btn)",
-                          background: active ? "var(--point)" : "var(--bg-white)",
-                          color: "var(--ink)",
-                          fontWeight: active ? 600 : 400,
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </FormSection>
-
               {/* 이용약관 동의 */}
               <FormSection
                 icon={<ShieldCheck size={16} strokeWidth={1.5} />}
@@ -614,6 +643,14 @@ export function OrderClient() {
                     {!canSubmit && (
                       <p className="t-caption mt-3 text-center" style={{ color: "var(--ink-light)" }}>
                         필수 정보 입력과 약관 동의 후 진행할 수 있습니다
+                      </p>
+                    )}
+                    {submitError && (
+                      <p
+                        className="t-caption mt-3 text-center"
+                        style={{ color: "var(--alert-red)" }}
+                      >
+                        {submitError}
                       </p>
                     )}
                   </div>

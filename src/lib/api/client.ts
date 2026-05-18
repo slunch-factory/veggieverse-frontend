@@ -88,6 +88,15 @@ export async function apiFetch(
     }
   }
 
+  // 인증 필수 호출인데 refresh 후에도 401이면 세션 사망 → 로그인으로 유도
+  if (res.status === 401 && auth === "required" && typeof window !== "undefined") {
+    const here = window.location.pathname + window.location.search;
+    if (!here.startsWith("/login")) {
+      const redirect = encodeURIComponent(here);
+      window.location.href = `/login?redirect=${redirect}`;
+    }
+  }
+
   return res;
 }
 

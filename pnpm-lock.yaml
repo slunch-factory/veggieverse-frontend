@@ -11,6 +11,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.105.3
         version: 2.105.4
+      '@tosspayments/tosspayments-sdk':
+        specifier: ^2.7.0
+        version: 2.7.0
       '@types/three':
         specifier: ^0.184.0
         version: 0.184.1
@@ -556,6 +559,9 @@ packages:
 
   '@tailwindcss/postcss@4.3.0':
     resolution: {integrity: sha512-Jm05Tjx+9yCLGv5qw1c+84Psds8MnyrEQYCB+FFk2lgGiUjlRqdxke4mVTuYrj2xnVZqKim2Apr5ySuQRYAw/w==}
+
+  '@tosspayments/tosspayments-sdk@2.7.0':
+    resolution: {integrity: sha512-qpVIMpxdmKNOKwOZuSbkyGO5CpbF3+kqJcHLjGsTdyOsNex8ai+ceQc7zyCJhq+qZf9jglJpx9Q0bGVWwGjcbQ==}
 
   '@tweenjs/tween.js@23.1.3':
     resolution: {integrity: sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==}
@@ -2496,6 +2502,8 @@ snapshots:
       '@tailwindcss/oxide': 4.3.0
       postcss: 8.5.14
       tailwindcss: 4.3.0
+
+  '@tosspayments/tosspayments-sdk@2.7.0': {}
 
   '@tweenjs/tween.js@23.1.3': {}
 

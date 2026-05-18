@@ -9,18 +9,27 @@ import {
   type StoreOrderDetailResponse,
 } from "@/lib/api/store";
 import { useUser } from "@/contexts/UserContext";
+import { RefundModal } from "./RefundModal";
 
-type OrderStatus = "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
+type OrderStatus = "결제완료" | "배송중" | "배송완료" | "환불됨" | "취소됨" | "기타";
 
 const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
   PENDING: "결제완료",
+  PAID: "결제완료",
   COMPLETED: "배송완료",
   SHIPPING: "배송중",
+  REFUNDED: "환불됨",
   CANCELED: "취소됨",
 };
 
 function mapStatus(status: string): OrderStatus {
   return STORE_STATUS_LABEL[status] ?? "기타";
+}
+
+/** 환불 버튼을 노출할지 결정. 결제완료·배송중 단계까지 허용. */
+function isRefundable(rawStatus: string): boolean {
+  const normalized = rawStatus.toUpperCase();
+  return normalized === "PENDING" || normalized === "PAID" || normalized === "SHIPPING";
 }
 
 function formatDate(iso: string) {
@@ -43,6 +52,7 @@ export function OrderDetailClient() {
   const [data, setData] = useState<StoreOrderDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -241,6 +251,31 @@ export function OrderDetailClient() {
           </div>
         </div>
       </SectionCard>
+
+      {/* 환불 CTA */}
+      {isRefundable(data.status) && (
+        <div className="flex justify-end mb-8">
+          <button
+            type="button"
+            onClick={() => setRefundOpen(true)}
+            className="btn btn-ghost btn-md"
+            style={{ border: "1px solid var(--alert-red)", color: "var(--alert-red)" }}
+          >
+            환불 요청
+          </button>
+        </div>
+      )}
+
+      <RefundModal
+        orderDbId={data.orderId}
+        amount={data.finalAmount}
+        isOpen={refundOpen}
+        onClose={() => setRefundOpen(false)}
+        onRefunded={(updated) => {
+          setData(updated);
+          setRefundOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -320,6 +355,7 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
     "결제완료": { bg: "var(--point)", color: "var(--ink)" },
     "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
     "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
+    "환불됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
     "취소됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
     "기타": { bg: "var(--bg-off)", color: "var(--ink-light)" },
   };

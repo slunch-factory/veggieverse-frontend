@@ -86,6 +86,15 @@ export function Footer() {
           </div>
         </div>
 
+        {/* ── 법적 페이지 링크 ── */}
+        <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          <HoverLink href="/terms" className="font-medium">이용약관</HoverLink>
+          {DOT}
+          <HoverLink href="/privacy" className="font-medium">개인정보 처리방침</HoverLink>
+          {DOT}
+          <HoverLink href="/refund-policy" className="font-medium">환불·취소 정책</HoverLink>
+        </nav>
+
         {/* ── 하단 행: 법인 정보 · 계좌 · Copyright ── */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 text-[10px]"
              style={{ color: "rgba(37,10,0,0.55)" }}>

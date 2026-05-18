@@ -810,12 +810,14 @@ export function SignupClient() {
                     onChange={(v) => update("agreeTerms", v)}
                     label="이용약관 동의"
                     required
+                    linkHref="/terms"
                   />
                   <AgreementRow
                     checked={form.agreePrivacy}
                     onChange={(v) => update("agreePrivacy", v)}
                     label="개인정보 수집·이용 동의"
                     required
+                    linkHref="/privacy"
                   />
                   <AgreementRow
                     checked={form.agreeMarketingSms}
@@ -997,11 +999,13 @@ function AgreementRow({
   onChange,
   label,
   required,
+  linkHref,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
   required?: boolean;
+  linkHref?: string;
 }) {
   return (
     <label className="chk-wrap">
@@ -1011,7 +1015,19 @@ function AgreementRow({
         onChange={(e) => onChange(e.target.checked)}
       />
       <span className="t-small" style={{ color: "var(--ink)" }}>
-        {label}{" "}
+        {linkHref ? (
+          <a
+            href={linkHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{ textDecoration: "underline" }}
+          >
+            {label}
+          </a>
+        ) : (
+          label
+        )}{" "}
         <span style={{ color: required ? "var(--alert-red)" : "var(--neutral-stone)" }}>
           ({required ? "필수" : "선택"})
         </span>

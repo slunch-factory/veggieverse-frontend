@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>로그인 · 회원가입 플로우</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-light: #4a4a4a;
+    --muted: #888;
+    --bg: #fafafa;
+    --card: #ffffff;
+    --border: #e5e5e5;
+    --slunch: #4A7F52;        /* 자사몰 */
+    --slunch-soft: #e8f1ea;
+    --kakao: #FEE500;         /* 카카오 */
+    --kakao-soft: #fff8d0;
+    --arrow: #999;
+    --code: #f4f4f4;
+    --warn: #c2410c;
+    --warn-soft: #ffedd5;
+    --branch: #6b21a8;
+    --branch-soft: #f3e8ff;
+    --success: #15803d;
+    --success-soft: #dcfce7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    padding: 32px 24px 80px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    font-size: 28px;
+    margin: 0 0 8px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 12px;
+  }
+  .subtitle { color: var(--ink-light); margin-bottom: 40px; font-size: 14px; }
+  h2 {
+    font-size: 22px;
+    margin: 48px 0 8px;
+    padding: 8px 14px;
+    color: white;
+    border-radius: 6px;
+  }
+  h2.slunch { background: var(--slunch); }
+  h2.kakao { background: #b8a500; }
+  h3 {
+    font-size: 17px;
+    margin: 28px 0 12px;
+    padding-left: 12px;
+    border-left: 4px solid var(--ink);
+  }
+  .case-summary {
+    font-size: 14px;
+    color: var(--ink-light);
+    margin: -4px 0 16px 16px;
+  }
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 24px;
+  }
+  .step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    position: relative;
+  }
+  .step.slunch { border-left: 4px solid var(--slunch); }
+  .step.kakao { border-left: 4px solid var(--kakao); }
+  .step.branch { border-left: 4px solid var(--branch); background: var(--branch-soft); }
+  .step.warn { border-left: 4px solid var(--warn); background: var(--warn-soft); }
+  .step.success { border-left: 4px solid var(--success); background: var(--success-soft); }
+  .step .num {
+    display: inline-block;
+    background: var(--ink);
+    color: white;
+    font-size: 12px;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    margin-right: 8px;
+    font-weight: 600;
+  }
+  .step .title { font-weight: 600; font-size: 14.5px; }
+  .step .detail { font-size: 13px; color: var(--ink-light); margin-top: 6px; }
+  .step .detail .url, .step .detail code {
+    background: var(--code);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    color: #5b21b6;
+  }
+  .step .detail .url { color: var(--slunch); font-weight: 600; }
+  .step .detail .impl {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .step .detail .impl::before { content: "📁 "; }
+  .arrow {
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--arrow);
+    font-size: 16px;
+  }
+  .branch-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .branch-group.three { grid-template-columns: 1fr 1fr 1fr; }
+  .branch-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+  .branch-card .label {
+    font-weight: 600;
+    color: var(--branch);
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .branch-card .label.success { color: var(--success); }
+  .branch-card .label.warn { color: var(--warn); }
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 12px;
+    background: var(--card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .nav { color: var(--slunch); font-weight: 600; }
+  .api {
+    background: var(--code);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px;
+  }
+  .modal-card {
+    background: white;
+    border: 2px dashed var(--ink);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .modal-card .modal-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .modal-card .modal-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .modal-card .btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .modal-card .btn.kakao { background: var(--kakao); color: rgba(0,0,0,0.85); }
+  .modal-card .btn.email { border: 1px solid var(--ink); background: white; }
+  .modal-card .btn.cancel { color: var(--muted); text-decoration: underline; padding: 6px 8px; }
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    background: #fffaf0;
+    border-left: 3px solid #d97706;
+    padding: 8px 12px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+  }
+  .toc ul { margin: 8px 0 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .updated {
+    margin-top: 60px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>로그인 · 회원가입 플로우</h1>
+<p class="subtitle">자사몰(이메일·비번) 및 카카오 진입 경로별 단계와 구현 위치를 단계별로 정리.</p>
+
+<div class="legend">
+  <div class="item"><span class="swatch" style="background:var(--slunch)"></span> 자사몰</div>
+  <div class="item"><span class="swatch" style="background:var(--kakao)"></span> 카카오</div>
+  <div class="item"><span class="swatch" style="background:var(--branch)"></span> 분기점</div>
+  <div class="item"><span class="swatch" style="background:var(--warn)"></span> 주의 / 예외</div>
+  <div class="item"><span class="swatch" style="background:var(--success)"></span> 완료</div>
+  <div class="item"><span class="nav">파란색</span> = 페이지 이동 URL</div>
+  <div class="item"><code class="api">코드</code> = API/함수 호출</div>
+</div>
+
+<div class="toc">
+  <strong>목차</strong>
+  <ul>
+    <li><a href="#case1-1-1">Case 1-1-I — 자사몰 신규 회원가입</a></li>
+    <li><a href="#case1-1-2">Case 1-1-II — 자사몰 가입자가 카카오로 시도</a></li>
+    <li><a href="#case1-2">Case 1-2 — 자사몰 로그인</a></li>
+    <li><a href="#case2-1-1">Case 2-1-I — 카카오 신규 회원가입</a></li>
+    <li><a href="#case2-1-2">Case 2-1-II — 카카오 가입자가 자사몰 회원가입 시도</a></li>
+    <li><a href="#case2-2">Case 2-2 — 카카오 로그인</a></li>
+  </ul>
+</div>
+
+<!-- =========================================== -->
+<h2 class="slunch">Case 1 — 자사몰</h2>
+
+<h3 id="case1-1-1">case 1-1-I &nbsp;·&nbsp; 자사몰 신규 회원가입</h3>
+<p class="case-summary">처음 가입하는 사용자가 이메일/비밀번호로 회원가입 + 프로필 작성</p>
+<div class="flow">
+
+  <div class="step slunch">
+    <span class="num">1</span><span class="title">사용자가 회원가입 페이지 진입</span>
+    <div class="detail">
+      이동: <span class="url">/signup</span><br/>
+      step 1 폼 표시 (이메일 + 비밀번호 + 확인)
+      <div class="impl">src/app/signup/_components/SignupClient.tsx</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">2</span><span class="title">이메일 / 비밀번호 입력 후 "다음" 클릭</span>
+    <div class="detail">
+      <code class="api">checkEmailExists(email)</code> 호출 → <code class="api">GET /api/v1/veggieverse/users/email-check</code><br/>
+      자사몰 DB에 이메일 존재 여부 사전 확인
+      <div class="impl">handleStep1Submit · src/lib/api/user.ts</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step branch">
+    <span class="num">?</span><span class="title">email-check 결과 분기</span>
+    <div class="branch-group">
+      <div class="branch-card">
+        <div class="label warn">exists = true</div>
+        AlreadyRegisteredModal 표시 → <strong>case 2-1-II로 진입</strong>
+      </div>
+      <div class="branch-card">
+        <div class="label success">exists = false</div>
+        다음 단계로 진행 (supabase 가입)
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">3</span><span class="title">supabase 계정 생성 (server action)</span>
+    <div class="detail">
+      <code class="api">signUpAction({ email, password })</code> → <code class="api">supabase.auth.signUp(...)</code><br/>
+      성공 시 backend <code class="api">POST /auth/token</code> 으로 JWT 발급
+      <div class="impl">src/app/auth/actions.ts · handleStep1Submit</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">4</span><span class="title">step 2 폼 표시 (프로필 정보)</span>
+    <div class="detail">
+      이름 · 휴대전화 · 생년월일 · 주소 · 프로필 이미지 · 약관 동의 입력<br/>
+      이름 필드: 한글/영문 + IME 조합용 자모(<code class="api">ㄱ-ㅎ ㅏ-ㅣ</code>) 허용
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">5</span><span class="title">"회원가입" 클릭</span>
+    <div class="detail">
+      ① <code class="api">supabase.auth.updateUser({ data: { full_name } })</code> — user_metadata 갱신<br/>
+      ② <code class="api">POST /auth/token</code> 재발급 (name claim 포함된 JWT 확보)<br/>
+      ③ <code class="api">POST /api/v1/veggieverse/users/profile</code> (multipart) — 백엔드 ConsumerUser INSERT + 이미지 업로드
+      <div class="impl">handleStep2Submit</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step success">
+    <span class="num">✓</span><span class="title">회원가입 완료</span>
+    <div class="detail">
+      <code class="api">refetchProfile()</code> 호출 → 헤더가 새 프로필 즉시 fetch<br/>
+      "회원가입이 완료되었어요" 페이지 표시
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<h3 id="case1-1-2">case 1-1-II &nbsp;·&nbsp; 자사몰 가입자가 카카오로 시도</h3>
+<p class="case-summary">자사몰 이메일/비번 가입자가 같은 이메일로 카카오 OAuth 시도</p>
+<div class="flow">
+
+  <div class="step slunch">
+    <span class="num">1</span><span class="title">"카카오로 계속하기" 클릭</span>
+    <div class="detail">
+      위치: 로그인 모달 또는 <span class="url">/login</span> 페이지<br/>
+      <code class="api">signInWithKakaoAction</code> → 카카오 OAuth URL 받음 → <code class="api">window.location.href = url</code>
+      <div class="impl">LoginModal · LoginClient · src/app/auth/actions.ts</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step kakao">
+    <span class="num">2</span><span class="title">카카오 OAuth 페이지 → 동의</span>
+    <div class="detail">
+      카카오 비밀번호로 인증 (또는 카카오에 이미 로그인된 상태)<br/>
+      카카오 → <span class="url">/auth/callback?code=...</span>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">3</span><span class="title">callback — supabase 세션 교환 + 분기 판단</span>
+    <div class="detail">
+      <code class="api">supabase.auth.exchangeCodeForSession(code)</code> — 자동 identity linking 활성화로
+      자사몰 user에 kakao identity 자동 추가<br/>
+      callback이 user.identities 와 email-check / profile 호출 결과로 분기
+      <div class="impl">src/app/auth/callback/route.ts</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step branch">
+    <span class="num">?</span><span class="title">callback 분기 결과</span>
+    <div class="branch-group">
+      <div class="branch-card">
+        <div class="label">hasEmailIdentity=true<br/>+ 카카오 첫 sign-in</div>
+        → <span class="url">/signup?prompt=existing-email</span>
+      </div>
+      <div class="branch-card">
+        <div class="label">hasEmailIdentity=false<br/>+ email-check OK</div>
+        → <span class="url">/signup?prompt=existing-email</span>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">4</span><span class="title">SignupClient 진입 → 모달 자동 표시</span>
+    <div class="detail">
+      <code class="api">isExistingEmailPrompt</code> useEffect 발동 → 이메일 자동 채움 + 모달 open
+      <div class="impl">SignupClient · AlreadyRegisteredModal (mode=from-kakao-flow)</div>
+    </div>
+    <div class="modal-card">
+      <div class="modal-title">📩 이미 가입된 이메일입니다</div>
+      <div>이 이메일은 자사몰에 이미 가입되어 있습니다.<br/>
+        자사몰 계정으로 '이메일로 로그인'하거나, 자사몰 계정에 카카오를 추가하려면 '카카오 연동하기'를 선택해 주세요.</div>
+      <div class="modal-buttons">
+        <span class="btn kakao">K 카카오 연동하기</span>
+        <span class="btn email">이메일로 로그인</span>
+        <span class="btn cancel">취소</span>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step branch">
+    <span class="num">?</span><span class="title">사용자 선택</span>
+    <div class="branch-group three">
+      <div class="branch-card">
+        <div class="label">카카오 연동하기</div>
+        <code class="api">refetchProfile()</code> + <span class="url">router.push("/")</span><br/>
+        <strong>자사몰 supabase 비밀번호 보존</strong> (덮어쓰기 방지)
+      </div>
+      <div class="branch-card">
+        <div class="label">이메일로 로그인</div>
+        <code class="api">supabase.auth.signOut()</code> + <span class="url">/login</span>
+      </div>
+      <div class="branch-card">
+        <div class="label">취소</div>
+        <code class="api">supabase.auth.signOut()</code> + <span class="url">/</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<h3 id="case1-2">case 1-2 &nbsp;·&nbsp; 자사몰 로그인</h3>
+<p class="case-summary">기존 이메일/비밀번호로 로그인</p>
+<div class="flow">
+
+  <div class="step slunch">
+    <span class="num">1</span><span class="title">로그인 모달 또는 /login 에서 email/pw 입력</span>
+    <div class="detail">
+      <div class="impl">LoginModal · LoginClient</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">2</span><span class="title">signInAction 호출 (server action)</span>
+    <div class="detail">
+      <code class="api">supabase.auth.signInWithPassword({ email, password })</code><br/>
+      성공 시 결과 + session tokens(<code class="api">access_token, refresh_token</code>) 반환<br/>
+      <span class="note">⚠️ Next.js 16 + Turbopack dev에서 server action redirect의 client navigation hang을 피하기 위해 redirect 대신 결과 반환</span>
+      <div class="impl">src/app/auth/actions.ts</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">3</span><span class="title">client에서 setSession 명시 호출</span>
+    <div class="detail">
+      <code class="api">supabase.auth.setSession({ access_token, refresh_token })</code> →
+      <code class="api">onAuthStateChange("SIGNED_IN")</code> 발화 → UserContext 즉시 갱신
+      <div class="impl">LoginModal · LoginClient handleSubmit</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step success">
+    <span class="num">✓</span><span class="title">로그인 완료</span>
+    <div class="detail">
+      <strong>LoginModal</strong>: <code class="api">onClose() + router.refresh()</code> (현재 페이지 유지)<br/>
+      <strong>LoginClient</strong>: <span class="url">router.push("/")</span> (홈으로)
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<h2 class="kakao">Case 2 — 카카오</h2>
+
+<h3 id="case2-1-1">case 2-1-I &nbsp;·&nbsp; 카카오 신규 회원가입</h3>
+<p class="case-summary">자사몰에 가입된 적 없는 사용자가 카카오로 처음 가입</p>
+<div class="flow">
+
+  <div class="step kakao">
+    <span class="num">1</span><span class="title">"카카오로 계속하기" 클릭</span>
+    <div class="detail">
+      <code class="api">signInWithKakaoAction</code> → 카카오 OAuth URL → <code class="api">window.location.href</code>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step kakao">
+    <span class="num">2</span><span class="title">카카오 OAuth → 동의</span>
+    <div class="detail">
+      카카오 → <span class="url">/auth/callback?code=...</span>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">3</span><span class="title">callback — supabase 세션 교환 + 분기 판단</span>
+    <div class="detail">
+      <code class="api">exchangeCodeForSession(code)</code><br/>
+      user.identities = [kakao only] → hasEmailIdentity = false<br/>
+      <code class="api">email-check</code> 호출 → fail (자사몰 DB에 이메일 없음)
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">4</span><span class="title">/signup 으로 redirect (link 파라미터 없음)</span>
+    <div class="detail">
+      이동: <span class="url">/signup</span>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">5</span><span class="title">SignupClient 자동 setStep(2)</span>
+    <div class="detail">
+      <code class="api">isLoggedIn=true && !isLinkMode && !isExistingEmailPrompt</code> → 1단계 폼 패스, step 2 직행<br/>
+      카카오 user_metadata.name 으로 이름 필드 자동 채움
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">6</span><span class="title">프로필 입력 + "회원가입" 클릭</span>
+    <div class="detail">
+      ① <code class="api">supabase.auth.updateUser({ data: { full_name } })</code><br/>
+      ② <code class="api">supabase.auth.refreshSession()</code> — 갱신된 metadata가 새 access_token에 반영<br/>
+      ③ <code class="api">POST /users/profile</code> (auth: required, proxy가 갱신된 supabase 토큰 forward)
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step success">
+    <span class="num">✓</span><span class="title">회원가입 완료</span>
+    <div class="detail">
+      <code class="api">refetchProfile()</code> + 완료 페이지 표시
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<h3 id="case2-1-2">case 2-1-II &nbsp;·&nbsp; 카카오 가입자가 자사몰 회원가입 시도</h3>
+<p class="case-summary">카카오로 가입된 사용자가 같은 이메일로 자사몰 회원가입 페이지 진입</p>
+<div class="flow">
+
+  <div class="step slunch">
+    <span class="num">1</span><span class="title">/signup 에서 email/pw 입력 후 "다음"</span>
+    <div class="detail">
+      <code class="api">checkEmailExists(email)</code> → 자사몰 DB에 이메일 OK
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">2</span><span class="title">AlreadyRegisteredModal 표시 (mode=from-email-flow)</span>
+    <div class="modal-card">
+      <div class="modal-title">📩 이미 가입된 이메일입니다</div>
+      <div>카카오로 가입하셨다면 '카카오로 로그인'을, 자사몰 계정으로 연동하려면 '이메일 연동하기'를 선택해 주세요.</div>
+      <div class="modal-buttons">
+        <span class="btn kakao">K 카카오로 로그인</span>
+        <span class="btn email">이메일 연동하기</span>
+        <span class="btn cancel">취소</span>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step branch">
+    <span class="num">?</span><span class="title">사용자 선택</span>
+    <div class="branch-group three">
+      <div class="branch-card">
+        <div class="label">카카오로 로그인</div>
+        sessionStorage[<code class="api">PENDING_KAKAO_LOGIN_KEY</code>] = timestamp<br/>
+        → 카카오 OAuth → callback → mount 시 flag 발견 → <span class="url">router.replace("/")</span>
+      </div>
+      <div class="branch-card">
+        <div class="label">이메일 연동하기</div>
+        sessionStorage[<code class="api">PENDING_LINK_PASSWORD_KEY</code>] = {password, ts}<br/>
+        → 카카오 OAuth → callback → <span class="url">/signup?prompt=existing-email</span> → flag 보고 <span class="url">/signup?link=1</span> 로 redirect
+      </div>
+      <div class="branch-card">
+        <div class="label">취소</div>
+        모달만 닫음 (사용자가 step 1 폼에 머무름)
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step kakao">
+    <span class="num">4</span><span class="title">[이메일 연동] /signup?link=1 진입</span>
+    <div class="detail">
+      sessionStorage의 비밀번호를 자동으로 폼에 채움 (TTL 2분 검증)<br/>
+      사용자는 "연동하기" 버튼만 클릭하면 됨
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">5</span><span class="title">[이메일 연동] "연동하기" 클릭</span>
+    <div class="detail">
+      <code class="api">linkPasswordAction(linkPassword)</code> → <code class="api">supabase.auth.updateUser({ password })</code><br/>
+      카카오 supabase 계정에 비밀번호 identity 추가
+      <div class="impl">handleLinkSubmit</div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step success">
+    <span class="num">✓</span><span class="title">연동 완료</span>
+    <div class="detail">
+      sessionStorage 비밀번호 정리 → <code class="api">refetchProfile()</code> + <span class="url">router.push("/")</span>
+    </div>
+  </div>
+
+  <div class="note">
+    💡 TTL 검증: <code class="api">PENDING_LINK_PASSWORD_KEY</code> · <code class="api">PENDING_KAKAO_LOGIN_KEY</code> 모두 2분 TTL.
+    OAuth 취소 등으로 잔존한 flag는 다음 진입 시 만료 검사로 무시되어 의도 외 동작 방지.
+  </div>
+</div>
+
+<!-- =========================================== -->
+<h3 id="case2-2">case 2-2 &nbsp;·&nbsp; 카카오 로그인</h3>
+<p class="case-summary">이미 카카오로 가입된 사용자의 일반 로그인</p>
+<div class="flow">
+
+  <div class="step kakao">
+    <span class="num">1</span><span class="title">"카카오로 계속하기" 클릭</span>
+    <div class="detail">
+      <code class="api">signInWithKakaoAction</code>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step kakao">
+    <span class="num">2</span><span class="title">카카오 OAuth → callback</span>
+    <div class="detail">
+      이미 동의한 앱은 동의 화면 생략, 바로 callback
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step slunch">
+    <span class="num">3</span><span class="title">callback 분기</span>
+    <div class="detail">
+      hasEmailIdentity 와 profile 유무에 따라 redirect 결정
+    </div>
+    <div class="branch-group">
+      <div class="branch-card">
+        <div class="label success">profile OK</div>
+        → <span class="url">next</span> (보통 <span class="url">/</span>)
+      </div>
+      <div class="branch-card">
+        <div class="label warn">profile 404</div>
+        → <span class="url">/signup</span> → step 2 (프로필 작성 유도)
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step success">
+    <span class="num">✓</span><span class="title">자동 로그인</span>
+    <div class="detail">
+      별도 email/pw 입력 없이 진입
+    </div>
+  </div>
+</div>
+
+<div class="updated">최종 갱신: 2026-05-15 · 작성자 본인</div>
+
+</div>
+</body>
+</html>
