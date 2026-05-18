@@ -74,6 +74,27 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   return (await res.json()) as UserProfile;
 }
 
+/**
+ * 백엔드 프로필 존재 여부 probe — UserContext가 "가입 미완료(404)"를 구분하기 위해 사용.
+ *   - "complete"        : 200 응답, 백엔드 users 레코드 존재
+ *   - "incomplete"      : 404 응답, Supabase 세션은 있지만 자사몰 프로필 없음 (카카오 step1 후 이탈)
+ *   - "unauthenticated" : 401 — 세션 만료/미부착 (호출 측에서 처리)
+ *   - "error"           : 그 외 네트워크/서버 오류, 일시적
+ */
+export type ProfileProbe = "complete" | "incomplete" | "unauthenticated" | "error";
+
+export async function probeProfileStatus(): Promise<ProfileProbe> {
+  const res = await apiFetch("/api/v1/veggieverse/users/profile", {
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.ok) return "complete";
+  if (res.status === 404) return "incomplete";
+  if (res.status === 401) return "unauthenticated";
+  console.warn("[probeProfileStatus] HTTP error:", res.status, res.statusText);
+  return "error";
+}
+
 export async function updateUserProfile(
   body: UpdateUserProfileRequest,
 ): Promise<UserProfile | null> {

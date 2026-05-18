@@ -110,9 +110,25 @@ export function SignupClient() {
   const isLinkMode = searchParams.get("link") === "1";
   /** case1-1-II: 자사몰 화면에서 카카오 버튼 클릭 → 자사몰 동일 이메일 발견 → 모달로 선택권 제공 진입. */
   const isExistingEmailPrompt = searchParams.get("prompt") === "existing-email";
+  /** URL의 ?step=2 파라미터로 현재 단계를 표현. 새로고침/뒤로가기 시에도 단계 유지. */
+  const urlStep: 1 | 2 = searchParams.get("step") === "2" ? 2 : 1;
   const { isLoggedIn, isLoadingSession, user: currentUser, refetchProfile } = useUser();
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(urlStep);
+
+  /** state-only setStep은 URL과 단방향 동기화. 명시적 단계 변경은 goToStep을 사용. */
+  const goToStep = useCallback(
+    (next: 1 | 2) => {
+      setStep(next);
+      router.replace(next === 2 ? "/signup?step=2" : "/signup");
+    },
+    [router],
+  );
+
+  /** URL → state 동기화 (새로고침/외부 URL 변경 대응). */
+  useEffect(() => {
+    setStep(urlStep);
+  }, [urlStep]);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [postcodeOpen, setPostcodeOpen] = useState(false);
@@ -134,9 +150,9 @@ export function SignupClient() {
       !isLinkMode &&
       !isExistingEmailPrompt
     ) {
-      setStep(2);
+      goToStep(2);
     }
-  }, [isLoadingSession, isLoggedIn, step, isLinkMode, isExistingEmailPrompt]);
+  }, [isLoadingSession, isLoggedIn, step, isLinkMode, isExistingEmailPrompt, goToStep]);
 
   // case2-1-II "카카오로 로그인" 의도 flag — 진입 URL과 무관하게 메인 페이지로 직행.
   // callback이 어떤 분기로 보내든(/signup?prompt=existing-email, /signup 등) SignupClient
@@ -210,13 +226,6 @@ export function SignupClient() {
     }
     sessionStorage.removeItem(PENDING_LINK_PASSWORD_KEY);
   }, [isLinkMode]);
-
-  // Kakao 이름 자동 채우기
-  useEffect(() => {
-    if (currentUser?.name) {
-      setForm((prev) => (prev.name ? prev : { ...prev, name: currentUser.name }));
-    }
-  }, [currentUser?.name]);
 
   const update = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -390,7 +399,7 @@ export function SignupClient() {
           ? data.token
           : null;
     setAuthToken(token);
-    setStep(2);
+    goToStep(2);
   };
 
   // ── 2단계: 프로필 정보 → /api/v1/veggieverse/users/profile ────────────
@@ -990,7 +999,7 @@ export function SignupClient() {
                 {!isLoggedIn && (
                   <button
                     type="button"
-                    onClick={() => { setStep(1); }}
+                    onClick={() => { goToStep(1); }}
                     className="btn btn-ghost btn-lg"
                     style={{ border: "1px solid var(--ink)", flex: "0 0 auto" }}
                   >

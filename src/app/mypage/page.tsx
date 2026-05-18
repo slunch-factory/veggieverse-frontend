@@ -57,7 +57,7 @@ const QUICK_MENU = [
 
 export default function MyPageHome() {
   const router = useRouter();
-  const { user, userProfile, isLoggedIn, isLoadingSession, profileVersion } = useUser();
+  const { user, userProfile, isAuthenticated, isLoadingSession, profileVersion } = useUser();
   const username = user?.name || "Guest";
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
@@ -68,16 +68,18 @@ export default function MyPageHome() {
   const [recentSubs, setRecentSubs] = useState<OrderHistoryItem[] | null>(null);
   const [subsLoading, setSubsLoading] = useState(true);
 
+  // 백엔드 호출은 자사몰 프로필이 존재하는 경우(isAuthenticated)에만.
+  // incomplete 상태는 ProfileGate가 /signup?step=2로 redirect — 잠깐의 윈도우에서 404를 안 부른다.
   useEffect(() => {
-    if (isLoadingSession || !isLoggedIn) return;
+    if (isLoadingSession || !isAuthenticated) return;
     getUserProfile().then((profile) => {
       if (profile?.profileImageUrl) setProfileImage(profile.profileImageUrl);
     });
-  }, [isLoggedIn, isLoadingSession, profileVersion]);
+  }, [isAuthenticated, isLoadingSession, profileVersion]);
 
   useEffect(() => {
     if (isLoadingSession) return;
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       setRecentOrders([]);
       setRecentSubs([]);
       setOrdersLoading(false);
@@ -112,7 +114,7 @@ export default function MyPageHome() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, isLoadingSession]);
+  }, [isAuthenticated, isLoadingSession]);
 
   return (
     <div className="mx-auto max-w-[720px] flex flex-col gap-4 sm:gap-5">
