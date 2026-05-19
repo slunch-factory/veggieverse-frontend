@@ -16,6 +16,22 @@ interface Props {
 const MIN_REASON = 5;
 const MAX_REASON = 200;
 
+/** BE 응답을 사용자 친화 메시지로 매핑. raw message는 노출하지 않음. */
+function toUserFacingError(err: unknown): string {
+  if (err instanceof StorePaymentError) {
+    const status = err.status;
+    if (status === 401) return "로그인이 만료되었습니다. 다시 로그인 후 시도해주세요.";
+    if (status === 403) return "이 주문을 환불할 권한이 없습니다.";
+    if (status === 404) return "주문 정보를 찾을 수 없습니다.";
+    if (status === 409) return "이미 환불되었거나 환불할 수 없는 상태의 주문입니다.";
+    if (status === 410) return "환불 가능 기간이 지났습니다.";
+    if (status === 422) return "현재 주문 상태에서는 환불을 처리할 수 없습니다.";
+    if (status >= 500) return "일시적인 오류로 환불 처리에 실패했습니다. 잠시 후 다시 시도해주세요.";
+    return "환불 요청을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.";
+  }
+  return "환불 요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+}
+
 export function RefundModal({ orderDbId, amount, isOpen, onClose, onRefunded }: Props) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -53,15 +69,7 @@ export function RefundModal({ orderDbId, amount, isOpen, onClose, onRefunded }: 
       onRefunded(updated);
     } catch (err) {
       console.error("[refund] 실패:", err);
-      if (err instanceof StorePaymentError) {
-        setError(err.message);
-      } else {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "환불 요청 처리 중 알 수 없는 오류가 발생했습니다.",
-        );
-      }
+      setError(toUserFacingError(err));
       setSubmitting(false);
     }
   };

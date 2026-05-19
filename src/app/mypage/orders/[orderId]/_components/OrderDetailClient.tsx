@@ -9,6 +9,7 @@ import {
   type StoreOrderDetailResponse,
 } from "@/lib/api/store";
 import { useUser } from "@/contexts/UserContext";
+import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { RefundModal } from "./RefundModal";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "환불됨" | "취소됨" | "기타";
@@ -55,6 +56,7 @@ export function OrderDetailClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orderId) return;
@@ -276,8 +278,11 @@ export function OrderDetailClient() {
         onRefunded={(updated) => {
           setData(updated);
           setRefundOpen(false);
+          setToast("환불 요청이 정상적으로 접수되었습니다.");
         }}
       />
+
+      <Snackbar message={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
