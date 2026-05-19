@@ -195,7 +195,7 @@ export function OrderClient() {
       !form.recipientAddress
     )
       return false;
-    return form.agreeOrder && form.agreePrivacy;
+    return form.agreeOrder && form.agreePrivacy && form.agreeThirdParty;
   }, [form]);
 
   const handleSubmit = useCallback(async () => {
@@ -250,6 +250,8 @@ export function OrderClient() {
         customerMobilePhone: order.customerMobilePhone ?? undefined,
         successUrl: `${window.location.origin}/order/success`,
         failUrl: `${window.location.origin}/order/fail`,
+        // 브라우저별 자동 분기(크롬=새 창 / 사파리=iframe) 차이를 없애기 위해 iframe으로 통일.
+        windowTarget: "iframe",
         card: {
           useEscrow: false,
           flowMode: "DEFAULT",
@@ -587,7 +589,19 @@ export function OrderClient() {
                     checked={form.agreeThirdParty}
                     onChange={(v) => update("agreeThirdParty", v)}
                     label="개인정보 제3자 제공 동의"
+                    required
                   />
+                  <p
+                    className="t-caption pl-7"
+                    style={{ color: "var(--ink-light)", marginTop: -2, marginBottom: 4 }}
+                  >
+                    제공받는 자: (주)토스페이먼츠(결제 처리), 배송 대행사(상품 배송).
+                    자세한 항목·보유기간은{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>
+                      개인정보 처리방침
+                    </a>
+                    을 참고해주세요.
+                  </p>
                   <TermsRow
                     checked={form.agreeMarketing}
                     onChange={(v) => update("agreeMarketing", v)}
