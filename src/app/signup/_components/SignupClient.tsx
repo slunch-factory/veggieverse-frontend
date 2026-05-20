@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AtSign,
-  CalendarDays,
   Check,
   ChevronLeft,
   Image as ImageIcon,
@@ -24,15 +23,15 @@ import {
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 import { AlreadyRegisteredModal } from "@/components/modals/AlreadyRegisteredModal";
-import { supabase } from "@/lib/supabase";
-import {
-  isAlreadyRegisteredError,
-  translateSupabaseAuthError,
-} from "@/lib/supabase-errors";
 import { apiFetch } from "@/lib/api/client";
-import { saveCartSessionId } from "@/lib/api/cart";
 import { checkEmailExists } from "@/lib/api/user";
 import { useUser } from "@/contexts/UserContext";
+import {
+  linkPasswordAction,
+  signInWithKakaoAction,
+  signUpAction,
+} from "@/app/auth/actions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface FormState {
   email: string;
@@ -72,8 +71,27 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^01[0-9]-\d{3,4}-\d{4}$/;
 const NAME_RE = /^[가-힣a-zA-Z\s]+$/;
 
+/**
+ * case2-1-II "이메일 연동하기"에서 step 1 비번을 카카오 OAuth redirect 사이에 임시 보관하는 키.
+ * link 화면 진입 시 자동으로 폼에 채워 사용자의 추가 입력을 생략한다.
+ * 사용 즉시 sessionStorage에서 삭제하여 비번 평문이 오래 남지 않게 한다.
+ */
+const PENDING_LINK_PASSWORD_KEY = "veggieverse-pending-link-password";
+
+/**
+ * case2-1-II "카카오로 로그인" 클릭 시 OAuth redirect 사이에 의도를 보관하는 키.
+ * callback이 prompt=existing-email로 보낸 후 SignupClient가 이 flag를 보고
+ * 모달을 우회하고 메인 페이지로 redirect하여 무한 루프를 방지한다.
+ * timestamp 형태로 저장하여 OAuth 취소 등으로 잔존한 flag가 다른 흐름에서
+ * 잘못 발동되지 않도록 TTL 이내일 때만 인정한다.
+ */
+const PENDING_KAKAO_LOGIN_KEY = "veggieverse-pending-kakao-login";
+const PENDING_FLAG_TTL_MS = 2 * 60 * 1000;
+
+// IME 조합 중간에 한글 자음/모음만 입력되는 시점(ㄱ-ㅎ, ㅏ-ㅣ)을 허용해야
+// 조합이 깨지지 않는다. 검증(NAME_RE)은 조합 완료된 완성 글자만 통과시키므로 안전.
 function filterLetters(v: string) {
-  return v.replace(/[^가-힣a-zA-Z\s]/g, "");
+  return v.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z\s]/g, "");
 }
 function formatPhone(v: string) {
   const digits = v.replace(/\D/g, "").slice(0, 11);
@@ -89,9 +107,27 @@ export function SignupClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isLinkMode = searchParams.get("link") === "1";
-  const { isLoggedIn, isLoadingSession, user: currentUser } = useUser();
+  /** case1-1-II: 자사몰 화면에서 카카오 버튼 클릭 → 자사몰 동일 이메일 발견 → 모달로 선택권 제공 진입. */
+  const isExistingEmailPrompt = searchParams.get("prompt") === "existing-email";
+  /** URL의 ?step=2 파라미터로 현재 단계를 표현. 새로고침/뒤로가기 시에도 단계 유지. */
+  const urlStep: 1 | 2 = searchParams.get("step") === "2" ? 2 : 1;
+  const { isLoggedIn, isLoadingSession, user: currentUser, refetchProfile } = useUser();
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(urlStep);
+
+  /** state-only setStep은 URL과 단방향 동기화. 명시적 단계 변경은 goToStep을 사용. */
+  const goToStep = useCallback(
+    (next: 1 | 2) => {
+      setStep(next);
+      router.replace(next === 2 ? "/signup?step=2" : "/signup");
+    },
+    [router],
+  );
+
+  /** URL → state 동기화 (새로고침/외부 URL 변경 대응). */
+  useEffect(() => {
+    setStep(urlStep);
+  }, [urlStep]);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [postcodeOpen, setPostcodeOpen] = useState(false);
@@ -103,19 +139,92 @@ export function SignupClient() {
   const [existingEmailModalOpen, setExistingEmailModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Kakao 플로우: 이미 세션이 있으면 2단계(프로필)부터 시작
+  // Kakao 플로우: 카카오 세션이 있으면 1단계(이메일/비번) 패스하고 2단계(프로필)부터 시작.
+  // 단, isLinkMode(자사몰 동일 이메일 연동) / isExistingEmailPrompt(case1-1-II 모달) 케이스는 점프 금지.
   useEffect(() => {
-    if (!isLoadingSession && isLoggedIn && step === 1) {
-      setStep(2);
+    if (
+      !isLoadingSession &&
+      isLoggedIn &&
+      step === 1 &&
+      !isLinkMode &&
+      !isExistingEmailPrompt
+    ) {
+      goToStep(2);
     }
-  }, [isLoadingSession, isLoggedIn, step]);
+  }, [isLoadingSession, isLoggedIn, step, isLinkMode, isExistingEmailPrompt, goToStep]);
 
-  // Kakao 이름 자동 채우기
+  // case2-1-II "카카오로 로그인" 의도 flag — 진입 URL과 무관하게 메인 페이지로 직행.
+  // callback이 어떤 분기로 보내든(/signup?prompt=existing-email, /signup 등) SignupClient
+  // mount 시 무조건 검사. TTL 이내일 때만 인정하여 OAuth 취소 등 잔존 데이터로 인한 오동작 방지.
   useEffect(() => {
-    if (currentUser?.name) {
-      setForm((prev) => (prev.name ? prev : { ...prev, name: currentUser.name }));
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(PENDING_KAKAO_LOGIN_KEY);
+    if (!raw) return;
+    const ts = Number(raw);
+    sessionStorage.removeItem(PENDING_KAKAO_LOGIN_KEY);
+    if (ts && Date.now() - ts < PENDING_FLAG_TTL_MS) {
+      router.replace("/");
     }
-  }, [currentUser?.name]);
+  }, [router]);
+
+  // case1-1-II 공용 진입 처리. sessionStorage flag 우선 순서:
+  //   1) PENDING_LINK_PASSWORD_KEY (case2-1-II "이메일 연동") → link 화면으로 직행
+  //   2) flag 없음 → case1-1-II 모달 표시
+  // flag는 TTL 이내일 때만 인정. 만료된 잔존 flag는 그냥 정리하고 통과.
+  useEffect(() => {
+    if (!isExistingEmailPrompt) return;
+    if (typeof window !== "undefined") {
+      // case2-1-II "이메일 연동" flag — TTL 이내일 때만 link 화면으로. 만료는 정리만.
+      const linkPwdRaw = sessionStorage.getItem(PENDING_LINK_PASSWORD_KEY);
+      if (linkPwdRaw) {
+        let linkPwdValid = false;
+        try {
+          const parsed = JSON.parse(linkPwdRaw) as { ts?: unknown };
+          if (
+            typeof parsed.ts === "number" &&
+            Date.now() - parsed.ts < PENDING_FLAG_TTL_MS
+          ) {
+            linkPwdValid = true;
+          }
+        } catch {
+          /* corrupted */
+        }
+        if (linkPwdValid) {
+          // sessionStorage는 link useEffect에서 consume — 여기서는 정리하지 않음.
+          router.replace("/signup?link=1");
+          return;
+        }
+        sessionStorage.removeItem(PENDING_LINK_PASSWORD_KEY);
+      }
+    }
+    if (currentUser?.email) {
+      setForm((prev) => ({ ...prev, email: currentUser.email }));
+      setExistingEmailModalOpen(true);
+    }
+  }, [isExistingEmailPrompt, currentUser?.email, router]);
+
+  // case2-1-II "이메일 연동하기" 흐름: step 1에서 입력한 비번을 OAuth redirect 사이에 sessionStorage로
+  // 임시 전달받아 link 화면에서 자동 채움. 사용자는 추가 입력 없이 "연동하기"만 누르면 된다.
+  // TTL 이내인 경우만 인정 — OAuth 취소 등으로 잔존한 만료 데이터는 사용하지 않고 정리.
+  useEffect(() => {
+    if (!isLinkMode || typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(PENDING_LINK_PASSWORD_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as { password?: unknown; ts?: unknown };
+      if (
+        typeof parsed.password === "string" &&
+        typeof parsed.ts === "number" &&
+        Date.now() - parsed.ts < PENDING_FLAG_TTL_MS
+      ) {
+        setLinkPassword(parsed.password);
+        setLinkPasswordConfirm(parsed.password);
+      }
+    } catch {
+      /* corrupted — 무시하고 정리 */
+    }
+    sessionStorage.removeItem(PENDING_LINK_PASSWORD_KEY);
+  }, [isLinkMode]);
 
   const update = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -207,6 +316,7 @@ export function SignupClient() {
       form.birthday.trim() &&
       form.postalCode.trim() &&
       form.address.trim() &&
+      form.addressDetail.trim() &&
       profileImageFile &&
       form.agreeAge &&
       form.agreeTerms &&
@@ -216,20 +326,16 @@ export function SignupClient() {
       !errors.birthday,
   );
 
-  // 카카오 OAuth 트리거 — 모달에서 '카카오로 계속하기' 선택 시 호출.
-  const startKakaoLogin = async () => {
+  // 카카오 OAuth 트리거 — 모달에서 '카카오로 계속하기' 또는 '이메일 연동하기' 선택 시 호출.
+  // next는 callback이 redirect할 도착지. link 의도일 땐 "/signup?link=1"을 넘겨 직접 link 화면으로 보낸다.
+  const startKakaoLogin = async (next: string = "/") => {
     setStep1Error(null);
-    const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
-    if (error) {
-      setStep1Error(error.message);
+    const result = await signInWithKakaoAction(next);
+    if (!result.ok) {
+      setStep1Error(result.error);
       return;
     }
-    if (data.url) window.location.href = data.url;
+    window.location.href = result.url;
   };
 
   // ── 1단계: 이메일 중복(카카오) 확인 → Supabase 계정 생성 → JWT 발급 ──
@@ -252,22 +358,21 @@ export function SignupClient() {
       return;
     }
 
-    // 1) Supabase 계정 생성
-    const { error: signUpError } = await supabase.auth.signUp({
+    // 1) Supabase 계정 생성 (Server Action — 쿠키에 세션 자동 저장)
+    const signUpResult = await signUpAction({
       email: form.email.trim(),
       password: form.password,
     });
 
-    if (signUpError) {
+    if (!signUpResult.ok) {
       setSubmitting(false);
       // email-check를 우회한 케이스(백엔드/Supabase 동기화 지연 등) — 동일 모달로 안내
-      if (isAlreadyRegisteredError(signUpError.message)) {
+      if (signUpResult.alreadyRegistered) {
         setExistingEmailModalOpen(true);
         return;
       }
-      // 정상 분기에 해당하지 않는 실제 오류만 warn — error는 dev overlay를 띄움
-      console.warn("[signup/supabase]", signUpError.message);
-      setStep1Error(translateSupabaseAuthError(signUpError.message));
+      console.warn("[signup/supabase]", signUpResult.error);
+      setStep1Error(signUpResult.error);
       return;
     }
 
@@ -295,8 +400,7 @@ export function SignupClient() {
           ? data.token
           : null;
     setAuthToken(token);
-    if (token) saveCartSessionId(token);
-    setStep(2);
+    goToStep(2);
   };
 
   // ── 2단계: 프로필 정보 → /api/v1/veggieverse/users/profile ────────────
@@ -317,10 +421,14 @@ export function SignupClient() {
     fd.append("address.detail", form.addressDetail);
     if (profileImageFile) fd.append("image", profileImageFile);
 
-    // 자사몰 가입 흐름: Supabase 메타데이터에 이름 추가 후 name 클레임이 포함된 JWT 재발급
+    // 자사몰 가입 흐름 (authToken 있음): Supabase 메타데이터에 이름 추가 후
+    // name 클레임이 포함된 백엔드 JWT 재발급.
+    // 카카오 가입 흐름 (authToken 없음): Supabase 메타데이터 갱신 + refreshSession 으로
+    // 쿠키 access_token도 갱신 → proxy가 갱신된 토큰을 백엔드로 forward.
     let effectiveToken = authToken;
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.updateUser({ data: { full_name: form.name.trim() } });
     if (authToken) {
-      await supabase.auth.updateUser({ data: { full_name: form.name.trim() } });
       const tokenRes = await apiFetch("/api/v1/veggieverse/auth/token", {
         method: "POST",
         body: { email: form.email.trim(), password: form.password },
@@ -335,6 +443,9 @@ export function SignupClient() {
               ? tokenData.token
               : authToken;
       }
+    } else {
+      // 카카오 가입: 갱신된 user_metadata가 새 access_token에 반영되도록 강제 refresh.
+      await supabase.auth.refreshSession();
     }
 
     const res = await apiFetch("/api/v1/veggieverse/users/profile", {
@@ -352,6 +463,8 @@ export function SignupClient() {
       return;
     }
 
+    // Header/마이페이지 등이 새 프로필 이미지를 즉시 반영하도록 트리거
+    refetchProfile();
     setSignupSuccess(true);
   };
 
@@ -378,13 +491,23 @@ export function SignupClient() {
     if (!canLink || submitting) return;
     setSubmitting(true);
     setLinkError(null);
-    const { error } = await supabase.auth.updateUser({ password: linkPassword });
+
+    // 카카오 supabase 세션에 비번을 추가 — providers에 email 인증 활성화.
+    // 카카오 가입자는 자사몰 백엔드에 profile이 이미 있다고 가정하므로 추가 프로필 단계 없이 홈으로 보낸다.
+    const result = await linkPasswordAction(linkPassword);
     setSubmitting(false);
-    if (error) {
-      setLinkError(translateSupabaseAuthError(error.message));
+    if (!result.ok) {
+      setLinkError(result.error);
       return;
     }
-    setSignupSuccess(true);
+
+    // 임시 보관한 비번은 즉시 정리.
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(PENDING_LINK_PASSWORD_KEY);
+    }
+
+    refetchProfile();
+    router.push("/");
   };
   // ─────────────────────────────────────────────────────────────────────
 
@@ -446,7 +569,7 @@ export function SignupClient() {
     );
   }
 
-  // 계정 연동 모드: 카카오 계정에 자사몰 비밀번호 추가
+  // 계정 연동 모드: 카카오 계정에 자사몰 비밀번호 추가 (case1-1-II / case2-1-II 공통).
   if (isLinkMode && isLoggedIn) {
     return (
       <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
@@ -535,15 +658,59 @@ export function SignupClient() {
 
       <AlreadyRegisteredModal
         isOpen={existingEmailModalOpen}
+        mode={isExistingEmailPrompt ? "from-kakao-flow" : "from-email-flow"}
         email={form.email.trim()}
-        onClose={() => setExistingEmailModalOpen(false)}
-        onContinueWithKakao={() => {
+        onClose={() => {
           setExistingEmailModalOpen(false);
-          void startKakaoLogin();
+          if (isExistingEmailPrompt) {
+            // case1-1-II 모달을 그냥 닫는 행위는 "취소"로 간주 — 카카오 세션 해제 후 홈으로.
+            void (async () => {
+              const supabase = getSupabaseBrowserClient();
+              await supabase.auth.signOut();
+              router.push("/");
+            })();
+          }
         }}
-        onGoToLogin={() => {
+        onKakaoAction={() => {
           setExistingEmailModalOpen(false);
-          router.push("/login");
+          if (isExistingEmailPrompt) {
+            // case1-1-II "카카오 연동하기": supabase 자동 identity linking이 활성화되어 있어
+            // 카카오 OAuth 시점에 이미 자사몰 user에 카카오 identity가 추가된 상태.
+            // 별도 비번 입력 단계(link 화면)를 거치지 않고 홈으로 직행하여 자사몰 기존 비번을 보존한다.
+            refetchProfile();
+            router.push("/");
+          } else {
+            // case2-1-II "카카오로 로그인": 카카오 OAuth 후 메인 페이지로 직행하려는 의도.
+            // sessionStorage flag로 의도 추적 → callback이 prompt=existing-email로 보낸 후
+            // SignupClient의 useEffect가 flag를 보고 모달 우회 + 메인으로 redirect.
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem(PENDING_KAKAO_LOGIN_KEY, String(Date.now()));
+            }
+            void startKakaoLogin();
+          }
+        }}
+        onEmailAction={() => {
+          setExistingEmailModalOpen(false);
+          if (isExistingEmailPrompt) {
+            // case1-1-II "이메일로 로그인": 카카오 세션 해제 후 자사몰 로그인 페이지로.
+            void (async () => {
+              const supabase = getSupabaseBrowserClient();
+              await supabase.auth.signOut();
+              router.push("/login");
+            })();
+          } else {
+            // case2-1-II "이메일 연동하기": step 1 비번을 sessionStorage에 임시 보관 후 카카오 OAuth 시작.
+            // next=/signup?link=1 으로 넘겨 callback이 분기와 무관하게 link 화면으로 보낸다.
+            // link 화면 useEffect가 sessionStorage의 비번을 자동 채워 사용자는 "연동하기"만 누르면 된다.
+            // OAuth 취소로 인한 잔존 방지를 위해 timestamp 함께 저장 — 사용 시점에 TTL 검증.
+            if (typeof window !== "undefined" && form.password) {
+              sessionStorage.setItem(
+                PENDING_LINK_PASSWORD_KEY,
+                JSON.stringify({ password: form.password, ts: Date.now() }),
+              );
+            }
+            void startKakaoLogin("/signup?link=1");
+          }
         }}
       />
 
@@ -562,7 +729,7 @@ export function SignupClient() {
             회원가입
           </h1>
 
-          {/* 단계 표시 — Kakao 플로우는 2단계만 있으므로 숨김 */}
+          {/* 단계 표시 — 카카오 가입은 step 1 패스, 자사몰 신규만 1·2단계 표시. */}
           {!isLoggedIn && (
             <div className="flex items-center justify-center gap-3 mb-6 sm:mb-8">
               <StepIndicator num={1} active={step === 1} done={step > 1} label="계정 정보" />
@@ -662,22 +829,13 @@ export function SignupClient() {
                 </FormField>
 
                 <FormField label="생년월일" required errorMessage={errors.birthday}>
-                  <div className="flex items-stretch gap-2">
-                    <input
-                      type="date"
-                      className={`ds-input${errors.birthday ? " is-error" : ""}`}
-                      value={form.birthday}
-                      onChange={(e) => update("birthday", e.target.value)}
-                      max={new Date().toISOString().slice(0, 10)}
-                    />
-                    <span
-                      className="signup-aligned-btn flex items-center justify-center px-3 flex-shrink-0"
-                      style={{ color: "var(--ink-light)" }}
-                      aria-hidden
-                    >
-                      <CalendarDays size={16} />
-                    </span>
-                  </div>
+                  <input
+                    type="date"
+                    className={`ds-input${errors.birthday ? " is-error" : ""}`}
+                    value={form.birthday}
+                    onChange={(e) => update("birthday", e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
                 </FormField>
               </FormSection>
 
@@ -834,7 +992,7 @@ export function SignupClient() {
                 {!isLoggedIn && (
                   <button
                     type="button"
-                    onClick={() => { setStep(1); }}
+                    onClick={() => { goToStep(1); }}
                     className="btn btn-ghost btn-lg"
                     style={{ border: "1px solid var(--ink)", flex: "0 0 auto" }}
                   >

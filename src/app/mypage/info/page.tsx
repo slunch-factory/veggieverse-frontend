@@ -20,7 +20,8 @@ import {
   User,
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
-import { supabase } from "@/lib/supabase";
+import { Snackbar } from "@/app/subscribe/_components/Snackbar";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
 import { getUserProfile, updateUserProfile } from "@/lib/api/user";
 
@@ -57,7 +58,7 @@ function stripPhoneDashes(v: string) {
 }
 
 export default function EditProfilePage() {
-  const { user, userProfile } = useUser();
+  const { user, userProfile, refetchProfile } = useUser();
 
   const [form, setForm] = useState<FormState>({
     password: "",
@@ -81,6 +82,7 @@ export default function EditProfilePage() {
   const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -176,15 +178,16 @@ export default function EditProfilePage() {
     setSubmitting(true);
 
     if (form.password) {
+      const supabase = getSupabaseBrowserClient();
       const { error } = await supabase.auth.updateUser({ password: form.password });
       if (error) {
-        console.error("[editProfile/password]", error.message);
+        console.warn("[editProfile/password]", error.message);
         setSubmitting(false);
         return;
       }
     }
 
-    const result = await updateUserProfile({
+    const ok = await updateUserProfile({
       name: form.name.trim(),
       phoneNumber: stripPhoneDashes(form.phone),
       birthday: form.birthday,
@@ -196,12 +199,15 @@ export default function EditProfilePage() {
         street: form.address,
         detail: form.addressDetail,
       },
+      ...(profileImageFile ? { image: profileImageFile } : {}),
     });
 
     setSubmitting(false);
-    if (!result) return;
+    if (!ok) return;
 
-    alert("회원정보가 수정되었습니다.");
+    // profileVersion bump → 구독 중인 헤더·마이페이지가 자동으로 fresh 데이터 재조회.
+    refetchProfile();
+    setToast("회원정보가 수정되었습니다.");
   };
 
   const displayImage = profileImagePreview || profileImageUrl;
@@ -478,6 +484,8 @@ export default function EditProfilePage() {
           </div>
         </form>
       </div>
+
+      <Snackbar message={toast} onClose={() => setToast(null)} />
 
       <style>{`
         .edit-profile-form .ds-input {
