@@ -71,13 +71,19 @@ export async function GET(request: NextRequest) {
 
   // 자사몰에 동일 이메일 가입자 있음 (case1-1-II) — 사용자에게 모달로 선택권 제공.
   // 자동 link 진행 대신 ?prompt=existing-email 로 보내어 SignupClient가 모달을 띄움.
+  // 주의: BE는 미가입 이메일에도 HTTP 200을 반환하므로 응답 body의 exists 값을 봐야 함.
   if (userEmail) {
     const checkRes = await fetch(
       `${BACKEND_BASE}/api/v1/veggieverse/users/email-check?email=${encodeURIComponent(userEmail)}`,
       { headers: { Accept: "application/json" } },
     );
     if (checkRes.ok) {
-      return NextResponse.redirect(`${origin}/signup?prompt=existing-email`);
+      const data = (await checkRes.json().catch(() => null)) as
+        | { exists?: boolean }
+        | null;
+      if (data?.exists) {
+        return NextResponse.redirect(`${origin}/signup?prompt=existing-email`);
+      }
     }
   }
 

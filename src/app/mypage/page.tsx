@@ -58,11 +58,14 @@ const QUICK_MENU = [
 export default function MyPageHome() {
   const router = useRouter();
   const { user, userProfile, isAuthenticated, isLoadingSession, profileVersion } = useUser();
-  const username = user?.name || "Guest";
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
 
   const [profileImage, setProfileImage] = useState<string | null>(userProfile.profileImage);
+  // 자사몰 BE 회원 이름. Supabase user_metadata는 카카오 identity 동기화로 덮일 수 있어 신뢰 불가 → BE 값을 표시.
+  const [memberName, setMemberName] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const username = memberName ?? "Guest";
   const [recentOrders, setRecentOrders] = useState<StoreOrderHistoryItem[] | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [recentSubs, setRecentSubs] = useState<OrderHistoryItem[] | null>(null);
@@ -71,10 +74,19 @@ export default function MyPageHome() {
   // 백엔드 호출은 자사몰 프로필이 존재하는 경우(isAuthenticated)에만.
   // incomplete 상태는 ProfileGate가 /signup?step=2로 redirect — 잠깐의 윈도우에서 404를 안 부른다.
   useEffect(() => {
-    if (isLoadingSession || !isAuthenticated) return;
-    getUserProfile().then((profile) => {
-      if (profile?.profileImageUrl) setProfileImage(profile.profileImageUrl);
-    });
+    if (isLoadingSession) return;
+    if (!isAuthenticated) {
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    getUserProfile()
+      .then((profile) => {
+        if (!profile) return;
+        if (profile.profileImageUrl) setProfileImage(profile.profileImageUrl);
+        if (profile.name) setMemberName(profile.name);
+      })
+      .finally(() => setProfileLoading(false));
   }, [isAuthenticated, isLoadingSession, profileVersion]);
 
   useEffect(() => {
@@ -140,7 +152,13 @@ export default function MyPageHome() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
+            {profileLoading ? (
+              <p className="t-body truncate" style={{ color: "var(--ink-light)" }}>
+                불러오는 중...
+              </p>
+            ) : (
+              <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
+            )}
             {(spiritName || veganType) && (
               <p className="t-small mt-0.5 truncate" style={{ color: "var(--ink-light)" }}>
                 {[spiritName, veganType].filter(Boolean).join(" · ")}
