@@ -401,7 +401,7 @@ function MenuShowcase() {
         </motion.div>
       </div>
 
-      <div className="page-container mt-4 flex justify-end">
+      <div className="page-container mt-10 flex justify-start">
         <Link
           href="/store"
           className="text-[13px] underline underline-offset-4"

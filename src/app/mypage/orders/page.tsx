@@ -10,12 +10,15 @@ import {
 } from "@/lib/api/store";
 import { useUser } from "@/contexts/UserContext";
 
-type OrderStatus = "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
+type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 
-const STATUS_TABS = ["전체", "결제완료", "배송중", "배송완료", "취소됨"] as const;
+const STATUS_TABS = ["전체", "결제대기", "결제완료", "배송중", "배송완료", "취소됨"] as const;
 
+// PENDING은 주문 row 생성 후 confirm 전 — "결제 대기".
+// PAID는 confirm 성공으로 결제 확정 — "결제 완료".
 const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
-  PENDING: "결제완료",
+  PENDING: "결제대기",
+  PAID: "결제완료",
   COMPLETED: "배송완료",
   SHIPPING: "배송중",
   CANCELED: "취소됨",
@@ -244,6 +247,7 @@ function ProductList({ products }: { products: StoreOrderHistoryProduct[] }) {
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const variant: Record<OrderStatus, { bg: string; color: string }> = {
+    "결제대기": { bg: "var(--bg-white)", color: "var(--alert-red)" },
     "결제완료": { bg: "var(--point)", color: "var(--ink)" },
     "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
     "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },

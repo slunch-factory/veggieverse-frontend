@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Veggieverse Store 결제 — Frontend 통합 가이드</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+  });
+</script>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.65;
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1.5rem 4rem;
+    color: #1f2937;
+    background: #ffffff;
+  }
+  h1 {
+    border-bottom: 3px solid #10b981;
+    padding-bottom: 0.6rem;
+    color: #064e3b;
+  }
+  h2 {
+    margin-top: 2.8rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.35rem;
+    color: #065f46;
+  }
+  h3 { color: #047857; margin-top: 1.6rem; }
+  h4 { color: #1f2937; margin-top: 1.2rem; }
+  code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.55;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.92em; }
+  th, td { border: 1px solid #d1d5db; padding: 0.55rem 0.8rem; text-align: left; vertical-align: top; }
+  th { background: #ecfdf5; color: #065f46; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .fe-box {
+    background: #fef9c3;
+    border: 2px solid #eab308;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+  }
+  .fe-box::before {
+    content: "🎯 FE 구현 영역";
+    font-weight: 700;
+    color: #854d0e;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.95em;
+  }
+  .be-box {
+    background: #dbeafe;
+    border: 2px solid #3b82f6;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+  }
+  .be-box::before {
+    content: "⚙️ BE (이미 구현 완료)";
+    font-weight: 700;
+    color: #1e40af;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.95em;
+  }
+  .toss-box {
+    background: #ede9fe;
+    border: 2px solid #8b5cf6;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+  }
+  .toss-box::before {
+    content: "🏦 Toss Payments (외부)";
+    font-weight: 700;
+    color: #5b21b6;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.95em;
+  }
+  .warning {
+    background: #fee2e2;
+    border-left: 4px solid #dc2626;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+  }
+  .warning strong { color: #991b1b; }
+  .info {
+    background: #e0f2fe;
+    border-left: 4px solid #0284c7;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+  }
+  .required {
+    color: #dc2626;
+    font-weight: 700;
+    font-size: 0.85em;
+  }
+  .optional {
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 0.85em;
+  }
+  .legend {
+    display: flex;
+    gap: 0.8rem;
+    margin: 1rem 0 1.5rem;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 600;
+  }
+  .legend-fe { background: #fef9c3; color: #854d0e; border: 2px solid #eab308; }
+  .legend-be { background: #dbeafe; color: #1e40af; border: 2px solid #3b82f6; }
+  .legend-toss { background: #ede9fe; color: #5b21b6; border: 2px solid #8b5cf6; }
+  .mermaid {
+    text-align: center;
+    margin: 1.5rem 0;
+    padding: 1.2rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+  .step-anchor {
+    display: inline-block;
+    background: #065f46;
+    color: white;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 700;
+    margin-right: 0.4rem;
+  }
+  .toc {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .toc ol { margin: 0.3rem 0; }
+  .toc a { color: #047857; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Veggieverse Store 결제 — Frontend 통합 가이드</h1>
+
+<p>
+  토스 페이먼츠 단건 결제 플로우를 Veggieverse Store에 통합하기 위한 프론트엔드 개발 가이드입니다.
+  백엔드(PR3·PR4)는 구현 완료되어 있으며, 본 문서는 FE가 구현해야 할 범위와 BE API 계약을 정의합니다.
+</p>
+
+<div class="legend">
+  <span class="legend-item legend-fe">🎯 FE 구현</span>
+  <span class="legend-item legend-be">⚙️ BE 완료</span>
+  <span class="legend-item legend-toss">🏦 Toss 외부</span>
+</div>
+
+<div class="toc">
+  <strong>목차</strong>
+  <ol>
+    <li><a href="#overview">전체 플로우 다이어그램</a></li>
+    <li><a href="#step1">Step 1 — PENDING 주문 생성 (BE 호출)</a></li>
+    <li><a href="#step2">Step 2 — 토스 결제창 띄우기 (SDK 호출)</a></li>
+    <li><a href="#step3">Step 3 — 결제 결과 대기 페이지 (success/fail 라우트)</a></li>
+    <li><a href="#step4">Step 4 — 최종 결제 승인 요청 (BE 호출)</a></li>
+    <li><a href="#step5">Step 5 — 예외·실패 처리</a></li>
+    <li><a href="#summary">FE 산출물 체크리스트</a></li>
+  </ol>
+</div>
+
+<h2 id="overview">1. 전체 플로우 다이어그램</h2>
+
+<p>아래 시퀀스 다이어그램에서 <strong>노란색이 FE 책임</strong>, 파란색이 BE, 보라색이 Toss 외부 호출입니다.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 사용자
+    participant FE as 🎯 Frontend
+    participant BE as ⚙️ Backend
+    participant T as 🏦 Toss Server
+
+    Note over FE: [STEP 1] 결제하기 버튼 클릭
+    U->>FE: 결제하기 클릭
+    FE->>BE: POST /api/v1/veggieverse/store/orders<br/>(items, deliveryAddress, isCartOrder, couponId?)
+    BE->>BE: Order(PENDING) 생성, tossOrderId 발급
+    BE-->>FE: { orderDbId, tossOrderId, amount,<br/>orderName, currency, customer* }
+
+    Note over FE: [STEP 2] 토스 SDK 호출
+    FE->>FE: TossPayments(clientKey) 초기화
+    FE->>T: tossPayments.requestPayment({<br/>amount, orderId=tossOrderId,<br/>orderName, successUrl, failUrl })
+    T-->>U: 결제창 표시 (카드/계좌 입력)
+    U->>T: 카드 정보 입력 / 인증
+
+    Note over FE: [STEP 3] 결과 라우팅
+    alt 인증 성공
+        T-->>FE: redirect successUrl?<br/>paymentKey=&orderId=&amount=
+    else 인증 실패/취소
+        T-->>FE: redirect failUrl?<br/>code=&message=&orderId=
+    end
+
+    Note over FE: [STEP 4] 결제 승인
+    FE->>FE: query string에서 3개 값 추출
+    FE->>BE: POST /api/v1/veggieverse/store/payments/confirm<br/>{ paymentKey, orderId, amount }
+    BE->>T: POST /v1/payments/confirm (server-to-server)
+    T-->>BE: Payment(DONE, paymentKey, approvedAt, ...)
+    BE->>BE: Order(PAID), cart clear, 이벤트 발행
+    BE-->>FE: OrderDetailResponse (200 OK)
+    FE->>U: 결제 완료 화면
+
+    Note over FE: [STEP 5] 실패 시
+    alt confirm 4xx/5xx
+        BE-->>FE: 400 / 410 / 503 + 에러 메시지
+        FE->>U: 사유별 안내 + 재시도/새 주문 유도
+    end
+</div>
+
+<h3>레이어별 책임 요약</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:18%">레이어</th>
+      <th>책임</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="legend-item legend-fe">🎯 FE</span></td>
+      <td>
+        결제하기 버튼 핸들러 / Toss SDK 로드·호출 / success·fail 라우트 페이지 /
+        쿼리스트링 파싱 / BE confirm API 호출 / 완료·실패 UI / 에러 상태별 메시지·재시도 UX
+      </td>
+    </tr>
+    <tr>
+      <td><span class="legend-item legend-be">⚙️ BE</span></td>
+      <td>
+        PENDING Order 생성 + 금액 계산 + tossOrderId 발급 / confirm 시 금액 검증 /
+        Toss server-to-server confirm 호출 / Order(PAID) 전이 + cart 비우기 + 이벤트 발행
+      </td>
+    </tr>
+    <tr>
+      <td><span class="legend-item legend-toss">🏦 Toss</span></td>
+      <td>결제창 렌더링 / 카드 인증 / successUrl·failUrl 리다이렉트 / 최종 승인 결과 반환</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="step1">2. Step 1 — PENDING 주문 생성 (BE 호출)</h2>
+
+<div class="fe-box">
+  사용자가 <strong>결제하기</strong> 버튼을 누르면 가장 먼저 BE에 주문을 등록하고 토스에 보낼 식별자(<code>tossOrderId</code>)와 금액을 받아옵니다.
+  토스 SDK 호출에 필요한 입력값을 모두 이 응답에서 얻습니다.
+</div>
+
+<h4>요청</h4>
+
+<table>
+  <tr><th>Method</th><td><code>POST</code></td></tr>
+  <tr><th>URL</th><td><code>/api/v1/veggieverse/store/orders</code></td></tr>
+  <tr><th>Auth</th><td><code>Authorization: Bearer &lt;JWT&gt;</code> <span class="required">REQUIRED</span></td></tr>
+  <tr><th>Content-Type</th><td><code>application/json</code></td></tr>
+</table>
+
+<h4>요청 바디 필드</h4>
+
+<table>
+  <thead>
+    <tr><th>필드</th><th>타입</th><th>필수</th><th>설명</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>items</code></td>
+      <td>Array&lt;{productId: number, quantity: number}&gt;</td>
+      <td><span class="required">필수</span></td>
+      <td>비어 있을 수 없음. <code>productId</code> 중복 금지.</td>
+    </tr>
+    <tr>
+      <td><code>deliveryAddress</code></td>
+      <td>{zipCode?, street?, detail?}</td>
+      <td><span class="required">필수</span></td>
+      <td>객체 자체는 필수. 내부 필드는 모두 선택.</td>
+    </tr>
+    <tr>
+      <td><code>isCartOrder</code></td>
+      <td>boolean</td>
+      <td><span class="required">필수</span></td>
+      <td>
+        <strong>장바구니에서 시작한 주문인지 여부.</strong>
+        <code>true</code>면 confirm 성공 시점에 BE가 cart를 자동으로 비웁니다.
+        즉시 구매(상품 상세에서 바로 결제)는 <code>false</code>.
+      </td>
+    </tr>
+    <tr>
+      <td><code>couponId</code></td>
+      <td>string</td>
+      <td><span class="optional">선택</span></td>
+      <td>현 단계(PR3)에서는 BE가 받아만 두고 가격에 반영하지 않습니다. 추후 확정.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>요청 예시</h4>
+
+<pre><code>POST /api/v1/veggieverse/store/orders
+Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
+
+{
+  "items": [
+    { "productId": 101, "quantity": 2 },
+    { "productId": 207, "quantity": 1 }
+  ],
+  "deliveryAddress": {
+    "zipCode": "04524",
+    "street": "서울시 중구 세종대로 110",
+    "detail": "5층"
+  },
+  "isCartOrder": true
+}</code></pre>
+
+<h4>응답 (201 Created)</h4>
+
+<table>
+  <thead>
+    <tr><th>필드</th><th>타입</th><th>설명</th><th>Toss SDK 매핑</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>orderDbId</code></td>
+      <td>number</td>
+      <td>우리 DB의 주문 PK. 주문 상세 조회/취소 등에서 사용.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>tossOrderId</code></td>
+      <td>string</td>
+      <td>토스에 전달할 주문 식별자. <code>orderNumber</code>와 동일.</td>
+      <td><code>orderId</code></td>
+    </tr>
+    <tr>
+      <td><code>orderName</code></td>
+      <td>string</td>
+      <td>결제창 상단에 노출되는 주문명 (예: "비건 김치 외 2건").</td>
+      <td><code>orderName</code></td>
+    </tr>
+    <tr>
+      <td><code>amount</code></td>
+      <td>number (BigDecimal)</td>
+      <td>최종 결제 금액. Step 4 confirm 호출 시 이 값과 일치해야 함.</td>
+      <td><code>amount.value</code></td>
+    </tr>
+    <tr>
+      <td><code>currency</code></td>
+      <td>string</td>
+      <td>기본 <code>"KRW"</code>.</td>
+      <td><code>amount.currency</code></td>
+    </tr>
+    <tr>
+      <td><code>customerEmail</code></td>
+      <td>string?</td>
+      <td>영수증·알림용. 있으면 SDK에 그대로 전달.</td>
+      <td><code>customerEmail</code></td>
+    </tr>
+    <tr>
+      <td><code>customerName</code></td>
+      <td>string?</td>
+      <td>영수증·알림용.</td>
+      <td><code>customerName</code></td>
+    </tr>
+    <tr>
+      <td><code>customerMobilePhone</code></td>
+      <td>string?</td>
+      <td>영수증·알림용.</td>
+      <td><code>customerMobilePhone</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="step2">3. Step 2 — 토스 결제창 띄우기 (SDK 호출)</h2>
+
+<div class="fe-box">
+  Step 1 응답을 그대로 들고 Toss JS SDK를 호출하여 결제창을 띄웁니다.
+  결제창은 Toss가 렌더링하며, FE는 입력에 관여하지 않습니다.
+</div>
+
+<h4>SDK 키</h4>
+
+<table>
+  <tr><th>환경</th><th>clientKey</th></tr>
+  <tr>
+    <td>테스트</td>
+    <td><code>test_ck_docs_Ovk5rk1EwkEbP0W43n07xlzm</code></td>
+  </tr>
+  <tr>
+    <td>프로덕션</td>
+    <td>실제 발급된 키 (배포 환경변수로 주입)</td>
+  </tr>
+</table>
+
+<h4>호출 예시 (TypeScript)</h4>
+
+<pre><code>import { loadTossPayments } from "@tosspayments/payment-sdk";
+
+const order = await createPendingOrder(...);   // Step 1 응답
+const toss = await loadTossPayments(CLIENT_KEY);
+
+await toss.requestPayment("카드", {
+  amount: order.amount,
+  orderId: order.tossOrderId,                  // ⚠ orderDbId 아님
+  orderName: order.orderName,
+  customerEmail: order.customerEmail ?? undefined,
+  customerName: order.customerName ?? undefined,
+  customerMobilePhone: order.customerMobilePhone ?? undefined,
+  successUrl: `${window.location.origin}/order/success`,
+  failUrl:    `${window.location.origin}/order/fail`,
+});</code></pre>
+
+<div class="warning">
+  <strong>주의 — orderId vs orderDbId:</strong>
+  Toss SDK의 <code>orderId</code>에는 반드시 응답의 <code>tossOrderId</code>를 넣으세요.
+  <code>orderDbId</code>(숫자 PK)를 잘못 넣으면 confirm 단계에서 주문을 찾을 수 없습니다.
+</div>
+
+<h2 id="step3">4. Step 3 — 결제 결과 대기 페이지 (success/fail 라우트)</h2>
+
+<div class="fe-box">
+  Toss가 인증 후 사용자를 <code>successUrl</code> 또는 <code>failUrl</code>로 리다이렉트합니다.
+  FE는 두 경로에 해당하는 페이지를 모두 구현해야 합니다.
+</div>
+
+<h4>successUrl — 쿼리 파라미터</h4>
+
+<table>
+  <thead><tr><th>파라미터</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr><td><code>paymentKey</code></td><td>Toss가 발급한 결제 식별자. confirm 호출에 필요.</td></tr>
+    <tr><td><code>orderId</code></td><td>Step 1의 <code>tossOrderId</code>와 동일.</td></tr>
+    <tr><td><code>amount</code></td><td>인증된 결제 금액. Step 1의 <code>amount</code>와 동일해야 함.</td></tr>
+  </tbody>
+</table>
+
+<h4>failUrl — 쿼리 파라미터</h4>
+
+<table>
+  <thead><tr><th>파라미터</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr><td><code>code</code></td><td>Toss 에러 코드 (예: <code>USER_CANCEL</code>, <code>PAY_PROCESS_ABORTED</code>).</td></tr>
+    <tr><td><code>message</code></td><td>사람이 읽을 수 있는 에러 메시지.</td></tr>
+    <tr><td><code>orderId</code></td><td>해당 주문의 <code>tossOrderId</code>.</td></tr>
+  </tbody>
+</table>
+
+<div class="info">
+  successUrl 페이지는 단순한 "로딩 화면"입니다. 페이지가 로드되면 <strong>곧바로 Step 4의 confirm API를 호출</strong>해야 하며,
+  사용자에게 "결제 완료"를 보여주는 시점은 confirm API가 200 OK를 반환한 이후입니다.
+</div>
+
+<h2 id="step4">5. Step 4 — 최종 결제 승인 요청 (BE 호출)</h2>
+
+<div class="fe-box">
+  Toss 인증만 끝났을 뿐 <strong>실제 청구는 아직 일어나지 않았습니다.</strong>
+  successUrl 페이지에서 쿼리 파라미터 3개를 추출하여 BE confirm API를 호출해야 비로소 결제가 확정됩니다.
+</div>
+
+<h4>요청</h4>
+
+<table>
+  <tr><th>Method</th><td><code>POST</code></td></tr>
+  <tr><th>URL</th><td><code>/api/v1/veggieverse/store/payments/confirm</code></td></tr>
+  <tr><th>Auth</th><td><code>Authorization: Bearer &lt;JWT&gt;</code> <span class="required">REQUIRED</span></td></tr>
+  <tr><th>Content-Type</th><td><code>application/json</code></td></tr>
+</table>
+
+<h4>요청 바디</h4>
+
+<pre><code>{
+  "paymentKey": "&lt;successUrl 쿼리의 paymentKey 그대로&gt;",
+  "orderId":    "&lt;successUrl 쿼리의 orderId 그대로&gt;",
+  "amount":     &lt;successUrl 쿼리의 amount 그대로&gt;
+}</code></pre>
+
+<h4>응답 (200 OK) — <code>OrderDetailResponse</code></h4>
+
+<p>주문 상세 객체 전체를 반환합니다. 이 응답을 그대로 "결제 완료 화면"에 사용할 수 있어
+별도 "주문 상세 조회"를 다시 호출할 필요가 없습니다.</p>
+
+<div class="info">
+  <strong>이 응답이 200으로 돌아온 시점부터만 "결제 완료"로 간주합니다.</strong>
+  Toss successUrl 도달 ≠ 결제 완료입니다.
+</div>
+
+<h2 id="step5">6. Step 5 — 예외·실패 처리</h2>
+
+<div class="fe-box">
+  사용자가 결제창을 닫거나, Toss가 거절하거나, BE confirm이 실패하는 경로별로 적절한 UI를 제공해야 합니다.
+  특히 confirm 응답의 <strong>HTTP 상태 코드별로 안내·재시도 전략이 달라</strong>야 합니다.
+</div>
+
+<h3>6.1 결제창 단계 (Toss SDK)</h3>
+
+<table>
+  <thead><tr><th>상황</th><th>경로</th><th>FE 처리</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>사용자가 결제창을 닫음</td>
+      <td>failUrl 리다이렉트 (<code>code=USER_CANCEL</code>)</td>
+      <td>"결제가 취소되었습니다" 안내, 장바구니로 복귀 옵션 제공.</td>
+    </tr>
+    <tr>
+      <td>잔액 부족·카드 거절</td>
+      <td>failUrl 리다이렉트 (<code>code=...</code>)</td>
+      <td>Toss <code>message</code>를 그대로 노출 + "다른 결제수단으로 재시도" 버튼.</td>
+    </tr>
+    <tr>
+      <td>SDK 호출 자체 실패 (네트워크 등)</td>
+      <td>requestPayment Promise reject</td>
+      <td>"결제창을 띄우지 못했습니다" + 페이지 유지(주문은 PENDING, 그대로 재시도 가능).</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>6.2 confirm API 단계 (BE 응답)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>HTTP</th>
+      <th>의미</th>
+      <th>발생 원인</th>
+      <th>FE UX</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>200</code></td>
+      <td>결제 확정</td>
+      <td>정상 승인</td>
+      <td>완료 화면으로 전환, 응답 바디로 주문 정보 렌더링.</td>
+    </tr>
+    <tr>
+      <td><code>400</code> AmountMismatch</td>
+      <td>금액 변조 의심</td>
+      <td>쿼리 <code>amount</code>가 Order의 <code>finalAmount</code>와 불일치.</td>
+      <td>재시도 의미 없음. "주문 정보가 일치하지 않습니다" → 처음 단계로 돌려보냄.</td>
+    </tr>
+    <tr>
+      <td><code>410</code> OrderExpired</td>
+      <td>PENDING 만료</td>
+      <td>주문 생성 후 10분 초과.</td>
+      <td>"결제 가능 시간이 만료되었습니다" → <strong>새 주문 생성 유도</strong> (Step 1부터 다시).</td>
+    </tr>
+    <tr>
+      <td><code>400</code> PaymentRejected</td>
+      <td>Toss 4xx 거절</td>
+      <td>카드 한도 초과, 잘못된 카드, 미지원 결제수단 등.</td>
+      <td>BE 에러 메시지를 그대로 노출 + "다른 결제수단으로 재시도" 버튼.</td>
+    </tr>
+    <tr>
+      <td><code>503</code> PaymentRetryable</td>
+      <td>일시적 오류</td>
+      <td>Toss 5xx / 네트워크 / 타임아웃. <strong>Order는 PENDING 유지.</strong></td>
+      <td>"잠시 후 다시 시도해주세요" + 재시도 버튼(동일 paymentKey/orderId로 같은 confirm을 다시 호출).</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warning">
+  <strong>503 재시도 시 주의:</strong>
+  503은 BE가 Toss 결과를 알지 못한 상태이며 Order는 PENDING으로 유지됩니다.
+  사용자가 페이지를 닫더라도 동일한 <code>paymentKey</code>·<code>orderId</code>·<code>amount</code>로
+  confirm을 다시 호출하면 멱등하게 처리됩니다(새 주문 생성 X).
+</div>
+
+<h2 id="summary">7. FE 산출물 체크리스트</h2>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>산출물</th><th>핵심 동작</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>결제하기 버튼 핸들러</td>
+      <td>
+        ① <code>POST /orders</code> 호출 (items, deliveryAddress, <strong>isCartOrder</strong> 포함) →
+        ② Toss SDK <code>requestPayment</code> 호출 (tossOrderId·amount·orderName·customer* 매핑)
+      </td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>결제 성공 라우트 (<code>/order/success</code>)</td>
+      <td>
+        쿼리 <code>paymentKey</code>·<code>orderId</code>·<code>amount</code> 추출 →
+        <code>POST /payments/confirm</code> 호출 →
+        200 OK 받으면 완료 화면 표시, 실패 시 §6.2 분기 처리
+      </td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>결제 실패 라우트 (<code>/order/fail</code>)</td>
+      <td>
+        쿼리 <code>code</code>·<code>message</code>·<code>orderId</code> 추출 → 사유 안내 → 재시도 또는 장바구니 복귀
+      </td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>완료 화면</td>
+      <td>confirm 응답(<code>OrderDetailResponse</code>)으로 주문 번호·금액·배송지 렌더링</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>에러 메시지 매핑 테이블</td>
+      <td>HTTP 400(AmountMismatch / PaymentRejected) · 410 · 503 각각에 대응되는 안내 + 재시도 정책</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="info">
+  <strong>참고 문서:</strong>
+  <ul>
+    <li><code>slunch-backend/md/implPlan.md</code> §2.2 — 결제 시퀀스 다이어그램 (원문)</li>
+    <li><code>slunch-backend/md/toss-payments-single-payment.html</code> — Toss 공식 페이로드 표</li>
+    <li>Toss 공식: <a href="https://docs.tosspayments.com/guides/v2/payment-widget/integration">https://docs.tosspayments.com/guides/v2/payment-widget/integration</a></li>
+  </ul>
+</div>
+
+</body>
+</html>

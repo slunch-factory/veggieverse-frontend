@@ -1,61 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import {
-  STORE_ORDER_RESULT_KEY,
-  type StoreOrderResult,
-} from "@/app/order/_components/OrderClient";
+import type { StoreOrderDetailResponse } from "@/lib/api/store";
 
 function toKoreanDate(iso: string) {
   const d = new Date(iso);
   return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
 }
 
-export function CompleteClient() {
-  const router = useRouter();
-  const [result, setResult] = useState<StoreOrderResult | null>(null);
-  const didLoad = useRef(false);
+interface Props {
+  order: StoreOrderDetailResponse;
+}
 
-  useEffect(() => {
-    if (didLoad.current) return;
-    didLoad.current = true;
-
-    const raw = sessionStorage.getItem(STORE_ORDER_RESULT_KEY);
-    if (!raw) {
-      router.replace("/store");
-      return;
-    }
-    try {
-      setResult(JSON.parse(raw) as StoreOrderResult);
-      sessionStorage.removeItem(STORE_ORDER_RESULT_KEY);
-    } catch {
-      router.replace("/store");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (!result) {
-    return (
-      <div
-        className="min-h-[60vh] flex items-center justify-center"
-        style={{ background: "var(--bg-pale)" }}
-      >
-        <p className="t-small" style={{ color: "var(--ink-light)" }}>
-          주문 정보를 불러오는 중...
-        </p>
-      </div>
-    );
-  }
-
-  const discount = result.subtotal - (result.total - result.shippingFee);
+/** 결제 확정(confirm 200) 직후 보여주는 완료 화면.
+ *  OrderDetailResponse 한 객체만 받아 렌더링한다 — 별도 sessionStorage 의존 없음. */
+export function OrderCompletion({ order }: Props) {
+  const productSubtotal = order.products.reduce(
+    (s, p) => s + p.discountedPrice * p.quantity,
+    0,
+  );
+  const discount = Math.max(0, order.originalAmount - productSubtotal);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
       <div className="mx-auto max-w-[600px] px-5 pt-12 pb-12">
-
         {/* 완료 헤더 */}
         <div className="text-center mb-10">
           <div
@@ -74,14 +43,14 @@ export function CompleteClient() {
             주문이 완료되었습니다
           </h1>
           <p className="t-caption mt-1" style={{ color: "var(--neutral-stone)" }}>
-            {toKoreanDate(result.orderDate)} 결제
+            {toKoreanDate(order.orderDate)} 결제 · 주문번호 {order.orderNumber}
           </p>
         </div>
 
         {/* 주문 상품 */}
         <SectionCard label="Order Items" className="mb-4">
           <ul>
-            {result.items.map((item, idx) => (
+            {order.products.map((item, idx) => (
               <li
                 key={item.productId}
                 className="flex items-center gap-3 px-5 py-4"
@@ -117,12 +86,12 @@ export function CompleteClient() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  {item.discountRate > 0 && (
+                  {item.originalPrice !== item.discountedPrice && (
                     <p
                       className="t-caption line-through"
                       style={{ color: "var(--neutral-stone)" }}
                     >
-                      {(item.price * item.quantity).toLocaleString()}원
+                      {(item.originalPrice * item.quantity).toLocaleString()}원
                     </p>
                   )}
                   <p className="t-small" style={{ color: "var(--ink)" }}>
@@ -134,10 +103,23 @@ export function CompleteClient() {
           </ul>
         </SectionCard>
 
+        {/* 배송지 */}
+        {(order.deliveryAddress.zipCode || order.deliveryAddress.street) && (
+          <SectionCard label="Delivery" className="mb-4">
+            <div className="px-5 py-4 flex flex-col gap-1 t-small" style={{ color: "var(--ink)" }}>
+              {order.deliveryAddress.zipCode && (
+                <p style={{ color: "var(--ink-light)" }}>({order.deliveryAddress.zipCode})</p>
+              )}
+              {order.deliveryAddress.street && <p>{order.deliveryAddress.street}</p>}
+              {order.deliveryAddress.detail && <p>{order.deliveryAddress.detail}</p>}
+            </div>
+          </SectionCard>
+        )}
+
         {/* 결제 금액 */}
         <SectionCard label="Payment" className="mb-8">
           <div className="px-5 py-4 flex flex-col gap-3 t-small">
-            <PriceRow label="상품 금액" value={`${result.subtotal.toLocaleString()}원`} />
+            <PriceRow label="상품 금액" value={`${order.originalAmount.toLocaleString()}원`} />
             {discount > 0 && (
               <PriceRow
                 label="할인"
@@ -147,14 +129,14 @@ export function CompleteClient() {
             )}
             <PriceRow
               label="배송비"
-              value={result.shippingFee === 0 ? "무료" : `${result.shippingFee.toLocaleString()}원`}
-              valueColor={result.shippingFee === 0 ? "var(--primary)" : undefined}
+              value={order.shippingFee === 0 ? "무료" : `${order.shippingFee.toLocaleString()}원`}
+              valueColor={order.shippingFee === 0 ? "var(--primary)" : undefined}
             />
             <div className="my-1" style={{ borderTop: "1px solid var(--ink)" }} />
             <div className="flex items-baseline justify-between">
               <span className="t-body" style={{ color: "var(--ink)" }}>최종 결제 금액</span>
               <span className="t-h2" style={{ color: "var(--ink)" }}>
-                {result.total.toLocaleString()}원
+                {order.finalAmount.toLocaleString()}원
               </span>
             </div>
           </div>
@@ -163,11 +145,11 @@ export function CompleteClient() {
         {/* CTA */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            href="/mypage/orders"
+            href={`/mypage/orders/${order.orderId}`}
             className="btn btn-ghost btn-lg flex-1 text-center"
             style={{ border: "1px solid var(--ink)" }}
           >
-            주문 내역 보기
+            주문 상세 보기
           </Link>
           <Link href="/store" className="btn btn-dark btn-lg flex-1 text-center">
             쇼핑 계속하기

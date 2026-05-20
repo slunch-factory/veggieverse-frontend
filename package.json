@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.3",
+    "@tosspayments/tosspayments-sdk": "^2.7.0",
     "@types/three": "^0.184.0",
     "framer-motion": "^12.38.0",
     "lottie-react": "^2.4.1",

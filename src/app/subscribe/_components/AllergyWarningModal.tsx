@@ -108,22 +108,6 @@ export function AllergyWarningModal({ open, onClose, onConfirm }: AllergyWarning
                     결제 전에 식단 구성을 한 번 더 확인하시거나, 이대로 진행하셔도 됩니다.
                   </p>
                 </div>
-
-                {/* 구분선 */}
-                <div className="h-px" style={{ background: "var(--bg-off)" }} />
-
-                {/* 알러지 안내 링크 */}
-                <p className="text-[12px]" style={{ color: "var(--neutral-stone)" }}>
-                  알러지 정보는{" "}
-                  <a
-                    href="/mypage"
-                    className="underline underline-offset-2 hover:opacity-70 transition-opacity"
-                    style={{ color: "var(--ink-light)" }}
-                  >
-                    마이페이지 &gt; 건강 정보
-                  </a>
-                  에서 확인·수정할 수 있어요.
-                </p>
               </div>
 
               {/* 하단 버튼 (중앙) */}

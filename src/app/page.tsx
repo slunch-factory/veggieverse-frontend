@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { PRODUCE_ITEMS } from "@/constants";
@@ -208,12 +209,12 @@ export default function HomePage() {
                   style={{ animationPlayState: isSelected ? "paused" : undefined }}
                 >
                   {/* 원본 이미지 */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={item.imageUrl}
                     alt={item.name}
-                    loading="lazy"
-                    className="w-full h-full object-contain absolute inset-0 z-[1]"
+                    fill
+                    sizes="(max-width: 640px) 140px, 220px"
+                    className="object-contain z-[1]"
                     style={{ opacity: isSelected || hoveredItemId === item.id ? 0 : 1 }}
                     draggable={false}
                   />
