@@ -1,6 +1,16 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "";
+
+/**
+ * httpOnly 쿠키 기반 인증 프록시 사용 여부.
+ *
+ * Phase 5 이후 기본 ON — 클라이언트는 `/api/proxy/*` Route Handler를 경유해
+ * 백엔드를 호출하며, 서버가 쿠키에서 access_token을 꺼내 Authorization으로 forward한다.
+ * 명시적으로 `NEXT_PUBLIC_USE_AUTH_PROXY=false`로 설정하면 (Phase 1~3 시점의)
+ * localStorage 기반 직접 호출 모드로 복귀한다.
+ */
+const USE_PROXY = process.env.NEXT_PUBLIC_USE_AUTH_PROXY !== "false";
 
 /** 인증 정책
  * - "auto": 세션이 있으면 첨부, 없으면 그냥 호출 (공개+보호 둘 다 허용)
@@ -17,13 +27,21 @@ export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
 }
 
 async function getAccessToken(): Promise<string | null> {
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
 
 function buildUrl(path: string, absolute: boolean) {
-  if (!absolute) return path;
   if (/^https?:\/\//i.test(path)) return path;
+
+  // 프록시 모드: same-origin /api/proxy/<백엔드 path>로 라우팅
+  if (USE_PROXY) {
+    const norm = path.startsWith("/") ? path : `/${path}`;
+    return `/api/proxy${norm}`;
+  }
+
+  if (!absolute) return path;
   return `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
@@ -56,7 +74,11 @@ export async function apiFetch(
   const finalHeaders = new Headers({ ...baseHeaders, ...(headers as Record<string, string> | undefined) });
 
   let token: string | null = null;
-  if (auth !== "none") {
+  if (USE_PROXY) {
+    // 프록시 모드: 토큰은 서버가 쿠키에서 꺼내 부착. 클라이언트는 정책만 전달.
+    // "none"도 명시적으로 보내어 프록시가 불필요한 supabase 세션 조회를 하지 않도록 한다.
+    finalHeaders.set("X-Auth-Mode", auth);
+  } else if (auth !== "none") {
     token = await getAccessToken();
     if (auth === "required" && !token) {
       // 인증 필수 호출인데 세션이 없으면 합성 401을 만들어 반환
@@ -78,8 +100,9 @@ export async function apiFetch(
 
   let res = await fetch(url, init);
 
-  // 401 → 토큰 갱신 시도 후 1회 재시도
-  if (res.status === 401 && token && auth !== "none") {
+  // 401 → 토큰 갱신 시도 후 1회 재시도 (직접 호출 모드 한정 — 프록시 모드는 proxy.ts가 갱신)
+  if (!USE_PROXY && res.status === 401 && token && auth !== "none") {
+    const supabase = getSupabaseBrowserClient();
     const { data: refreshed } = await supabase.auth.refreshSession();
     const newToken = refreshed.session?.access_token ?? null;
     if (newToken && newToken !== token) {

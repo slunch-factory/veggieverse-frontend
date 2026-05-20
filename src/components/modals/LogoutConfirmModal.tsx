@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 
 interface LogoutConfirmModalProps {
@@ -10,8 +9,7 @@ interface LogoutConfirmModalProps {
 }
 
 export function LogoutConfirmModal({ isOpen, onClose }: LogoutConfirmModalProps) {
-  const { logout } = useUser();
-  const router = useRouter();
+  const { signOut } = useUser();
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -23,10 +21,10 @@ export function LogoutConfirmModal({ isOpen, onClose }: LogoutConfirmModalProps)
 
   if (!isOpen) return null;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
     onClose();
-    router.push("/");
+    // UserContext.signOut 내부에서 signOutAction → redirect("/") 까지 처리.
+    await signOut();
   };
 
   return (

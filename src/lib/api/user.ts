@@ -54,6 +54,8 @@ export interface UpdateUserProfileRequest {
     street: string;
     detail: string;
   };
+  /** 변경할 프로필 이미지. 첨부하지 않으면 BE는 기존 이미지를 유지. */
+  image?: File;
 }
 
 /**
@@ -74,17 +76,61 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   return (await res.json()) as UserProfile;
 }
 
+/**
+ * 백엔드 프로필 완성도 probe — UserContext가 "가입 미완료"를 구분하기 위해 사용.
+ * GET /users/profile/completeness 응답으로 row 존재뿐 아니라 필수 필드 충족 여부까지 판단.
+ *   - "complete"        : 200 + { complete: true }
+ *   - "incomplete"      : 200 + { complete: false } (row는 있으나 step2 미완) 또는 404 (row 자체 없음)
+ *   - "unauthenticated" : 401
+ *   - "error"           : 그 외 네트워크/서버 오류, 일시적
+ */
+export type ProfileProbe = "complete" | "incomplete" | "unauthenticated" | "error";
+
+export async function probeProfileStatus(): Promise<ProfileProbe> {
+  const res = await apiFetch("/api/v1/veggieverse/users/profile/completeness", {
+    auth: "required",
+    cache: "no-store",
+  });
+  if (res.status === 401) return "unauthenticated";
+  if (res.status === 404) return "incomplete";
+  if (!res.ok) {
+    console.warn("[probeProfileStatus] HTTP error:", res.status, res.statusText);
+    return "error";
+  }
+  const data = (await res.json().catch(() => null)) as { complete?: boolean } | null;
+  return data?.complete ? "complete" : "incomplete";
+}
+
+/**
+ * 회원 정보 수정 — multipart/form-data PATCH.
+ * BE는 204 No Content를 반환하므로 갱신된 객체는 돌려주지 않는다.
+ * 갱신 후 fresh profile이 필요하면 호출 측에서 getUserProfile()을 다시 부른다.
+ */
 export async function updateUserProfile(
   body: UpdateUserProfileRequest,
-): Promise<UserProfile | null> {
+): Promise<boolean> {
+  const fd = new FormData();
+  if (body.name !== undefined) fd.append("name", body.name);
+  if (body.phoneNumber !== undefined) fd.append("phoneNumber", body.phoneNumber);
+  if (body.birthday !== undefined) fd.append("birthday", body.birthday);
+  if (body.locale !== undefined) fd.append("locale", body.locale);
+  if (body.marketingSms !== undefined) fd.append("marketingSms", String(body.marketingSms));
+  if (body.marketingEmail !== undefined) fd.append("marketingEmail", String(body.marketingEmail));
+  if (body.address) {
+    fd.append("address.zipCode", body.address.zipCode);
+    fd.append("address.street", body.address.street);
+    fd.append("address.detail", body.address.detail);
+  }
+  if (body.image) fd.append("image", body.image);
+
   const res = await apiFetch("/api/v1/veggieverse/users/profile", {
     method: "PATCH",
-    body,
+    body: fd,
     auth: "required",
   });
   if (!res.ok) {
     console.error("[updateUserProfile] HTTP error:", res.status, res.statusText);
-    return null;
+    return false;
   }
-  return (await res.json()) as UserProfile;
+  return true;
 }

@@ -18,7 +18,15 @@ interface HeaderProps {
 
 export function Header({ showTopBanner = false }: HeaderProps) {
   const router = useRouter();
-  const { user, userProfile, isLoggedIn, isLoadingSession } = useUser();
+  const {
+    user,
+    userProfile,
+    isLoggedIn,
+    isAuthenticated,
+    profileStatus,
+    isLoadingSession,
+    profileVersion,
+  } = useUser();
   const { totalCount } = useCart();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -30,7 +38,9 @@ export function Header({ showTopBanner = false }: HeaderProps) {
 
   useEffect(() => {
     if (isLoadingSession) return;
-    if (!isLoggedIn) {
+    // 백엔드 프로필 fetch는 자사몰 users 레코드가 있는 경우(=isAuthenticated)에만.
+    // incomplete 상태에서 호출하면 404를 부르게 된다.
+    if (!isAuthenticated) {
       setProfileImageUrl(null);
       return;
     }
@@ -39,7 +49,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
     getUserProfile().then((profile) => {
       if (profile?.profileImageUrl) setProfileImageUrl(profile.profileImageUrl);
     });
-  }, [isLoggedIn, isLoadingSession, userProfile.profileImage]);
+  }, [isAuthenticated, isLoadingSession, userProfile.profileImage, profileVersion]);
 
   const getSpiritImageUrl = (spiritName: string | null): string | null => {
     if (!spiritName) return null;
@@ -92,11 +102,20 @@ export function Header({ showTopBanner = false }: HeaderProps) {
             {/* User Profile */}
             <button
               type="button"
-              onClick={() => isLoggedIn ? router.push("/mypage") : setIsLoginModalOpen(true)}
+              onClick={() => {
+                if (isAuthenticated) {
+                  router.push("/mypage");
+                } else if (isLoggedIn && profileStatus === "incomplete") {
+                  // 카카오 step1만 끝낸 "유령 로그인" 상태 — 회원가입 마저 진행하도록 안내
+                  router.push("/signup?step=2");
+                } else {
+                  setIsLoginModalOpen(true);
+                }
+              }}
               className="w-10 h-10 flex items-center justify-center bg-transparent border-none cursor-pointer p-0"
               aria-label="마이페이지"
             >
-              {isLoggedIn && avatarUrl ? (
+              {isAuthenticated && avatarUrl ? (
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-black">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

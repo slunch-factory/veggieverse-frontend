@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const CART_SESSION_KEY = "veggieverse-cart-session";
 
@@ -17,7 +17,15 @@ export function clearCartSessionId(): void {
 
 function getCartSessionId(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(CART_SESSION_KEY);
+  const value = localStorage.getItem(CART_SESSION_KEY);
+  if (!value) return null;
+  // 과거 잘못된 호출로 인해 JWT가 sessionId 자리에 저장된 잔존 데이터 자동 정리.
+  // 백엔드는 sessionId URL 파라미터와 JWT 헤더를 별개로 처리하므로 JWT를 sessionId로 보내면 400.
+  if (value.startsWith("eyJ") && value.split(".").length === 3) {
+    localStorage.removeItem(CART_SESSION_KEY);
+    return null;
+  }
+  return value;
 }
 
 function withSessionId(path: string, sessionId: string): string {
@@ -55,6 +63,7 @@ async function cartFetch(
   path: string,
   options: Parameters<typeof apiFetch>[1] = {},
 ): Promise<Response> {
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   if (data.session) {
     // 로그인 상태: JWT 토큰만 사용. sessionId는 전달하지 않음.
@@ -101,6 +110,7 @@ export async function syncCartAfterLogin(): Promise<SyncCartResult> {
   const sessionId = getCartSessionId();
   if (!sessionId) return { status: "merged", cart: null };
 
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   if (!data.session) return { status: "skipped" };
 

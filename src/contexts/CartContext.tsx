@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
-import { syncCartAfterLogin, type CartResponse } from "@/lib/api/cart";
+import { getCart, syncCartAfterLogin, type CartResponse } from "@/lib/api/cart";
+import { useUser } from "@/contexts/UserContext";
 
 export interface CartItem {
   productId: number;
@@ -62,44 +62,63 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const suppressNextSave = useRef(false);
   const hydrated = useRef(false);
+  /** 멤버 카트 fetch가 이미 완료된 사용자 id — 같은 세션에서 중복 호출 방지. */
+  const fetchedForUserIdRef = useRef<string | null>(null);
 
+  const { session, isAuthenticated, isLoadingSession } = useUser();
+  const sessionUserId = session?.user.id ?? null;
+
+  /**
+   * UserContext에서 derived된 (session, isAuthenticated)에 반응.
+   *   - 세션 없음                → 화면 카트만 비움(localStorage 유지)
+   *   - 세션 있음 + incomplete   → 백엔드 호출 금지 (회원가입 미완료라 user 레코드 없음 → 404)
+   *   - 세션 있음 + complete     → localStorage 복원 + 비회원 카트 병합 + 멤버 카트 동기화
+   */
   useEffect(() => {
-    // 초기 로드: 로그인 상태일 때만 localStorage 복원
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          try { setItems(JSON.parse(saved)); } catch {}
-        }
-      }
-      // 복원 시도 완료 — 이제부터 items 변경 시 localStorage 저장 허용
-      hydrated.current = true;
-    });
+    if (isLoadingSession) return;
 
-    // 로그아웃 → 화면만 비움 (localStorage 유지)
-    // 로그인 → localStorage에서 복원
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
+    if (!sessionUserId) {
+      if (fetchedForUserIdRef.current !== null) {
         suppressNextSave.current = true;
         setItems([]);
-      } else if (event === "SIGNED_IN") {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          try { setItems(JSON.parse(saved)); } catch {}
-        }
-        // 로그인 직후 비회원 카트 → 멤버 카트 명시적 병합 + 응답으로 화면 동기화
-        void (async () => {
-          const result = await syncCartAfterLogin();
-          if (result.status === "merged" && result.cart) {
-            const cartResponse = result.cart;
-            setItems((prev) => mergeServerCart(prev, cartResponse));
-          }
-        })();
+        fetchedForUserIdRef.current = null;
       }
-    });
+      hydrated.current = true;
+      return;
+    }
 
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    // 백엔드 자사몰 user 레코드가 없으면 /cart 호출 시 404 — incomplete 가입 상태에서는 skip.
+    // ProfileGate가 곧 /signup?step=2로 redirect하지만, 그 사이 한 번이라도 부르지 않도록 가드.
+    if (!isAuthenticated) {
+      hydrated.current = true;
+      return;
+    }
+
+    if (fetchedForUserIdRef.current === sessionUserId) return;
+    fetchedForUserIdRef.current = sessionUserId;
+
+    void (async () => {
+      // localStorage 복원 + 비회원 카트 병합 + 멤버 카트 동기화를 한 async chain으로.
+      // setState를 async 컨텍스트에서만 호출 → react-hooks/set-state-in-effect 회피.
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { setItems(JSON.parse(saved)); } catch {}
+      }
+      const result = await syncCartAfterLogin();
+      if (result.status === "merged") {
+        if (result.cart) {
+          const cartResponse = result.cart;
+          setItems((prev) => mergeServerCart(prev, cartResponse));
+        } else {
+          const response = await getCart();
+          if (response) {
+            setItems((prev) => mergeServerCart(prev, response));
+          }
+        }
+      }
+    })();
+    hydrated.current = true;
+  }, [sessionUserId, isAuthenticated, isLoadingSession]);
 
   useEffect(() => {
     // 첫 마운트 시 localStorage 복원이 끝나기 전엔 저장 안 함
