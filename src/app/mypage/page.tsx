@@ -62,21 +62,32 @@ const QUICK_MENU = [
 export default function MyPageHome() {
   const router = useRouter();
   const { user, userProfile, isLoggedIn, isLoadingSession } = useUser();
-  const username = user?.name || "Guest";
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
 
   const [profileImage, setProfileImage] = useState<string | null>(userProfile.profileImage);
+  const [memberName, setMemberName] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const username = memberName ?? "Guest";
   const [recentOrders, setRecentOrders] = useState<StoreOrderHistoryItem[] | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [recentSubs, setRecentSubs] = useState<OrderHistoryItem[] | null>(null);
   const [subsLoading, setSubsLoading] = useState(true);
 
   useEffect(() => {
-    if (isLoadingSession || !isLoggedIn) return;
-    getUserProfile().then((profile) => {
-      if (profile?.profileImageUrl) setProfileImage(profile.profileImageUrl);
-    });
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    getUserProfile()
+      .then((profile) => {
+        if (!profile) return;
+        if (profile.profileImageUrl) setProfileImage(profile.profileImageUrl);
+        if (profile.name) setMemberName(profile.name);
+      })
+      .finally(() => setProfileLoading(false));
   }, [isLoggedIn, isLoadingSession]);
 
   useEffect(() => {
@@ -142,7 +153,13 @@ export default function MyPageHome() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
+            {profileLoading ? (
+              <p className="t-body truncate" style={{ color: "var(--ink-light)" }}>
+                불러오는 중...
+              </p>
+            ) : (
+              <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
+            )}
             {(spiritName || veganType) && (
               <p className="t-small mt-0.5 truncate" style={{ color: "var(--ink-light)" }}>
                 {[spiritName, veganType].filter(Boolean).join(" · ")}
