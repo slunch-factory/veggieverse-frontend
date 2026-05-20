@@ -54,6 +54,8 @@ export interface UpdateUserProfileRequest {
     street: string;
     detail: string;
   };
+  /** 변경할 프로필 이미지. 첨부하지 않으면 BE는 기존 이미지를 유지. */
+  image?: File;
 }
 
 /**
@@ -99,17 +101,36 @@ export async function probeProfileStatus(): Promise<ProfileProbe> {
   return data?.complete ? "complete" : "incomplete";
 }
 
+/**
+ * 회원 정보 수정 — multipart/form-data PATCH.
+ * BE는 204 No Content를 반환하므로 갱신된 객체는 돌려주지 않는다.
+ * 갱신 후 fresh profile이 필요하면 호출 측에서 getUserProfile()을 다시 부른다.
+ */
 export async function updateUserProfile(
   body: UpdateUserProfileRequest,
-): Promise<UserProfile | null> {
+): Promise<boolean> {
+  const fd = new FormData();
+  if (body.name !== undefined) fd.append("name", body.name);
+  if (body.phoneNumber !== undefined) fd.append("phoneNumber", body.phoneNumber);
+  if (body.birthday !== undefined) fd.append("birthday", body.birthday);
+  if (body.locale !== undefined) fd.append("locale", body.locale);
+  if (body.marketingSms !== undefined) fd.append("marketingSms", String(body.marketingSms));
+  if (body.marketingEmail !== undefined) fd.append("marketingEmail", String(body.marketingEmail));
+  if (body.address) {
+    fd.append("address.zipCode", body.address.zipCode);
+    fd.append("address.street", body.address.street);
+    fd.append("address.detail", body.address.detail);
+  }
+  if (body.image) fd.append("image", body.image);
+
   const res = await apiFetch("/api/v1/veggieverse/users/profile", {
     method: "PATCH",
-    body,
+    body: fd,
     auth: "required",
   });
   if (!res.ok) {
     console.error("[updateUserProfile] HTTP error:", res.status, res.statusText);
-    return null;
+    return false;
   }
-  return (await res.json()) as UserProfile;
+  return true;
 }

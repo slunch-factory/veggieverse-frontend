@@ -7,14 +7,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * 흐름:
  * 1. 카카오 → /auth/callback?code=...&next=/
  * 2. server supabase로 exchangeCodeForSession → 쿠키에 세션 자동 저장
- * 3. user.identities 확인:
- *    - email provider 있음
- *      - 카카오 identity가 방금 자동 linking된 경우(created_at == last_sign_in_at)
- *        → /signup?prompt=existing-email (자사몰 가입자 + 카카오 첫 시도 — case1-1-II 모달)
- *      - 그 외(이미 연동된 사용자의 일반 카카오 로그인) → profile 유무로 next 또는 /signup
- *    - 카카오만        → email-check로 자사몰 계정 존재 확인
- *      - 있음 → /signup?prompt=existing-email (자사몰 기존 가입자 안내 모달 — case1-1-II)
- *      - 없음 → /signup                       (카카오 신규 — case2-1-I — 1단계 패스하고 바로 프로필 작성)
+ * 3. BE email-check 응답의 providers로 분기:
+ *    - exists && providers=["email"]            → /signup?prompt=existing-email (case1-1-II)
+ *    - exists && providers ⊇ {"email","kakao"}  → next (이미 연동된 사용자 일반 로그인)
+ *    - exists && providers=["kakao"]            → next (카카오 전용 가입자 재로그인)
+ *    - !exists                                  → /signup (카카오 신규 — step 2 자동 진입)
  */
 const BACKEND_BASE =
   process.env.API_BASE_INTERNAL ?? process.env.NEXT_PUBLIC_API_BASE_PATH ?? "";
@@ -35,54 +32,33 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${msg}`);
   }
 
-  const user = data.session.user;
-  const userEmail = user.email ?? null;
-  const hasEmailIdentity = Boolean(
-    user.identities?.some((i) => i.provider === "email"),
-  );
-  const accessToken = data.session.access_token;
+  const userEmail = data.session.user.email ?? null;
 
-  // 이미 비밀번호 연동까지 완료된 사용자 → link 페이지 건너뛰고 profile 유무로 분기.
-  // 단, 자사몰 가입자가 같은 이메일로 카카오 OAuth를 시도해 supabase가 방금 자동 linking한
-  // 케이스(카카오 identity의 first sign-in)에는 사용자에게 안내를 한 번 띄운다.
-  if (hasEmailIdentity) {
-    const kakaoIdentity = user.identities?.find((i) => i.provider === "kakao");
-    const currentlySignedInWithKakao =
-      data.session.user.app_metadata?.provider === "kakao";
-    const isFirstKakaoSignIn = Boolean(
-      kakaoIdentity &&
-        kakaoIdentity.created_at &&
-        kakaoIdentity.last_sign_in_at &&
-        kakaoIdentity.created_at === kakaoIdentity.last_sign_in_at,
-    );
-
-    if (currentlySignedInWithKakao && isFirstKakaoSignIn) {
-      // 자사몰 가입자(이메일/비번 보유) + 카카오 첫 자동 linking 시점 →
-      // 명세 case1-1-II 모달로 사용자에게 선택권 제공.
-      return NextResponse.redirect(`${origin}/signup?prompt=existing-email`);
-    }
-
-    const profileRes = await fetch(
-      `${BACKEND_BASE}/api/v1/veggieverse/users/profile`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    return NextResponse.redirect(`${origin}${profileRes.ok ? next : "/signup"}`);
-  }
-
-  // 자사몰에 동일 이메일 가입자 있음 (case1-1-II) — 사용자에게 모달로 선택권 제공.
-  // 자동 link 진행 대신 ?prompt=existing-email 로 보내어 SignupClient가 모달을 띄움.
-  // 주의: BE는 미가입 이메일에도 HTTP 200을 반환하므로 응답 body의 exists 값을 봐야 함.
+  // BE의 자사몰 가입 상태(providers)를 단일 시그널로 사용한다.
+  // Supabase identities/app_metadata는 자동 link 활성화 여부, timestamp 정밀도 등에 좌우되어
+  // 이번 OAuth가 카카오인지·자사몰 이메일 가입자가 있었는지를 정확히 판별하기 어렵다.
+  // 반면 BE의 consumer.users.auth_providers는 가입/연동 시점에만 갱신되므로 신뢰 가능.
   if (userEmail) {
     const checkRes = await fetch(
       `${BACKEND_BASE}/api/v1/veggieverse/users/email-check?email=${encodeURIComponent(userEmail)}`,
       { headers: { Accept: "application/json" } },
     );
     if (checkRes.ok) {
-      const data = (await checkRes.json().catch(() => null)) as
-        | { exists?: boolean }
+      const body = (await checkRes.json().catch(() => null)) as
+        | { exists?: boolean; providers?: string[] }
         | null;
-      if (data?.exists) {
+      const providers = (body?.providers ?? []).map((p) => p.toLowerCase());
+      const hasEmail = providers.includes("email");
+      const hasKakao = providers.includes("kakao");
+
+      // 자사몰 이메일/비번 가입자 + 카카오 OAuth 첫 시도 → case1-1-II 모달.
+      if (body?.exists && hasEmail && !hasKakao) {
         return NextResponse.redirect(`${origin}/signup?prompt=existing-email`);
+      }
+      // 이미 카카오까지 등록된 사용자 또는 카카오 전용 가입자 → 정상 로그인.
+      // (incomplete 프로필은 ProfileGate가 /signup?step=2로 redirect — 여기서는 next로 보냄.)
+      if (body?.exists) {
+        return NextResponse.redirect(`${origin}${next}`);
       }
     }
   }

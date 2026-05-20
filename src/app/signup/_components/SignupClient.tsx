@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AtSign,
-  CalendarDays,
   Check,
   ChevronLeft,
   Image as ImageIcon,
@@ -317,6 +316,7 @@ export function SignupClient() {
       form.birthday.trim() &&
       form.postalCode.trim() &&
       form.address.trim() &&
+      form.addressDetail.trim() &&
       profileImageFile &&
       form.agreeAge &&
       form.agreeTerms &&
@@ -326,10 +326,11 @@ export function SignupClient() {
       !errors.birthday,
   );
 
-  // 카카오 OAuth 트리거 — 모달에서 '카카오로 계속하기' 선택 시 호출.
-  const startKakaoLogin = async () => {
+  // 카카오 OAuth 트리거 — 모달에서 '카카오로 계속하기' 또는 '이메일 연동하기' 선택 시 호출.
+  // next는 callback이 redirect할 도착지. link 의도일 땐 "/signup?link=1"을 넘겨 직접 link 화면으로 보낸다.
+  const startKakaoLogin = async (next: string = "/") => {
     setStep1Error(null);
-    const result = await signInWithKakaoAction("/");
+    const result = await signInWithKakaoAction(next);
     if (!result.ok) {
       setStep1Error(result.error);
       return;
@@ -699,7 +700,8 @@ export function SignupClient() {
             })();
           } else {
             // case2-1-II "이메일 연동하기": step 1 비번을 sessionStorage에 임시 보관 후 카카오 OAuth 시작.
-            // callback이 link=1로 보내고, link 화면 useEffect가 그 비번을 자동 채워 사용자는 "연동하기"만 누르면 된다.
+            // next=/signup?link=1 으로 넘겨 callback이 분기와 무관하게 link 화면으로 보낸다.
+            // link 화면 useEffect가 sessionStorage의 비번을 자동 채워 사용자는 "연동하기"만 누르면 된다.
             // OAuth 취소로 인한 잔존 방지를 위해 timestamp 함께 저장 — 사용 시점에 TTL 검증.
             if (typeof window !== "undefined" && form.password) {
               sessionStorage.setItem(
@@ -707,7 +709,7 @@ export function SignupClient() {
                 JSON.stringify({ password: form.password, ts: Date.now() }),
               );
             }
-            void startKakaoLogin();
+            void startKakaoLogin("/signup?link=1");
           }
         }}
       />
@@ -827,22 +829,13 @@ export function SignupClient() {
                 </FormField>
 
                 <FormField label="생년월일" required errorMessage={errors.birthday}>
-                  <div className="flex items-stretch gap-2">
-                    <input
-                      type="date"
-                      className={`ds-input${errors.birthday ? " is-error" : ""}`}
-                      value={form.birthday}
-                      onChange={(e) => update("birthday", e.target.value)}
-                      max={new Date().toISOString().slice(0, 10)}
-                    />
-                    <span
-                      className="signup-aligned-btn flex items-center justify-center px-3 flex-shrink-0"
-                      style={{ color: "var(--ink-light)" }}
-                      aria-hidden
-                    >
-                      <CalendarDays size={16} />
-                    </span>
-                  </div>
+                  <input
+                    type="date"
+                    className={`ds-input${errors.birthday ? " is-error" : ""}`}
+                    value={form.birthday}
+                    onChange={(e) => update("birthday", e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
                 </FormField>
               </FormSection>
 
