@@ -103,47 +103,13 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
 
   const listScrollRef = useRef<HTMLDivElement | null>(null);
 
-  /** 새 필터 → ExcludeCategory 변환 (메뉴 제거 및 필터링에 사용) */
-  const selectedExcludes = useMemo<ExcludeCategory[]>(() => {
-    const excludes = new Set<ExcludeCategory>();
-
-    if (dietType === "vegan") {
-      (["shellfish", "fish", "chicken", "egg", "dairy"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
-    } else if (dietType === "pesco") {
-      (["chicken", "egg"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
-    } else if (dietType === "pollo") {
-      // 폴로: 닭고기는 허용, 생선·갑각류는 제외
-      (["shellfish", "fish"] as ExcludeCategory[]).forEach((e) => excludes.add(e));
-    }
-
-    const hasNoneAllergy = allergyFilters.includes("none");
-    if (!hasNoneAllergy) {
-      if (allergyFilters.includes("nuts") || allergyFilters.includes("peanut")) excludes.add("nuts");
-      if (allergyFilters.includes("dairy")) excludes.add("dairy");
-    }
-
-    if (spicyPreference === "exclude") excludes.add("spicy");
-
-    return Array.from(excludes);
-  }, [dietType, allergyFilters, spicyPreference]);
-
-  /** 필터 변경 시 해당 메뉴 캘린더에서 제거 */
-  useEffect(() => {
-    if (selectedExcludes.length === 0) return;
-    setMealPlan((prev) => {
-      const next: Record<string, DisplayMenuData> = {};
-      let changed = false;
-      for (const slotId of Object.keys(prev)) {
-        const meal = prev[slotId];
-        if (meal.excludable.some((e) => selectedExcludes.includes(e as ExcludeCategory))) {
-          changed = true;
-          continue;
-        }
-        next[slotId] = meal;
-      }
-      return changed ? next : prev;
-    });
-  }, [selectedExcludes]);
+  /** 식이 유형 → ExcludeCategory 매핑 (백엔드에 dietType 필드 추가되면 교체) */
+  const dietTypeExcludes = useMemo<ExcludeCategory[]>(() => {
+    if (dietType === "vegan") return ["shellfish", "fish", "chicken", "egg", "dairy"];
+    if (dietType === "pesco") return ["chicken", "egg"];
+    if (dietType === "pollo") return ["shellfish", "fish"];
+    return [];
+  }, [dietType]);
 
   /** 시작일 변경 시 플래너 초기화 */
   const prevStartRef = useRef<string | null>(null);
@@ -221,38 +187,49 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   }, [spiritRecommended, allDays]);
 
   const filteredMeals = useMemo(() => {
+    const NUTRITION_UI_TO_API: Record<NutritionGoal, string> = {
+      "plant-based": "plant_based",
+      "low-carb": "low_carb",
+      "low-calorie": "low_calorie",
+      "high-protein": "high_protein",
+      "low-sodium": "low_sodium",
+    };
+    const ALLERGY_UI_TO_API: Record<AllergyFilter, string[]> = {
+      nuts: ["tree_nuts"],
+      peanut: ["peanuts"],
+      dairy: ["dairy"],
+    };
+
     let items: DisplayMenuData[] = menuList.map((m) => ({
       ...m,
       displayName: m.name,
       isVariation: false,
     }));
 
-    if (selectedExcludes.length > 0) {
-      items = items.filter((m) => !m.excludable.some((e) => selectedExcludes.includes(e as ExcludeCategory)));
+    if (dietTypeExcludes.length > 0) {
+      items = items.filter((m) => !m.excludable.some((e) => dietTypeExcludes.includes(e)));
     }
 
     if (nutritionGoals.length > 0) {
-      const animalExcludes: ExcludeCategory[] = ["shellfish", "fish", "chicken", "egg", "dairy"];
+      const targetGoals = nutritionGoals.map((g) => NUTRITION_UI_TO_API[g]);
       items = items.filter((m) =>
-        nutritionGoals.some((goal) => {
-          switch (goal) {
-            case "plant-based":
-              return !m.excludable.some((e) => animalExcludes.includes(e as ExcludeCategory));
-            case "low-carb":
-            case "low-calorie":
-            case "low-sodium":
-              return m.category === "slim";
-            case "high-protein":
-              return m.category === "protein";
-            default:
-              return true;
-          }
-        }),
+        targetGoals.some((g) => m.spirit?.healthGoals.includes(g)),
       );
     }
 
+    if (allergyFilters.length > 0) {
+      const blocked = allergyFilters.flatMap((f) => ALLERGY_UI_TO_API[f] ?? []);
+      items = items.filter((m) => !m.spirit?.allergens.some((a) => blocked.includes(a)));
+    }
+
+    if (spicyPreference === "exclude") {
+      items = items.filter((m) => !m.spirit?.spicy);
+    } else if (spicyPreference === "include") {
+      items = items.filter((m) => m.spirit?.spicy);
+    }
+
     return items;
-  }, [menuList, selectedExcludes, nutritionGoals]);
+  }, [menuList, dietTypeExcludes, nutritionGoals, allergyFilters, spicyPreference]);
 
   const totalPrice = useMemo(
     () => Object.values(mealPlan).reduce((s, m) => s + m.price, 0),
@@ -288,14 +265,9 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   }, []);
 
   const toggleAllergyFilter = useCallback((v: AllergyFilter) => {
-    if (v === "none") {
-      setAllergyFilters((prev) => (prev.includes("none") ? [] : ["none"]));
-    } else {
-      setAllergyFilters((prev) => {
-        const without = prev.filter((a) => a !== "none");
-        return without.includes(v) ? without.filter((a) => a !== v) : [...without, v];
-      });
-    }
+    setAllergyFilters((prev) =>
+      prev.includes(v) ? prev.filter((a) => a !== v) : [...prev, v],
+    );
   }, []);
 
   const setSpicyPreference = useCallback(

@@ -109,7 +109,7 @@ function DropdownFilter({
         <>
           <div className="fixed inset-0 z-[190]" onClick={onClose} />
           <div
-            className="fixed z-[191] bg-white border border-black shadow-lg p-3 flex flex-wrap gap-2 min-w-[160px] max-w-[280px]"
+            className="fixed z-[191] bg-white border border-black shadow-lg p-3 inline-flex flex-nowrap gap-2 w-max max-w-[90vw]"
             style={{ top: dropPos.top, left: dropPos.left }}
           >
             {children}
@@ -182,7 +182,7 @@ export function FilterPanel({
             key={opt.value}
             label={opt.label}
             active={allergyFilters.includes(opt.value)}
-            isExclude={opt.value !== "none"}
+            isExclude
             onClick={() => onAllergyFilterToggle(opt.value)}
           />
         ))}
