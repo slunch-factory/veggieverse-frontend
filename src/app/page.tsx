@@ -44,7 +44,17 @@ export default function HomePage() {
   const [items, setItems] = useState<FloatingItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<FloatingItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [peekOpen, setPeekOpen] = useState(true);
+  const prevSelectedCountRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 선택 개수가 0 → 1+로 바뀌면 peek 자동 오픈
+  useEffect(() => {
+    if (prevSelectedCountRef.current === 0 && selectedItems.length > 0) {
+      setPeekOpen(true);
+    }
+    prevSelectedCountRef.current = selectedItems.length;
+  }, [selectedItems.length]);
 
   // 초기 아이템 생성 - 그리드 기반 랜덤 배치
   useEffect(() => {
@@ -52,8 +62,8 @@ export default function HomePage() {
     const sizeMultiplier = isMobile ? 0.78 : 1;
     const baseSize = 180;
 
-    const cols = isMobile ? 5 : 7;
-    const rows = isMobile ? 8 : 6;
+    const cols = isMobile ? 6 : 8;
+    const rows = isMobile ? 10 : 8;
     const xMin = 5, xMax = 95, yMin = 5, yMax = 95;
     const cellW = (xMax - xMin) / cols;
     const cellH = (yMax - yMin) / rows;
@@ -73,9 +83,11 @@ export default function HomePage() {
       [gridPositions[i], gridPositions[j]] = [gridPositions[j], gridPositions[i]];
     }
 
+    const SMALLER_ITEMS = new Set(["Peach", "Lemon", "Cucumber", "Onion", "Blueberry"]);
     const initialItems: FloatingItem[] = PRODUCE_ITEMS.map((produce, index) => {
       const pos = gridPositions[index];
-      const scale = (0.8 + Math.random() * 0.5) * sizeMultiplier;
+      const sizeAdjust = SMALLER_ITEMS.has(produce.name) ? 0.8 : 1;
+      const scale = (0.8 + Math.random() * 0.5) * sizeMultiplier * sizeAdjust;
       return {
         id: `produce-${index}`,
         name: produce.name,
@@ -250,18 +262,18 @@ export default function HomePage() {
         </div>
 
         {/* 간격 유지 */}
-        <div className="flex-1 min-h-[300px]" />
+        <div className="flex-1 min-h-[140px] md:min-h-[300px]" />
 
         {/* 서브헤드라인 */}
         <motion.p
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-gray-50 mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(16px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-10 text-[#C8A000]"
+          className="bg-gray-50/80 mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(15px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-4 md:px-10 text-[#C8A000]"
         >
           &ldquo;뭐 먹지?&rdquo; 고민은 내려놓고, 나에게 맞는 한 끼를 발견하세요.
-          <br />
-          끌리는 재료 3가지만 고르면, 당신의 취향에 꼭 맞는 테이블이 완성됩니다.
+          <br className="hidden md:inline" />
+          {" "}끌리는 재료 3가지만 고르면, 당신의 취향에 꼭 맞는 테이블이 완성됩니다.
         </motion.p>
 
         {/* 본문 */}
@@ -269,27 +281,62 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-gray-50 text-stone-600 mb-8 md:mb-12 z-30 relative text-center mx-auto text-[16px] leading-[1.8] tracking-[-0.01em] max-w-[800px] px-10"
+          className="bg-gray-50/80 text-stone-600 mb-8 md:mb-12 z-30 relative text-center mx-auto text-[clamp(13px,1.6vw,16px)] leading-[1.7] md:leading-[1.8] tracking-[-0.01em] max-w-[800px] px-4 md:px-10"
         >
-        슬런치는 맛있는 한 끼가 거창할 필요 없다고 믿습니다. 바쁜 하루 속에서도 나를 위한 시간, 천천히 음미하는 식사. 우리는 당신의 취향과 라이프스타일에 맞춰 매일의 식탁을 설계합니다. 건강을 위해 맛을 포기하거나, 맛을 위해 건강을 타협하지 않아도 됩니다. 그냥 맛있게 먹었을 뿐인데, 몸도 마음도 가벼워지는 경험. 슬런치가 그 테이블을 열어드릴게요.
+        슬런치는 맛있는 한 끼가 거창할 필요 없다고 믿습니다. 바쁜 하루 속에서도 나를 위한 시간, 천천히 음미하는 식사. 우리는 당신의 취향과 라이프스타일에 맞춰 매일의 식탁을 설계합니다.<br className="hidden md:inline" />건강을 위해 맛을 포기하거나, 맛을 위해 건강을 타협하지 않아도 됩니다. 그냥 맛있게 먹었을 뿐인데,<br className="hidden md:inline" />몸도 마음도 가벼워지는 경험. 슬런치가 그 테이블을 열어드릴게요.
         </motion.p>
 
-        {/* 하단 선택 UI */}
+        {/* 하단 선택 UI — Peek Folder 형태 */}
         {selectedItems.length >= 1 && (
           <motion.div
             initial={{ y: "100%", x: "-50%" }}
-            animate={{ y: 0, x: "-50%" }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute z-40 w-[860px] max-w-full left-1/2 bottom-0 overflow-hidden"
+            animate={{ y: peekOpen ? 0 : "calc(100% - 48px)", x: "-50%" }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute z-40 w-[860px] max-w-full left-1/2 bottom-0"
           >
-            <div className="absolute top-0 left-0 w-full h-full z-[1] bg-[#DCFD4A] rounded-t-[16px]" style={{ clipPath: "polygon(3.49% 0, 96.51% 0, 100% 100%, 0 100%)" }} />
-            <div className="absolute top-0 left-[3.49%] right-[3.51%] h-4 bg-[#DCFD4A] rounded-t-[16px] z-[3] pointer-events-none" />
-            <div className="mx-auto w-full relative z-[2]">
-              <div className="flex flex-col md:flex-row items-center justify-center gap-3 p-5">
+            {/* Peek tab — 사다리꼴 (클릭으로 열고 닫기) */}
+            <button
+              type="button"
+              onClick={() => setPeekOpen((v) => !v)}
+              aria-expanded={peekOpen}
+              aria-label={peekOpen ? "스피릿 아이템 패널 닫기" : "스피릿 아이템 패널 열기"}
+              className="relative block w-[280px] h-[50px] mx-auto -mb-[2px] z-[2] cursor-pointer bg-transparent border-0 p-0"
+            >
+              <svg
+                className="absolute inset-0 w-full h-full overflow-visible"
+                viewBox="0 0 280 50"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M 0 50 L 12 14 Q 16 0 30 0 L 250 0 Q 264 0 268 14 L 280 50 Z"
+                  fill="#DCFD4A"
+                />
+                <path
+                  d="M 0 50 L 12 14 Q 16 0 30 0 L 250 0 Q 264 0 268 14 L 280 50"
+                  fill="none"
+                  stroke="#250a00"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center gap-2 text-[13px] tracking-[0.08em] uppercase text-[#250a00] pb-[6px] pointer-events-none">
+                <span>스피릿 아이템</span>
+                <span
+                  className="text-[9px] leading-none transition-transform duration-300"
+                  style={{ transform: peekOpen ? "rotate(0deg)" : "rotate(180deg)" }}
+                  aria-hidden="true"
+                >▲</span>
+              </span>
+            </button>
+
+            {/* Peek body */}
+            <div className="bg-[#DCFD4A] border border-[#250a00] border-b-0 rounded-t-[24px] md:rounded-t-[32px] px-5 md:px-11 pt-4 pb-5 md:pb-6 relative z-[1]">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-3">
                 {/* 선택된 야채 실루엣 */}
                 <div className="flex items-center gap-2">
                   {selectedItems.map((item) => (
-                    <div key={item.id} className="relative w-[60px] h-[60px] flex items-center justify-center shrink-0">
+                    <div key={item.id} className="relative w-[48px] h-[48px] md:w-[60px] md:h-[60px] flex items-center justify-center shrink-0">
                       <div
                         className="w-full h-full"
                         style={{
