@@ -124,6 +124,11 @@ export function mapToMenuData(p: ProductItem): MenuData {
     excludable,
     ingredients: p.ingredients,
     nutrition: mapNutrition(p.nutritionInfo),
+    spirit: {
+      healthGoals: p.spirit.healthGoals ?? [],
+      allergens: p.spirit.allergens ?? [],
+      spicy: Boolean(p.spirit.isSpicy ?? p.spirit.spicy),
+    },
   };
 }
 

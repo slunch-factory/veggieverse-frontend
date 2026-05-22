@@ -46,3 +46,6 @@ next-env.d.ts
 
 # tooling
 .omc/
+
+# Sentry Config File
+.sentryclirc

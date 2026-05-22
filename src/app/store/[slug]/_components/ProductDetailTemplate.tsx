@@ -284,10 +284,10 @@ function Sec4Process({ data, n }: { data: NonNullable<ProductDetailTemplateData[
         }}
       >
         {data.steps.map((step, i) => (
-          <div key={i} style={{ width: "100%" }}>
+          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: 10,
                 padding: "10px 24px",
@@ -295,6 +295,8 @@ function Sec4Process({ data, n }: { data: NonNullable<ProductDetailTemplateData[
                 borderRadius: 28,
                 fontSize: 17,
                 color: C.textMain,
+                width: "fit-content",
+                maxWidth: "100%",
               }}
             >
               <span style={{ fontWeight: 700, color: C.primary, fontSize: 19, flexShrink: 0 }}>

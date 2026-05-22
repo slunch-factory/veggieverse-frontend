@@ -3,7 +3,7 @@ export type ExcludeCategory = "dairy" | "shellfish" | "fish" | "nuts" | "chicken
 export type MenuCategory = "slim" | "protein";
 export type DietType = "vegan" | "pesco" | "pollo";
 export type NutritionGoal = "plant-based" | "low-carb" | "low-calorie" | "high-protein" | "low-sodium";
-export type AllergyFilter = "nuts" | "peanut" | "dairy" | "none";
+export type AllergyFilter = "nuts" | "peanut" | "dairy";
 export type SpicyPreference = "include" | "exclude";
 export type PurchaseType = "once" | "subscription";
 export type DeliveryCycle = "1month" | "2month";
@@ -21,6 +21,12 @@ export interface MenuNutrition {
   fat?: number;
 }
 
+export interface MenuSpirit {
+  healthGoals: string[];
+  allergens: string[];
+  spicy: boolean;
+}
+
 export interface MenuData {
   id: string;
   name: string;
@@ -32,6 +38,7 @@ export interface MenuData {
   excludable: ExcludeCategory[];
   ingredients?: MenuIngredient[];
   nutrition?: MenuNutrition;
+  spirit?: MenuSpirit;
 }
 
 export interface DisplayMenuData extends MenuData {
@@ -77,7 +84,6 @@ export const ALLERGY_FILTER_OPTIONS: { value: AllergyFilter; label: string }[] =
   { value: "nuts", label: "견과류" },
   { value: "peanut", label: "땅콩" },
   { value: "dairy", label: "유제품" },
-  { value: "none", label: "해당 없음" },
 ];
 
 export const SPICY_PREFERENCE_OPTIONS: { value: SpicyPreference; label: string }[] = [
