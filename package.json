@@ -5,13 +5,11 @@
   "packageManager": "pnpm@9.12.3",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && pnpm sentry:sourcemaps",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org slunchfactory --project veggieverse ./out && sentry-cli sourcemaps upload --org slunchfactory --project veggieverse ./out"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@sentry/cli": "^2",
     "@sentry/nextjs": "^10.53.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.3",
