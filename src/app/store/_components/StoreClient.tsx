@@ -14,16 +14,12 @@ const SORT_OPTIONS: SortOption[] = [
   { value: "popularDesc", label: "인기순" },
 ];
 
-const CATEGORY_TABS = [
-  "전체",
-  "샐러드",
-  "파스타",
-  "아시안 누들",
-  "월드 플레이트",
-  "뇨끼",
-  "라자냐",
-  "덮밥",
-  "리조또",
+const CATEGORY_TABS: { id: string; label: string }[] = [
+  { id: "전체",      label: "전체" },
+  { id: "밀키트",    label: "밀키트" },
+  { id: "베이커리",  label: "베이커리" },
+  { id: "소스와 오일", label: "소스/오일" },
+  { id: "세트",      label: "세트" },
 ];
 
 interface Props {
@@ -55,11 +51,11 @@ export function StoreClient({ initialProducts, currentSort }: Props) {
     : initialProducts.filter((p) => p.categories.includes(activeTab));
 
   const tabs: TabItem[] = CATEGORY_TABS.map((cat) => ({
-    id: cat,
-    label: cat,
-    count: cat === "전체"
+    id: cat.id,
+    label: cat.label,
+    count: cat.id === "전체"
       ? initialProducts.length
-      : initialProducts.filter((p) => p.categories.includes(cat)).length,
+      : initialProducts.filter((p) => p.categories.includes(cat.id)).length,
   }));
 
   const filterCount =

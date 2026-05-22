@@ -42,7 +42,7 @@ export default function TopControlBar({
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortBtnRef = useRef<HTMLButtonElement>(null);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortPos, setSortPos] = useState<{ top: number; right: number; width: number } | null>(null);
+  const [sortPos, setSortPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const currentSortLabel =
     sortOptions.find((o) => o.value === currentSort)?.label ?? "정렬";
@@ -52,8 +52,8 @@ export default function TopControlBar({
       const rect = sortBtnRef.current?.getBoundingClientRect();
       if (rect) {
         setSortPos({
-          top: rect.bottom,
-          right: window.innerWidth - rect.right,
+          top: rect.bottom + 6,
+          left: rect.left,
           width: rect.width,
         });
       }
@@ -154,8 +154,8 @@ export default function TopControlBar({
                 />
                 <div
                   role="listbox"
-                  className="fixed z-[191] flex flex-col bg-white border border-black border-t-0"
-                  style={{ top: sortPos.top, right: sortPos.right, width: sortPos.width }}
+                  className="fixed z-[191] flex flex-col bg-white border border-black"
+                  style={{ top: sortPos.top, left: sortPos.left, width: sortPos.width }}
                 >
                   {sortOptions.map((option) => {
                     const selected = option.value === currentSort;
