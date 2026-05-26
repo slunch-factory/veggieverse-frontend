@@ -137,7 +137,7 @@ export default function TopControlBar({
               onClick={handleSortToggle}
               aria-haspopup="listbox"
               aria-expanded={sortOpen}
-              className="flex items-center justify-between gap-1 border border-black bg-white text-black px-2.5 py-1 text-[13px] whitespace-nowrap"
+              className="flex min-w-[120px] items-center justify-between gap-1 border border-black bg-white text-black px-2.5 py-1 text-[13px] whitespace-nowrap"
             >
               <span>{currentSortLabel}</span>
               <ChevronDown
