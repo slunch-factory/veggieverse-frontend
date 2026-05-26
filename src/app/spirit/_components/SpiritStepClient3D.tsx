@@ -9,9 +9,9 @@ import type { SurveyAnswers } from '@/app/spirit/_types';
 import type { MenuData } from '@/app/subscribe/_data/subscription';
 import TarotCarousel3DSurvey, { type CarouselOption } from './TarotCarousel3DSurvey';
 import { getAutoPlan } from '@/lib/api/spirit';
-import { AmbientParticles } from './AmbientParticles';
 import { SelectRipple, type Ripple } from './SelectRipple';
 import { QuestionHeadline } from './QuestionHeadline';
+import { TrailBackground } from '@/components/effects/TrailBackground';
 
 const _backBase = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
 const BACK_CARD: CarouselOption = {
@@ -307,8 +307,8 @@ export function SpiritStepClient3D({ questions }: Props) {
 
   if (currentStep >= questions.length || currentStep < 0) {
     return (
-      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#212121' }}>
-        <p style={{ color: 'rgba(213,254,0,0.5)' }}>질문을 불러오는 중...</p>
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#868686' }}>
+        <p style={{ color: '#2D5A27' }}>질문을 불러오는 중...</p>
       </div>
     );
   }
@@ -342,10 +342,10 @@ export function SpiritStepClient3D({ questions }: Props) {
   const progressPct = (stepNum / totalSteps) * 100;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 'calc(100dvh - var(--header-area-h, 96px))', overflow: 'hidden', background: '#212121' }}>
+    <div style={{ position: 'relative', width: '100%', height: 'calc(100dvh - var(--header-area-h, 96px))', overflow: 'hidden', background: '#868686' }}>
 
-      {/* ── 배경 ambient 파티클 ─────────────────────────────────── */}
-      <AmbientParticles count={28} />
+      {/* ── 트레일 배경 (마우스 따라 metaball 셀이 생성) ─────────── */}
+      <TrailBackground bgColor={null} />
 
       {/* ── 선택 ripple 글로우 ──────────────────────────────────── */}
       <SelectRipple ripples={ripples} />
@@ -745,58 +745,8 @@ export function SpiritStepClient3D({ questions }: Props) {
       </div>
 
       {/* ── Bottom gradient overlay ───────────────────────────────── */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 9,
-        height: '40%',
-        background: 'linear-gradient(to top, rgba(33,33,33,0.95) 0%, rgba(33,33,33,0.55) 55%, transparent 100%)',
-        pointerEvents: 'none',
-        userSelect: 'none',
-      }} />
-
-      {/* ── Description panel ────────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {centerOpt && (
-          <motion.div
-            key={currentStep}
-            style={{
-              position: 'absolute',
-              ...(isMobile ? { top: '80%' } : { bottom: '10rem' }),
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              textAlign: 'center',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              padding: '0 2rem',
-            }}
-            initial={{ y: 64, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 0, opacity: 0 }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div style={{
-              fontSize: 'clamp(1.2rem, 2.6vw, 1.75rem)',
-              color: '#D5FE00',
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-              marginBottom: '0.35rem',
-            }}>
-              {centerOpt.label}
-            </div>
-            <div style={{
-              fontSize: 'clamp(0.68rem, 1.3vw, 0.8rem)',
-              color: 'rgba(213,254,0,0.45)',
-              lineHeight: 1.55,
-              letterSpacing: '0.01em',
-              maxWidth: 480,
-              margin: '0 auto',
-            }}>
-              {centerOpt.description}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 하단 다크 그라데이션 + 중앙 description 패널 — 사용자 요청으로 제거됨.
+          각 카드 하단에 자체 description이 보이도록 TarotCarousel3DSurvey가 표시함. */}
 
       {/* ── Navigation ───────────────────────────────────────────── */}
       <div style={{

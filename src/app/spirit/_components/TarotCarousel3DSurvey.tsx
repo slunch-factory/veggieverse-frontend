@@ -60,6 +60,9 @@ export default function TarotCarousel3DSurvey({
   const containerRef    = useRef<HTMLDivElement>(null);
   const cardRefs        = useRef<(HTMLDivElement | null)[]>([]);
   const overlayRefs     = useRef<(HTMLDivElement | null)[]>([]);
+  const descRefs        = useRef<(HTMLDivElement | null)[]>([]);
+  const descTitleRefs   = useRef<(HTMLDivElement | null)[]>([]);
+  const descTextRefs    = useRef<(HTMLDivElement | null)[]>([]);
   const selectedRef     = useRef(new Set(selectedValues));
   const onSelectRef     = useRef(onSelect);
   const centerIdxRef    = useRef(0);
@@ -133,6 +136,22 @@ export default function TarotCarousel3DSurvey({
         el.style.zIndex       = String(zIndex);
         el.style.opacity      = dist < 3.5 ? '1' : '0';
         el.style.pointerEvents = dist < 2.5 ? 'auto' : 'none';
+
+        // 카드 하단 설명 — 회전 없이 카드의 x/floatY/scale만 따라감 (텍스트는 읽기 좋게 평면 유지)
+        const descEl = descRefs.current[i];
+        if (descEl) {
+          descEl.style.transform = `translateX(${x}px) translateY(${floatY}px) scale(${scale})`;
+          // center 카드에 가까울수록 진하게, 멀어질수록 흐려짐
+          const descOpacity = Math.max(0, 1 - dist * 0.38);
+          descEl.style.opacity = String(dist < 3 ? descOpacity : 0);
+          descEl.style.zIndex = String(zIndex);
+        }
+
+        // 라벨/설명 색상 — 가운데 카드만 point 컬러, 나머지는 ink 컬러
+        const titleEl = descTitleRefs.current[i];
+        const textEl  = descTextRefs.current[i];
+        if (titleEl) titleEl.style.color = isCenter ? '#D5FE00' : '#250a00';
+        if (textEl)  textEl.style.color  = isCenter ? 'rgba(213,254,0,0.7)' : 'rgba(37,10,0,0.7)';
 
         // Overlay (exclusion mode) vs glow (normal mode)
         const overlayEl = overlayRefs.current[i];
@@ -305,66 +324,101 @@ export default function TarotCarousel3DSurvey({
         cursor: 'grab',
         touchAction: 'none',
         overflow: 'hidden',
-        background: '#212121',
-        // CSS perspective gives rotateY its 3D foreshortening
+        background: 'transparent', // 외부 TrailBackground가 보이도록 투명
         perspective: '1200px',
         perspectiveOrigin: '50% 50%',
       }}
     >
       {/* Cards — imperatively transformed by the rAF loop */}
       {options.map((opt, i) => (
-        <div
-          key={opt.value}
-          ref={(el) => { cardRefs.current[i] = el; }}
-          style={{
-            position:   'absolute',
-            left:       '50%',
-            top:        isMobileLayout ? '53%' : '45%',
-            marginLeft: -CARD_W / 2,
-            marginTop:  -CARD_H / 2,
-            width:      CARD_W,
-            height:     CARD_H,
-            borderRadius: 14,
-            overflow:   'hidden',
-            border:     '1.5px solid rgba(255,255,255,0.12)',
-            willChange: 'transform, filter, opacity',
-            cursor:     'pointer',
-            userSelect: 'none',
-            transition: 'border-color 0.25s, box-shadow 0.25s',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={opt.tarot?.image || CARD_BACK}
-            alt={opt.label}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            draggable={false}
-          />
-          {/* Exclusion overlay — opacity controlled imperatively by rAF */}
+        <div key={opt.value}>
           <div
-            ref={(el) => { overlayRefs.current[i] = el; }}
+            ref={(el) => { cardRefs.current[i] = el; }}
             style={{
-              position: 'absolute', inset: 0,
-              background: '#250a00',
-              opacity: 0,
-              transition: 'opacity 0.25s',
-              pointerEvents: 'none',
+              position:   'absolute',
+              left:       '50%',
+              top:        isMobileLayout ? '53%' : '45%',
+              marginLeft: -CARD_W / 2,
+              marginTop:  -CARD_H / 2,
+              width:      CARD_W,
+              height:     CARD_H,
+              borderRadius: 14,
+              overflow:   'hidden',
+              border:     '1.5px solid rgba(255,255,255,0.12)',
+              willChange: 'transform, filter, opacity',
+              cursor:     'pointer',
+              userSelect: 'none',
+              transition: 'border-color 0.25s, box-shadow 0.25s',
             }}
-          />
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={opt.tarot?.image || CARD_BACK}
+              alt={opt.label}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              draggable={false}
+            />
+            {/* Exclusion overlay — opacity controlled imperatively by rAF */}
+            <div
+              ref={(el) => { overlayRefs.current[i] = el; }}
+              style={{
+                position: 'absolute', inset: 0,
+                background: '#250a00',
+                opacity: 0,
+                transition: 'opacity 0.25s',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+          {/* 카드 하단 라벨 + 설명 — rAF로 각 카드 위치 따라 움직이며 항상 표시 */}
+          {!opt.nonSelectable ? (
+            <div
+              ref={(el) => { descRefs.current[i] = el; }}
+              style={{
+                position:      'absolute',
+                left:          '50%',
+                top:           isMobileLayout ? '53%' : '45%',
+                marginLeft:    -(isMobileLayout ? 150 : 200) / 2,
+                marginTop:     CARD_H / 2 + 16, // 카드 하단 + 16px gap
+                width:         isMobileLayout ? 150 : 200,
+                textAlign:     'center',
+                pointerEvents: 'none',
+                userSelect:    'none',
+                willChange:    'transform, opacity',
+              }}
+            >
+              <div
+                ref={(el) => { descTitleRefs.current[i] = el; }}
+                style={{
+                  fontSize:      isMobileLayout ? 15 : 17,
+                  fontWeight:    700,
+                  color:         '#250a00',
+                  letterSpacing: '-0.01em',
+                  lineHeight:    1.2,
+                  marginBottom:  6,
+                }}
+              >
+                {opt.label}
+              </div>
+              {opt.description ? (
+                <div
+                  ref={(el) => { descTextRefs.current[i] = el; }}
+                  style={{
+                    fontSize:   isMobileLayout ? 11 : 12.5,
+                    lineHeight: 1.45,
+                    color:      'rgba(37,10,0,0.7)',
+                    letterSpacing: '0.005em',
+                  }}
+                >
+                  {opt.description}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ))}
 
-      {/* Radial vignette — approximates Three.js exponential fog */}
-      <div
-        aria-hidden
-        style={{
-          position:     'absolute',
-          inset:        0,
-          pointerEvents: 'none',
-          zIndex:       8,
-          background:   'radial-gradient(ellipse 82% 58% at 50% 50%, transparent 28%, rgba(33,33,33,0.88) 100%)',
-        }}
-      />
+      {/* 라디얼 비넷 — 사용자 요청으로 제거됨 (배경은 #868686 단색) */}
 
       {/* Swipe-up hint — mobile only */}
       <div
