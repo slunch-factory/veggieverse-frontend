@@ -716,14 +716,20 @@ export function SignupClient() {
 
       <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
         <div className="mx-auto max-w-[560px] px-4 py-5 sm:py-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 t-small mb-4 sm:mb-6"
-            style={{ color: "var(--ink-light)" }}
+        
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = getSupabaseBrowserClient();
+              await supabase.auth.signOut();
+              router.push("/");
+            }}
+            className="inline-flex items-center gap-1 t-small mb-4 sm:mb-6 cursor-pointer"
+            style={{ color: "var(--ink-light)", background: "none", border: "none", padding: 0 }}
           >
             <ChevronLeft size={16} />
             홈으로
-          </Link>
+          </button>
 
           <h1 className="flex justify-center t-h2 mb-4 sm:mb-6" style={{ color: "var(--ink)" }}>
             회원가입
