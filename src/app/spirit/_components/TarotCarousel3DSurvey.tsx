@@ -60,6 +60,7 @@ export default function TarotCarousel3DSurvey({
   const containerRef    = useRef<HTMLDivElement>(null);
   const cardRefs        = useRef<(HTMLDivElement | null)[]>([]);
   const overlayRefs     = useRef<(HTMLDivElement | null)[]>([]);
+  const checkRefs       = useRef<(HTMLDivElement | null)[]>([]);
   const descRefs        = useRef<(HTMLDivElement | null)[]>([]);
   const descTitleRefs   = useRef<(HTMLDivElement | null)[]>([]);
   const descTextRefs    = useRef<(HTMLDivElement | null)[]>([]);
@@ -74,6 +75,8 @@ export default function TarotCarousel3DSurvey({
   const gestureRef      = useRef<'none' | 'h' | 'v'>('none');
   const verticalPullRef = useRef(0);
   const animCtrlRef     = useRef<{ stop: () => void } | null>(null);
+  // pointerdown 시점에 어떤 카드가 클릭됐는지 기록 — 카드 위에서만 탭이 인식됨
+  const tappedCardIdxRef = useRef(-1);
 
   // Framer-motion motion value: continuous floating-point carousel position
   const position = useMotionValue(0);
@@ -153,6 +156,10 @@ export default function TarotCarousel3DSurvey({
         if (titleEl) titleEl.style.color = isCenter ? '#D5FE00' : '#250a00';
         if (textEl)  textEl.style.color  = isCenter ? 'rgba(213,254,0,0.7)' : 'rgba(37,10,0,0.7)';
 
+        // 체크 마크 — 선택된 카드(중앙/사이드 무관)에 표시
+        const checkEl = checkRefs.current[i];
+        if (checkEl) checkEl.style.opacity = selected ? '1' : '0';
+
         // Overlay (exclusion mode) vs glow (normal mode)
         const overlayEl = overlayRefs.current[i];
         if (isExclusion) {
@@ -223,6 +230,17 @@ export default function TarotCarousel3DSurvey({
     if (!el) return;
 
     const onPointerDown = (e: PointerEvent) => {
+      // pointerdown이 실제로 어떤 카드 위에 떨어졌는지 기록 — 빈 공간 탭은 무시한다
+      tappedCardIdxRef.current = -1;
+      const target = e.target as Node;
+      for (let i = 0; i < N; i++) {
+        const cardEl = cardRefs.current[i];
+        if (cardEl && cardEl.contains(target)) {
+          tappedCardIdxRef.current = i;
+          break;
+        }
+      }
+
       isDraggingRef.current   = true;
       hasMovedRef.current     = false;
       dragStartXRef.current   = e.clientX;
@@ -232,7 +250,6 @@ export default function TarotCarousel3DSurvey({
       verticalPullRef.current = 0;
       if (animCtrlRef.current) animCtrlRef.current.stop();
       el.setPointerCapture(e.pointerId);
-      el.style.cursor = 'grabbing';
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -258,30 +275,16 @@ export default function TarotCarousel3DSurvey({
     const onPointerUp = (e: PointerEvent) => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
-      el.style.cursor = 'grab';
 
       if (!hasMovedRef.current) {
-        // Tap: find the card closest to the tap position
-        const rect = el.getBoundingClientRect();
-        const tapX = e.clientX - rect.left - rect.width / 2;
-        const pos  = position.get();
-        let closestIdx = -1;
-        let closestDist = Infinity;
-
-        for (let i = 0; i < N; i++) {
-          const vOff = circularOff(i - pos, N);
-          if (Math.abs(vOff) >= 2.5) continue;
-          const d = Math.abs(tapX - vOff * X_STEP);
-          if (d < closestDist) { closestDist = d; closestIdx = i; }
-        }
-
-        if (closestIdx >= 0) {
-          if (closestIdx === centerIdxRef.current) {
-            if (!options[closestIdx].nonSelectable) {
-              onSelectRef.current(options[closestIdx].value, e.clientX, e.clientY);
-            }
-          } else {
-            snapTo(closestIdx);
+        // Tap: pointerdown 때 기록해둔 카드 인덱스로만 처리 (빈 공간 탭은 -1 → 무시)
+        const idx = tappedCardIdxRef.current;
+        if (idx >= 0 && idx < N) {
+          const opt = options[idx];
+          // 카드가 중앙에 없으면 먼저 스냅, 선택 가능하면 즉시 선택 — 한 번 탭으로 선택까지
+          if (idx !== centerIdxRef.current) snapTo(idx);
+          if (!opt.nonSelectable) {
+            onSelectRef.current(opt.value, e.clientX, e.clientY);
           }
         }
       } else if (gestureRef.current === 'v') {
@@ -321,10 +324,11 @@ export default function TarotCarousel3DSurvey({
       style={{
         position: 'absolute',
         inset: 0,
-        cursor: 'grab',
+        // 배경 위에서는 기본 커서 — 카드 위에서만 pointer로 바뀐다 (개별 카드의 cursor: pointer)
+        cursor: 'default',
         touchAction: 'none',
         overflow: 'hidden',
-        background: 'transparent', // 외부 TrailBackground가 보이도록 투명
+        background: 'transparent',
         perspective: '1200px',
         perspectiveOrigin: '50% 50%',
       }}
@@ -369,6 +373,35 @@ export default function TarotCarousel3DSurvey({
                 pointerEvents: 'none',
               }}
             />
+            {/* 선택 체크 표시 — selected 카드에만 표시 (rAF가 opacity 토글) */}
+            {!opt.nonSelectable && (
+              <div
+                ref={(el) => { checkRefs.current[i] = el; }}
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  width: 30,
+                  height: 30,
+                  borderRadius: '50%',
+                  background: '#dcfd4a',
+                  color: '#250a00',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 17,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  transition: 'opacity 0.18s ease-out, transform 0.18s ease-out',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.45), 0 0 12px rgba(220,253,74,0.55)',
+                  zIndex: 3,
+                }}
+              >
+                ✓
+              </div>
+            )}
           </div>
           {/* 카드 하단 라벨 + 설명 — rAF로 각 카드 위치 따라 움직이며 항상 표시 */}
           {!opt.nonSelectable ? (
