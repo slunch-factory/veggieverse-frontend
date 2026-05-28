@@ -11,7 +11,6 @@ import TarotCarousel3DSurvey, { type CarouselOption } from './TarotCarousel3DSur
 import { getAutoPlan } from '@/lib/api/spirit';
 import { SelectRipple, type Ripple } from './SelectRipple';
 import { QuestionHeadline } from './QuestionHeadline';
-import { TrailBackground } from '@/components/effects/TrailBackground';
 
 const _backBase = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
 const BACK_CARD: CarouselOption = {
@@ -53,6 +52,8 @@ interface FlyCard {
   fromY: number;
   spin: number;        // random rotation during flight
   flying: boolean;     // false = at source (no transition), true = flying to deck
+  targetX: number;     // 측정된 deck 새 카드 슬롯 X (flying:true 시점에 채워짐)
+  targetY: number;     // 측정된 deck 새 카드 슬롯 Y
 }
 
 interface Props {
@@ -70,7 +71,7 @@ export function SpiritStepClient3D({ questions }: Props) {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
-  const [centerOpt, setCenterOpt] = useState<CarouselOption | null>(null);
+  const [, setCenterOpt] = useState<CarouselOption | null>(null);
   const [nextBtnState, setNextBtnState] = useState<'idle' | 'hover' | 'active' | 'focus'>('idle');
   const [backBtnState, setBackBtnState] = useState<'idle' | 'hover' | 'active' | 'focus'>('idle');
   const [ripples, setRipples] = useState<Ripple[]>([]);
@@ -161,12 +162,27 @@ export function SpiritStepClient3D({ questions }: Props) {
     const spin = (Math.random() - 0.5) * 40; // random tilt during flight
 
     // Step 1: render at source (no transition)
-    setFlyCards((prev) => [...prev, { id, image: option.tarot!.image, fromX: screenX, fromY: screenY, spin, flying: false }]);
+    setFlyCards((prev) => [
+      ...prev,
+      { id, image: option.tarot!.image, fromX: screenX, fromY: screenY, spin, flying: false, targetX: 0, targetY: 0 },
+    ]);
 
-    // Step 2: next frame → start transition to deck
+    // Step 2: 다음 페인트 이후 → deck rect 측정(이 시점엔 새 카드가 이미 추가됨) → 비행 시작
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        setFlyCards((prev) => prev.map((c) => c.id === id ? { ...c, flying: true } : c));
+        const rect = deckRef.current?.getBoundingClientRect();
+        let targetX = (typeof window !== 'undefined' ? window.innerWidth : 800) - 50;
+        let targetY = 60;
+        if (rect) {
+          if (window.innerWidth < 768) {
+            targetX = rect.right - 30;
+            targetY = rect.top + rect.height / 2;
+          } else {
+            targetX = rect.left + rect.width / 2;
+            targetY = rect.bottom - 30;
+          }
+        }
+        setFlyCards((prev) => prev.map((c) => c.id === id ? { ...c, flying: true, targetX, targetY } : c));
       });
     });
 
@@ -183,29 +199,42 @@ export function SpiritStepClient3D({ questions }: Props) {
     const option = question?.options.find((o) => o.value === value);
 
     if (question?.multiSelect) {
-      setAnswers((prev) => {
-        const current = hasInteracted ? (prev[questionId] as string[] | undefined) ?? [] : [];
-        let nextVals: string[];
+      // 클로저의 answers 기준으로 "추가/제거"를 미리 판정 — setAnswers updater 내부에서는
+      // side effect(triggerFly)를 호출하지 않는다 (React 18 strict mode에서 updater가
+      // 두 번 실행되어 fly card·ripple이 중복 생성되는 버그 방지).
+      const current = hasInteracted ? (answers[questionId] as string[] | undefined) ?? [] : [];
+      let isAdding: boolean;
+      if (questionId === ALLERGY_QUESTION_ID) {
+        if (value === 'no-allergy') {
+          isAdding = !(current.includes('no-allergy') && current.length === 1);
+        } else {
+          isAdding = !current.includes(value);
+        }
+      } else {
+        isAdding = !current.includes(value);
+      }
 
+      setAnswers((prev) => {
+        const cur = interactedQuestions.has(questionId)
+          ? (prev[questionId] as string[] | undefined) ?? []
+          : [];
+        let nextVals: string[];
         if (questionId === ALLERGY_QUESTION_ID) {
           if (value === 'no-allergy') {
-            nextVals = current.includes('no-allergy') && current.length === 1 ? [] : ['no-allergy'];
+            nextVals = cur.includes('no-allergy') && cur.length === 1 ? [] : ['no-allergy'];
           } else {
-            const base = current.filter((v) => v !== 'no-allergy');
+            const base = cur.filter((v) => v !== 'no-allergy');
             nextVals = base.includes(value) ? base.filter((v) => v !== value) : [...base, value];
           }
         } else {
-          nextVals = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+          nextVals = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
         }
-
-        // Fly animation only for newly added cards
-        const isNewlyAdded = !current.includes(value) && nextVals.includes(value);
-        if (isNewlyAdded && option && screenX !== undefined && screenY !== undefined) {
-          triggerFly(option, screenX, screenY);
-        }
-
         return { ...prev, [questionId]: nextVals };
       });
+
+      if (isAdding && option && screenX !== undefined && screenY !== undefined) {
+        triggerFly(option, screenX, screenY);
+      }
     } else {
       const currentVal = answers[questionId] as string | undefined;
       if (currentVal === value && interactedQuestions.has(questionId)) {
@@ -219,7 +248,7 @@ export function SpiritStepClient3D({ questions }: Props) {
     }
 
     setInteractedQuestions((prev) => new Set(prev).add(questionId));
-  }, [interactedQuestions, questions, triggerFly]);
+  }, [answers, interactedQuestions, questions, triggerFly]);
 
   const handleNext = async () => {
     if (currentStep < questions.length - 1) {
@@ -331,21 +360,10 @@ export function SpiritStepClient3D({ questions }: Props) {
   const showNext = isMulti || stepNum === 1 || isLastStep;
   const nextDisabled = showNext && !hasSelection;
 
-  // Deck target position (center of deck element)
-  const getDeckCenter = () => {
-    const rect = deckRef.current?.getBoundingClientRect();
-    return rect
-      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-      : { x: (typeof window !== 'undefined' ? window.innerWidth : 800) - 50, y: 60 };
-  };
-
   const progressPct = (stepNum / totalSteps) * 100;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: 'calc(100dvh - var(--header-area-h, 96px))', overflow: 'hidden', background: '#868686' }}>
-
-      {/* ── 트레일 배경 (마우스 따라 metaball 셀이 생성) ─────────── */}
-      <TrailBackground bgColor={null} />
 
       {/* ── 선택 ripple 글로우 ──────────────────────────────────── */}
       <SelectRipple ripples={ripples} />
@@ -612,38 +630,35 @@ export function SpiritStepClient3D({ questions }: Props) {
       </div>
 
       {/* ── Flying cards ─────────────────────────────────────────── */}
-      {flyCards.map((fc) => {
-        const deck = getDeckCenter();
-        return (
-          <div
-            key={fc.id}
-            style={{
-              position: 'fixed',
-              left: 0,
-              top: 0,
-              width: 64,
-              height: 106,
-              pointerEvents: 'none',
-              zIndex: 200,
-              borderRadius: 8,
-              overflow: 'hidden',
-              transformOrigin: '50% 50%',
-              willChange: 'transform, opacity',
-              transform: fc.flying
-                ? `translate(${deck.x - 32}px, ${deck.y - 53}px) scale(0.22) rotate(${fc.spin}deg)`
-                : `translate(${fc.fromX - 32}px, ${fc.fromY - 53}px) scale(1) rotate(0deg)`,
-              opacity: fc.flying ? 0 : 1,
-              transition: fc.flying
-                ? 'transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.45s 0.3s ease-in'
-                : 'none',
-              boxShadow: '0 8px 32px rgba(136,100,255,0.45)',
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={fc.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
-          </div>
-        );
-      })}
+      {flyCards.map((fc) => (
+        <div
+          key={fc.id}
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            width: 64,
+            height: 106,
+            pointerEvents: 'none',
+            zIndex: 200,
+            borderRadius: 8,
+            overflow: 'hidden',
+            transformOrigin: '50% 50%',
+            willChange: 'transform, opacity',
+            transform: fc.flying
+              ? `translate(${fc.targetX - 32}px, ${fc.targetY - 53}px) scale(0.22) rotate(${fc.spin}deg)`
+              : `translate(${fc.fromX - 32}px, ${fc.fromY - 53}px) scale(1) rotate(0deg)`,
+            opacity: fc.flying ? 0 : 1,
+            transition: fc.flying
+              ? 'transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.45s 0.3s ease-in'
+              : 'none',
+            boxShadow: '0 8px 32px rgba(136,100,255,0.45)',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={fc.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+        </div>
+      ))}
 
       {/* ── Top overlay: step + question (dark, left-aligned) ──── */}
       <div style={{
