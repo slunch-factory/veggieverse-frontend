@@ -183,15 +183,29 @@ export default function HomePage() {
         ref={containerRef}
         className="relative w-full bg-white flex flex-col pt-[clamp(40px,8vw,80px)] px-[clamp(20px,5vw,60px)]"
         style={{
-          backgroundImage: `url(${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/bg.png)`,
-          backgroundSize: "cover",
-          backgroundPosition: "center top",
-          backgroundRepeat: "no-repeat",
           minHeight: "calc(100vh - var(--header-h, 0px))",
           height: "calc(100vh - var(--header-h, 0px))",
           clipPath: "inset(-40px -50px 0 -50px)",
         }}
       >
+        {/* 히어로 배경 — LCP 최적화: next/image priority(AVIF/WebP 자동 변환 + preload).
+            clipPath 확장 영역(top -40 / 좌우 -50)에 맞춰 bleed 처리. */}
+        <div
+          aria-hidden
+          className="absolute -top-[40px] -left-[50px] -right-[50px] bottom-0 z-0 overflow-hidden pointer-events-none"
+        >
+          <Image
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/bg.png`}
+            alt=""
+            fill
+            priority
+            fetchPriority="high"
+            sizes="100vw"
+            className="object-cover"
+            style={{ objectPosition: "center top" }}
+          />
+        </div>
+
         {/* 야채 플로팅 영역 */}
         <div className="absolute -top-[40px] -left-[50px] -right-[50px] -bottom-[40px] pointer-events-none">
           {items.map((item) => {
@@ -230,20 +244,25 @@ export default function HomePage() {
                     style={{ opacity: isSelected || hoveredItemId === item.id ? 0 : 1 }}
                     draggable={false}
                   />
-                  {/* 컬러 실루엣 */}
+                  {/* 컬러 실루엣 — hover/select 때만 보이므로, 그 때만 mask URL을 설정해
+                      원본 PNG의 불필요한 초기 로드(채소 전체 ~10MB)를 방지 */}
                   <div
                     className="w-full h-full absolute inset-0 z-[2] pointer-events-none"
                     style={{
                       backgroundColor: item.labelColor,
-                      WebkitMaskImage: `url(${item.imageUrl})`,
-                      WebkitMaskSize: "contain",
-                      WebkitMaskRepeat: "no-repeat",
-                      WebkitMaskPosition: "center",
-                      maskImage: `url(${item.imageUrl})`,
-                      maskSize: "contain",
-                      maskRepeat: "no-repeat",
-                      maskPosition: "center",
-                      opacity: isSelected || hoveredItemId === item.id ? 1 : 0,
+                      ...(isSelected || hoveredItemId === item.id
+                        ? {
+                            WebkitMaskImage: `url(${item.imageUrl})`,
+                            WebkitMaskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskImage: `url(${item.imageUrl})`,
+                            maskSize: "contain",
+                            maskRepeat: "no-repeat",
+                            maskPosition: "center",
+                            opacity: 1,
+                          }
+                        : { opacity: 0 }),
                     }}
                   />
                   {/* 호버 시 이름 */}

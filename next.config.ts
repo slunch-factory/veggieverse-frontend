@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: "",
   },
   transpilePackages: ['three'],
+  images: {
+    // next/image 자동 변환 포맷 — AVIF 우선(가장 작음), 미지원 시 WebP fallback
+    formats: ['image/avif', 'image/webp'],
+  },
 };
 
 export default withSentryConfig(nextConfig, {
