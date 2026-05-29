@@ -185,7 +185,7 @@ export default function HomePage() {
         style={{
           backgroundImage: `url(${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/bg.png)`,
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "center top",
           backgroundRepeat: "no-repeat",
           minHeight: "calc(100vh - var(--header-h, 0px))",
           height: "calc(100vh - var(--header-h, 0px))",
