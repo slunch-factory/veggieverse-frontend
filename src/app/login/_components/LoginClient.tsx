@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -10,8 +10,16 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 const KAKAO_YELLOW = "#FEE500";
 const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
+/** 오픈 리다이렉트 방지: 같은 사이트 절대경로(`/...`)만 허용. 그 외엔 홈으로. */
+function safeRedirect(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
+
 export function LoginClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = safeRedirect(searchParams.get("redirect"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -36,12 +44,12 @@ export function LoginClient() {
       await supabase.auth.setSession(result.session);
     }
     setSubmitting(false);
-    router.push("/");
+    router.push(redirectTo);
   };
 
   const handleKakaoLogin = async () => {
     setErrorMessage(null);
-    const result = await signInWithKakaoAction("/");
+    const result = await signInWithKakaoAction(redirectTo);
     if (!result.ok) {
       setErrorMessage(result.error);
       return;

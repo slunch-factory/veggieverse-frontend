@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { OrderClient } from "./_components/OrderClient";
+import { OrderAuthGuard } from "./_components/OrderAuthGuard";
 
 export default function OrderPage() {
   return (
     <Suspense>
-      <OrderClient />
+      <OrderAuthGuard>
+        <OrderClient />
+      </OrderAuthGuard>
     </Suspense>
   );
 }

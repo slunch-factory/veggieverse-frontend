@@ -104,9 +104,9 @@ export function OrderClient() {
     const stored = sessionStorage.getItem("directBuyItem");
     if (!stored) return null;
     try {
-      const item = JSON.parse(stored);
-      sessionStorage.removeItem("directBuyItem");
-      return item;
+      // 즉시 삭제하지 않는다 — 로그인 가드 redirect 복귀나 뒤로가기(bfcache) reload 시에도
+      // 바로구매 아이템이 보존되도록. 다음 바로구매가 덮어쓰므로 staleness 위험은 낮다.
+      return JSON.parse(stored);
     } catch {
       return null;
     }
