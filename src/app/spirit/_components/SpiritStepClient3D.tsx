@@ -12,14 +12,6 @@ import { getAutoPlan } from '@/lib/api/spirit';
 import { SelectRipple, type Ripple } from './SelectRipple';
 import { QuestionHeadline } from './QuestionHeadline';
 
-const _backBase = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
-const BACK_CARD: CarouselOption = {
-  label: '',
-  value: '__back__',
-  nonSelectable: true,
-  tarot: { number: '', title: '', image: `${_backBase}/images/tarot/card-back.png` },
-};
-
 const ALLERGY_QUESTION_ID = 3;
 const _base = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
 const PLAN_LOADING_LOTTIE_SRC = `${_base}/Loading%20Animation.json`;
@@ -379,7 +371,7 @@ export function SpiritStepClient3D({ questions }: Props) {
           transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
         >
           <TarotCarousel3DSurvey
-            options={(currentStep === 2 || isLastStep) ? [...q.options, BACK_CARD] : q.options}
+            options={q.options}
             selectedValues={selectedValues}
             onSelect={(value, sx, sy) => handleOptionSelect(q.id, value, sx, sy)}
             onCenterChange={setCenterOpt}

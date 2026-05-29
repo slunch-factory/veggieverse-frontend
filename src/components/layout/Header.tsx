@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Menu } from "lucide-react";
+import { User, Menu, ShoppingCart } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { useCart } from "@/contexts/CartContext";
 import { getUserProfile } from "@/lib/api/user";
@@ -93,10 +93,18 @@ export function Header({ showTopBanner = false }: HeaderProps) {
             {/* Cart */}
             <Link
               href="/cart"
-              className="h-10 flex items-center justify-center px-1 text-sm text-black"
-              aria-label="장바구니"
+              className="relative w-10 h-10 flex items-center justify-center"
+              aria-label={`장바구니${totalCount > 0 ? ` (${totalCount}개 담김)` : ""}`}
             >
-              ({totalCount})
+              <ShoppingCart size={22} strokeWidth={1.5} color="#000" />
+              {totalCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1 right-1 min-w-4.5 h-4.5 px-1 rounded-full bg-[#FF3B30] text-white text-[10px] font-bold flex items-center justify-center leading-none border-[1.5px] border-[#DCFD4A]"
+                >
+                  {totalCount > 99 ? "99+" : totalCount}
+                </span>
+              )}
             </Link>
 
             {/* User Profile */}

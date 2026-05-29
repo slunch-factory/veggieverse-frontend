@@ -8,7 +8,6 @@ export interface CarouselOption {
   value: string;
   description?: string;
   tarot?: { number: string; title: string; image: string };
-  nonSelectable?: boolean;
 }
 
 interface Props {
@@ -25,9 +24,6 @@ interface Props {
   isMobile?: boolean;
   isExclusion?: boolean;
 }
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const CARD_BACK = `${BASE}/images/tarot/card-back.png`;
 
 const DRAG_SENS         = 175;  // px per card step
 const SWIPE_UP_THRESHOLD = 70;  // px to trigger mobile selection
@@ -87,7 +83,7 @@ export default function TarotCarousel3DSurvey({
   const updatePanel = useCallback((idx: number) => {
     const i = ((Math.round(idx) % N) + N) % N;
     const opt = options[i];
-    if (!opt || opt.nonSelectable) return; // back-card: keep previous panel content
+    if (!opt) return;
     onCenterChange?.(opt);
     if (hoverTitleRef?.current)  hoverTitleRef.current.textContent   = '';
     if (hoverLabelRef?.current)  hoverLabelRef.current.textContent   = opt.label;
@@ -199,11 +195,7 @@ export default function TarotCarousel3DSurvey({
 
   // Snap to a card index using framer-motion spring animation
   const snapTo = useCallback((rawIdx: number) => {
-    // If target card is non-selectable (back card), redirect to the card before it
-    const normalized = ((rawIdx % N) + N) % N;
-    const idx = options[normalized]?.nonSelectable
-      ? ((normalized - 1 + N) % N)
-      : normalized;
+    const idx = ((rawIdx % N) + N) % N;
 
     const currentPos = position.get();
     const diff   = circularOff(idx - currentPos, N);
@@ -222,7 +214,7 @@ export default function TarotCarousel3DSurvey({
 
     centerIdxRef.current = idx;
     updatePanel(idx);
-  }, [N, position, updatePanel, options]);
+  }, [N, position, updatePanel]);
 
   // Pointer event handling
   useEffect(() => {
@@ -281,16 +273,14 @@ export default function TarotCarousel3DSurvey({
         const idx = tappedCardIdxRef.current;
         if (idx >= 0 && idx < N) {
           const opt = options[idx];
-          // 카드가 중앙에 없으면 먼저 스냅, 선택 가능하면 즉시 선택 — 한 번 탭으로 선택까지
+          // 카드가 중앙에 없으면 먼저 스냅, 즉시 선택 — 한 번 탭으로 선택까지
           if (idx !== centerIdxRef.current) snapTo(idx);
-          if (!opt.nonSelectable) {
-            onSelectRef.current(opt.value, e.clientX, e.clientY);
-          }
+          onSelectRef.current(opt.value, e.clientX, e.clientY);
         }
       } else if (gestureRef.current === 'v') {
         if (verticalPullRef.current >= SWIPE_UP_THRESHOLD) {
           const centerOpt = options[centerIdxRef.current];
-          if (centerOpt && !centerOpt.nonSelectable) {
+          if (centerOpt) {
             onSelectRef.current(centerOpt.value, e.clientX, e.clientY);
           }
         }
@@ -357,7 +347,7 @@ export default function TarotCarousel3DSurvey({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={opt.tarot?.image || CARD_BACK}
+              src={opt.tarot?.image}
               alt={opt.label}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               draggable={false}
@@ -374,80 +364,76 @@ export default function TarotCarousel3DSurvey({
               }}
             />
             {/* 선택 체크 표시 — selected 카드에만 표시 (rAF가 opacity 토글) */}
-            {!opt.nonSelectable && (
-              <div
-                ref={(el) => { checkRefs.current[i] = el; }}
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  width: 30,
-                  height: 30,
-                  borderRadius: '50%',
-                  background: '#dcfd4a',
-                  color: '#250a00',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 17,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  opacity: 0,
-                  pointerEvents: 'none',
-                  transition: 'opacity 0.18s ease-out, transform 0.18s ease-out',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.45), 0 0 12px rgba(220,253,74,0.55)',
-                  zIndex: 3,
-                }}
-              >
-                ✓
-              </div>
-            )}
-          </div>
-          {/* 카드 하단 라벨 + 설명 — rAF로 각 카드 위치 따라 움직이며 항상 표시 */}
-          {!opt.nonSelectable ? (
             <div
-              ref={(el) => { descRefs.current[i] = el; }}
+              ref={(el) => { checkRefs.current[i] = el; }}
               style={{
-                position:      'absolute',
-                left:          '50%',
-                top:           isMobileLayout ? '53%' : '45%',
-                marginLeft:    -(isMobileLayout ? 150 : 200) / 2,
-                marginTop:     CARD_H / 2 + 16, // 카드 하단 + 16px gap
-                width:         isMobileLayout ? 150 : 200,
-                textAlign:     'center',
+                position: 'absolute',
+                top: 10,
+                right: 10,
+                width: 30,
+                height: 30,
+                borderRadius: '50%',
+                background: '#dcfd4a',
+                color: '#250a00',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 17,
+                fontWeight: 800,
+                lineHeight: 1,
+                opacity: 0,
                 pointerEvents: 'none',
-                userSelect:    'none',
-                willChange:    'transform, opacity',
+                transition: 'opacity 0.18s ease-out, transform 0.18s ease-out',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.45), 0 0 12px rgba(220,253,74,0.55)',
+                zIndex: 3,
               }}
             >
+              ✓
+            </div>
+          </div>
+          {/* 카드 하단 라벨 + 설명 — rAF로 각 카드 위치 따라 움직이며 항상 표시 */}
+          <div
+            ref={(el) => { descRefs.current[i] = el; }}
+            style={{
+              position:      'absolute',
+              left:          '50%',
+              top:           isMobileLayout ? '53%' : '45%',
+              marginLeft:    -(isMobileLayout ? 150 : 200) / 2,
+              marginTop:     CARD_H / 2 + 16, // 카드 하단 + 16px gap
+              width:         isMobileLayout ? 150 : 200,
+              textAlign:     'center',
+              pointerEvents: 'none',
+              userSelect:    'none',
+              willChange:    'transform, opacity',
+            }}
+          >
+            <div
+              ref={(el) => { descTitleRefs.current[i] = el; }}
+              style={{
+                fontSize:      isMobileLayout ? 15 : 17,
+                fontWeight:    700,
+                color:         '#250a00',
+                letterSpacing: '-0.01em',
+                lineHeight:    1.2,
+                marginBottom:  6,
+              }}
+            >
+              {opt.label}
+            </div>
+            {opt.description ? (
               <div
-                ref={(el) => { descTitleRefs.current[i] = el; }}
+                ref={(el) => { descTextRefs.current[i] = el; }}
                 style={{
-                  fontSize:      isMobileLayout ? 15 : 17,
-                  fontWeight:    700,
-                  color:         '#250a00',
-                  letterSpacing: '-0.01em',
-                  lineHeight:    1.2,
-                  marginBottom:  6,
+                  fontSize:   isMobileLayout ? 11 : 12.5,
+                  lineHeight: 1.45,
+                  color:      'rgba(37,10,0,0.7)',
+                  letterSpacing: '0.005em',
                 }}
               >
-                {opt.label}
+                {opt.description}
               </div>
-              {opt.description ? (
-                <div
-                  ref={(el) => { descTextRefs.current[i] = el; }}
-                  style={{
-                    fontSize:   isMobileLayout ? 11 : 12.5,
-                    lineHeight: 1.45,
-                    color:      'rgba(37,10,0,0.7)',
-                    letterSpacing: '0.005em',
-                  }}
-                >
-                  {opt.description}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       ))}
 
