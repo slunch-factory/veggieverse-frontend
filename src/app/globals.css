@@ -571,7 +571,9 @@ body.no-scroll { overflow: hidden; }
 
 .site-footer {
   position: relative;
-  z-index: 60;
+  /* 페이지 콘텐츠보다는 위, 고정 헤더/사이드바 드로어(z-50 컨테이너)보다는 아래.
+     이전 z-index:60은 헤더보다 높아 드로어 하단을 가렸음. */
+  z-index: 10;
 }
 
 /* ============================================
