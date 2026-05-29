@@ -1,3 +1,11 @@
+import { redirect } from "next/navigation";
+
+// 이벤트 기능 임시 숨김 — 직접 URL 접근도 홈으로 차단. 재오픈 시 아래 원본 복원.
+export default function EventDetailPage() {
+  redirect("/");
+}
+
+/* 원본 (이벤트 재오픈 시 복원)
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -37,7 +45,7 @@ export default async function EventDetailPage({ params }: Props) {
 
   return (
     <div className="bg-[var(--cream)] min-h-screen">
-      {/* 상단 네비게이션 */}
+      {/* 상단 네비게이션 *\/}
       <div
         className="fixed left-0 right-0 z-[45] bg-white border-b border-black"
         style={{ top: "var(--header-area-h, 72px)" }}
@@ -51,9 +59,9 @@ export default async function EventDetailPage({ params }: Props) {
       </div>
 
       <div className="max-w-[960px] mx-auto px-6 pt-[80px] pb-16">
-        {/* 히어로 이미지 */}
+        {/* 히어로 이미지 *\/}
         <div className="relative w-full aspect-[16/9] bg-[#E5E5E0] overflow-hidden rounded-[4px] mb-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* eslint-disable-next-line @next/next/no-img-element *\/}
           <img
             src={event.thumbnail}
             alt={event.title}
@@ -76,7 +84,6 @@ export default async function EventDetailPage({ params }: Props) {
           </span>
         </div>
 
-        {/* 이벤트 정보 */}
         <h1 className="text-[28px] leading-[1.3] text-black mb-3">
           {event.title}
         </h1>
@@ -87,7 +94,6 @@ export default async function EventDetailPage({ params }: Props) {
           <span>기간: {event.startDate} - {event.endDate}</span>
         </div>
 
-        {/* 상세 내용 placeholder */}
         <div className="py-16 text-center text-[14px] text-[#9A9A9A]">
           이벤트 상세 내용이 여기에 표시됩니다.
         </div>
@@ -95,3 +101,4 @@ export default async function EventDetailPage({ params }: Props) {
     </div>
   );
 }
+*/

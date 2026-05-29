@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-
+// 이벤트 기능 임시 숨김 — 배너 클릭 시 /event 이동 차단(Link → span). 복구 시 Link 재도입.
 interface TopBannerProps {
   onClose: () => void;
 }
@@ -34,15 +33,13 @@ export function TopBanner({ onClose }: TopBannerProps) {
             aria-hidden={half === 1 ? "true" : undefined}
           >
             {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <Link
+              <span
                 key={i}
-                href="/event"
-                className="text-[#DCFD4A] text-[12px] leading-[1.2] whitespace-nowrap"
+                className="text-[#DCFD4A] text-[12px] leading-[1.2] whitespace-nowrap select-none"
                 style={{ paddingRight: "6rem" }}
-                tabIndex={half === 0 && i === 0 ? 0 : -1}
               >
                 {MESSAGE}
-              </Link>
+              </span>
             ))}
           </div>
         ))}

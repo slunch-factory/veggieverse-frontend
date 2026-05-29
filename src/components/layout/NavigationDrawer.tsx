@@ -43,7 +43,8 @@ const menuItems: MenuItem[] = [
   { name: "Subscription", path: "/subscribe" },
   { name: "Recipe", path: "/recipe" },
   { name: "Newsletter", path: "/newsletter" },
-  { name: "Event", path: "/event" },
+  // 이벤트 기능 임시 숨김 — 재오픈 시 주석 해제
+  // { name: "Event", path: "/event" },
   { name: "Experts", path: "https://slunch-catalog.vercel.app/ko/fob", external: true },
   { name: "OEM", path: "https://slunch-catalog.vercel.app/ko/oemodm", external: true },
 ];
@@ -60,6 +61,17 @@ export function NavigationDrawer({
   const pathname = usePathname();
   const router = useRouter();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  // 슬라이드-인 트리거: 마운트 직후 한 프레임 뒤에 true로 바꿔 transition이 실제로 발화하도록.
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShow(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setShow(true));
+    return () => cancelAnimationFrame(id);
+  }, [isOpen]);
 
   // Body scroll lock
   useEffect(() => {
@@ -113,13 +125,13 @@ export function NavigationDrawer({
       {/* Drawer Panel */}
       <div
         className={`absolute left-0 bottom-0 w-[80vw] max-w-[400px] bg-white flex flex-col overflow-y-auto border-r border-black transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          show ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ top: showTopBanner ? "var(--promo-h)" : 0 }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 영역 */}
-        <div className="h-[var(--header-h)] flex items-center justify-start px-4 border-b border-black shrink-0">
+        <div className="h-[var(--header-h)] flex items-center justify-end px-4 border-b border-black shrink-0">
           <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center bg-transparent border-none cursor-pointer p-0"
