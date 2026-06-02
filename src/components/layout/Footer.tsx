@@ -103,7 +103,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 text-[10px]"
              style={{ color: "rgba(37,10,0,0.55)" }}>
           <p className="break-keep leading-relaxed">
-            (주)슬런치팩토리 {DOT} 대표 이현아 {DOT} 사업자번호 288-86-02863 {DOT} 통신판매업 제2023-경기부천-0868호 {DOT} 경기 부천시 소사로160번길 23-8 {DOT} 대표전화 032-224-6525 {DOT} 우리은행 1005-504-450570
+            (주)슬런치팩토리 {DOT} 대표 이현아 {DOT} 사업자번호 288-86-02863 {DOT} 통신판매업 제2023-경기부천-0868호 {DOT} 대전광역시 유성구 은구비로 8, 502호(지족동) {DOT} 대표전화 032-224-6525 {DOT} 우리은행 1005-504-450570
           </p>
           <p className="whitespace-nowrap shrink-0 md:ml-4">
             &copy; 2026 Slunch Factory. All Rights Reserved.
