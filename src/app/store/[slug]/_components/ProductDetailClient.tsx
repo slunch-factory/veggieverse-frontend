@@ -13,7 +13,7 @@ import {
   Info,
   X,
 } from "lucide-react";
-import type { StoreProductDetail } from "@/lib/api/store";
+import { type StoreProductDetail, categoryLabel } from "@/lib/api/store";
 import { useCart } from "@/contexts/CartContext";
 import { addCartItem } from "@/lib/api/cart";
 import { useRouter } from "next/navigation";
@@ -264,7 +264,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
           {product.categories.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {product.categories.map((cat) => (
-                <span key={cat} className="tag" style={{ pointerEvents: "none" }}>{cat}</span>
+                <span key={cat} className="tag" style={{ pointerEvents: "none" }}>{categoryLabel(cat)}</span>
               ))}
             </div>
           )}

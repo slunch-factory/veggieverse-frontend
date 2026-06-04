@@ -14,12 +14,15 @@ const SORT_OPTIONS: SortOption[] = [
   { value: "popularDesc", label: "인기순" },
 ];
 
+// id = 백엔드 StoreCategory 코드(상품 categories와 매칭), label = 한글 표시
 const CATEGORY_TABS: { id: string; label: string }[] = [
   { id: "전체",      label: "전체" },
-  { id: "밀키트",    label: "밀키트" },
-  { id: "베이커리",  label: "베이커리" },
-  { id: "소스와 오일", label: "소스/오일" },
-  { id: "세트",      label: "세트" },
+  { id: "MEAL_KIT",  label: "밀키트" },
+  { id: "BAKERY",    label: "베이커리" },
+  { id: "SAUCE_OIL", label: "소스/오일" },
+  { id: "GIFT",      label: "선물세트" },
+  { id: "SIDE_DISH", label: "반찬" },
+  { id: "RICE_BALL", label: "주먹밥" },
 ];
 
 interface Props {
