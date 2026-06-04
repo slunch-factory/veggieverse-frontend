@@ -5,6 +5,19 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
 export type StoreSortParam = "nameAsc" | "nameDesc" | "priceAsc" | "popularDesc";
 
+/** 카테고리 코드 → 한글 라벨 (백엔드 StoreCategory enum과 1:1). 미정의 코드는 그대로 표시 */
+export const STORE_CATEGORY_LABELS: Record<string, string> = {
+  MEAL_KIT: "밀키트",
+  BAKERY: "베이커리",
+  SAUCE_OIL: "소스/오일",
+  GIFT: "선물세트",
+  SIDE_DISH: "반찬",
+  RICE_BALL: "주먹밥",
+};
+export function categoryLabel(code: string): string {
+  return STORE_CATEGORY_LABELS[code] ?? code;
+}
+
 const CDN_PATTERN = /^https?:\/\/cdn\.slunch\.com(\/.*)/;
 
 /** 절대 URL로 정규화한 뒤, Supabase 스토리지 이미지면 표시 크기에 맞춰 다운스케일한다.
