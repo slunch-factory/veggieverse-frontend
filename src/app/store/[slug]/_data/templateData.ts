@@ -8,6 +8,7 @@ export interface TemplateStrengthItem { image?: string; title: string; desc: str
 export interface TemplateServingItem  { image?: string; title: string; desc: string }
 export interface TemplateCertItem     { title: string; desc: string }
 export interface TemplateQnAItem      { q: string; a: string }
+export interface TemplateInfoRow      { label: string; value: string }
 
 export interface ProductDetailTemplateData {
   /* 섹션 1 — Hero */
@@ -46,13 +47,8 @@ export interface ProductDetailTemplateData {
   /* 섹션 12 — QnA */
   qna?: { title: string; subtitle: string; items: TemplateQnAItem[] };
 
-  /* 섹션 13 — Info */
-  info?: {
-    제품명?: string; 식품유형?: string; 품목보고번호?: string;
-    내용량?: string; 내포장재질?: string; 유통기한?: string;
-    제조원?: string; 소분원?: string; 판매원?: string;
-    원료명?: string; 알레르기?: string; 참고사항?: string;
-  };
+  /* 섹션 13 — Info (제목/내용 자유 행 목록) */
+  info?: TemplateInfoRow[];
 
   /* admin 전용 — 풀와이드 엔딩샷 이미지 */
   endingImage?: string;
@@ -220,18 +216,18 @@ export const PRODUCT_TEMPLATE_DATA: Record<string, ProductDetailTemplateData> = 
         },
       ],
     },
-    info: {
-      제품명: "블루베리 타르트",
-      식품유형: "빵류(가열하지않고 섭취하는 냉동식품)",
-      품목보고번호: "2025041722211",
-      내용량: "115g",
-      유통기한: "냉동 보관 12개월",
-      제조원: "슬런치 팩토리 부천 / 경기도 부천시 소사로 160번길 23-8, 지하1층",
-      판매원: "㈜슬런치 팩토리(SLUNCH FACTORY) / 대전광역시 유성구 은구비로 8, 비1호",
-      원료명: "냉동트리플베리(블루베리 40%, 라즈베리 30%, 블랙베리 30%) 24.6%, 밀가루(밀:미국산), 유기농비건버터(덴마크산: 유기농 시어버터나무씨앗오일, 유기농 코코넛오일, 유기농 유채유, 정제소금), 유기농 아몬드, 아몬드분말(아몬드100%,미국산), 설탕, 식물성크림, 소맥분",
-      알레르기: "제품 라벨 참조",
-      참고사항: "보관방법: -18℃ 이하 냉동보관 / 개봉 후 빠른 섭취 권장 / 반품·교환: 수령 후 7일 이내, 구매처 및 제조원 / 소비자상담실: 070-8633-2623",
-    },
+    info: [
+      { label: "제품명", value: "블루베리 타르트" },
+      { label: "식품유형", value: "빵류(가열하지않고 섭취하는 냉동식품)" },
+      { label: "품목보고번호", value: "2025041722211" },
+      { label: "내용량", value: "115g" },
+      { label: "유통기한", value: "냉동 보관 12개월" },
+      { label: "제조원", value: "슬런치 팩토리 부천 / 경기도 부천시 소사로 160번길 23-8, 지하1층" },
+      { label: "판매원", value: "㈜슬런치 팩토리(SLUNCH FACTORY) / 대전광역시 유성구 은구비로 8, 비1호" },
+      { label: "원료명", value: "냉동트리플베리(블루베리 40%, 라즈베리 30%, 블랙베리 30%) 24.6%, 밀가루(밀:미국산), 유기농비건버터(덴마크산: 유기농 시어버터나무씨앗오일, 유기농 코코넛오일, 유기농 유채유, 정제소금), 유기농 아몬드, 아몬드분말(아몬드100%,미국산), 설탕, 식물성크림, 소맥분" },
+      { label: "알레르기", value: "제품 라벨 참조" },
+      { label: "참고사항", value: "보관방법: -18℃ 이하 냉동보관 / 개봉 후 빠른 섭취 권장 / 반품·교환: 수령 후 7일 이내, 구매처 및 제조원 / 소비자상담실: 070-8633-2623" },
+    ],
   },
   "balsamic-dressing": {
     hero: {
@@ -364,15 +360,15 @@ export const PRODUCT_TEMPLATE_DATA: Record<string, ProductDetailTemplateData> = 
         },
       ],
     },
-    info: {
-      제품명: "발사믹 드레싱 소스",
-      내용량: "300g",
-      유통기한: "냉장 보관 6개월",
-      제조원: "㈜슬런치 팩토리 / 대전광역시 유성구 은구비로 8, 비1호",
-      판매원: "㈜슬런치 팩토리(SLUNCH FACTORY) / 대전광역시 유성구 은구비로 8, 비1호",
-      원료명: "프리모셰프혼합포마스오일(이탈리아: 포마스 올리브유 50%, 해바라기유 35%, 엑스트라버진 올리브유 15%), 발효식초[와인식초(포도,무수아황산(산화방지제))60%,포도원액39.5%,무수아황산(산화방지제),카라멜색소IV], 당류가공품(알룰로스99.95%,수크랄로스0.05%), 엑스트라버진올리브유(이탈리아), 과채주스(레몬주스99.99%,산화방지제(메타중아황산칼륨)), 굵은후추(베트남)",
-      알레르기: "제품 라벨 참조",
-      참고사항: "보관방법: 냉장보관(0~10℃) / 개봉 후 빠른 시일 내 섭취 권장 / 반품·교환: 수령 후 7일 이내, 구매처 및 제조원 / 소비자상담실: 070-8633-2623",
-    },
+    info: [
+      { label: "제품명", value: "발사믹 드레싱 소스" },
+      { label: "내용량", value: "300g" },
+      { label: "유통기한", value: "냉장 보관 6개월" },
+      { label: "제조원", value: "㈜슬런치 팩토리 / 대전광역시 유성구 은구비로 8, 비1호" },
+      { label: "판매원", value: "㈜슬런치 팩토리(SLUNCH FACTORY) / 대전광역시 유성구 은구비로 8, 비1호" },
+      { label: "원료명", value: "프리모셰프혼합포마스오일(이탈리아: 포마스 올리브유 50%, 해바라기유 35%, 엑스트라버진 올리브유 15%), 발효식초[와인식초(포도,무수아황산(산화방지제))60%,포도원액39.5%,무수아황산(산화방지제),카라멜색소IV], 당류가공품(알룰로스99.95%,수크랄로스0.05%), 엑스트라버진올리브유(이탈리아), 과채주스(레몬주스99.99%,산화방지제(메타중아황산칼륨)), 굵은후추(베트남)" },
+      { label: "알레르기", value: "제품 라벨 참조" },
+      { label: "참고사항", value: "보관방법: 냉장보관(0~10℃) / 개봉 후 빠른 시일 내 섭취 권장 / 반품·교환: 수령 후 7일 이내, 구매처 및 제조원 / 소비자상담실: 070-8633-2623" },
+    ],
   },
 };

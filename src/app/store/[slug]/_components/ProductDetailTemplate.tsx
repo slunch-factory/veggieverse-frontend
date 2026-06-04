@@ -584,93 +584,73 @@ function Sec12QnA({ data, n }: { data: NonNullable<ProductDetailTemplateData["qn
 }
 
 function Sec13Info({ data, n }: { data: NonNullable<ProductDetailTemplateData["info"]>; n: number }) {
-  const gridPairKeys = ["제품명", "식품유형", "품목보고번호", "내용량", "내포장재질", "유통기한"] as const;
-  const fullRowKeys = ["제조원", "소분원", "판매원"] as const;
+  const rows = data.filter((r) => (r.value ?? "").trim());
 
-  const filteredPairs = gridPairKeys.filter((k) => data[k]);
-  const infoRows: [string, string | undefined][] = [];
-  for (let i = 0; i < filteredPairs.length; i += 2) {
-    infoRows.push([filteredPairs[i], filteredPairs[i + 1]]);
-  }
+  // 제품명(또는 첫 행)을 상단 헤더로
+  const headerIdx = rows.findIndex((r) => r.label.trim() === "제품명");
+  const header = headerIdx >= 0 ? rows[headerIdx] : rows[0];
+  const rest = rows.filter((r) => r !== header);
 
   return (
     <Section variant="white" style={{ padding: "72px 48px", textAlign: "left" }}>
       <Badge n={n} />
       <div style={{ width: "100%", textAlign: "left" }}>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: C.ink,
-            padding: "14px 0 24px",
-            borderBottom: `2px solid ${C.ink}`,
-          }}
-        >
-          {data.제품명}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {infoRows.map(([k1, k2], i) => (
-            <div key={i} style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-              {[k1, k2].map((k) =>
-                k ? (
-                  <div
-                    key={k}
-                    style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, flex: 1 }}
-                  >
-                    <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>{k}</div>
-                    <div style={{ flex: 1, color: C.ink }}>{data[k as keyof typeof data]}</div>
-                  </div>
-                ) : (
-                  <div key="empty" style={{ flex: 1 }} />
-                ),
-              )}
-            </div>
-          ))}
-
-          {fullRowKeys.map((k) =>
-            data[k] ? (
-              <div key={k} style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, width: "100%" }}>
-                  <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>{k}</div>
-                  <div style={{ flex: 1, color: C.ink }}>{data[k]}</div>
-                </div>
-              </div>
-            ) : null,
-          )}
-
-          {data.원료명 && (
-            <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, width: "100%" }}>
-                <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>원료명</div>
-                <div style={{ flex: 1, color: C.ink }}>{data.원료명}</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {data.알레르기 && (
+        {header && (
           <div
             style={{
-              background: C.ink,
-              color: "#fff",
-              padding: "12px 20px",
-              fontSize: 13,
-              fontWeight: 600,
-              lineHeight: 1.6,
-              borderRadius: 4,
-              marginTop: 16,
+              fontSize: 15,
+              fontWeight: 700,
+              color: C.ink,
+              padding: "14px 0 24px",
+              borderBottom: `2px solid ${C.ink}`,
             }}
           >
-            알레르기 유발물질: {data.알레르기}
+            {header.value}
           </div>
         )}
 
-        {data.참고사항 && (
-          <div style={{ padding: "8px 0", fontSize: 10, color: "#999", lineHeight: 1.5, whiteSpace: "pre-line" }}>
-            {data.참고사항}
-          </div>
-        )}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {rest.map((r, i) => {
+            const label = r.label.trim();
+            if (label === "알레르기") {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    background: C.ink,
+                    color: "#fff",
+                    padding: "12px 20px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    lineHeight: 1.6,
+                    borderRadius: 4,
+                    marginTop: 16,
+                  }}
+                >
+                  알레르기 유발물질: {r.value}
+                </div>
+              );
+            }
+            if (label === "참고사항") {
+              return (
+                <div
+                  key={i}
+                  style={{ padding: "8px 0", fontSize: 10, color: "#999", lineHeight: 1.5, whiteSpace: "pre-line" }}
+                >
+                  {r.value}
+                </div>
+              );
+            }
+            return (
+              <div key={i} style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, width: "100%" }}>
+                  <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>{r.label}</div>
+                  <div style={{ flex: 1, color: C.ink, whiteSpace: "pre-line" }}>{r.value}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </Section>
   );
