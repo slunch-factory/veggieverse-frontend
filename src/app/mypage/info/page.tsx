@@ -24,6 +24,7 @@ import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
 import { getUserProfile, updateUserProfile } from "@/lib/api/user";
+import { supabaseRenderUrl } from "@/lib/supabaseImage";
 
 interface FormState {
   password: string;
@@ -397,9 +398,10 @@ export default function EditProfilePage() {
                 {displayImage ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    src={displayImage}
+                    src={supabaseRenderUrl(displayImage, { width: 200 })}
                     alt="프로필 미리보기"
                     className="w-full h-full object-cover"
+                    decoding="async"
                   />
                 ) : (
                   <User size={32} color="var(--neutral-stone)" />

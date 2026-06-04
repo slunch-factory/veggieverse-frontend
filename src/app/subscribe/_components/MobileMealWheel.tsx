@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { DisplayMenuData, MenuCategory } from "../_data/subscription";
 import { PLAN_TYPES } from "../_data/subscription";
+import { MealImage } from "./MealImage";
 
 interface MobileMealWheelProps {
   filteredMeals: DisplayMenuData[];
@@ -220,15 +221,11 @@ export function MobileMealWheel({
                     absPos < 0.5 ? "border-2 border-black shadow-xl" : "border border-gray-200"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <MealImage
                     src={meal.image}
                     alt={meal.displayName}
                     className="w-full h-full object-cover scale-[1.35]"
                     draggable={false}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
                   />
                 </div>
                 <span
@@ -296,15 +293,11 @@ export function MobileMealWheel({
                             active ? "border-2 border-black" : "border border-gray-200"
                           }`}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <MealImage
                             src={meal.image}
                             alt={meal.displayName}
                             className="w-full h-full object-cover scale-[1.35]"
                             draggable={false}
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                            }}
                           />
                         </div>
                         <span

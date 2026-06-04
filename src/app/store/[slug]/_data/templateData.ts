@@ -53,6 +53,37 @@ export interface ProductDetailTemplateData {
     제조원?: string; 소분원?: string; 판매원?: string;
     원료명?: string; 알레르기?: string; 참고사항?: string;
   };
+
+  /* admin 전용 — 풀와이드 엔딩샷 이미지 */
+  endingImage?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Dynamic — admin이 백엔드 description 필드에 실어보낸 템플릿 JSON 파싱      */
+/* ------------------------------------------------------------------ */
+
+/** description 본문이 템플릿 JSON임을 식별하는 마커 (admin lib/store-desc.ts와 동일) */
+const TEMPLATE_MARKER = "productDetailTemplate";
+
+/**
+ * 백엔드 product.description 문자열에서 상세 템플릿을 추출한다.
+ * admin이 `{ __type: "productDetailTemplate", v, data }` 형태로 저장한 경우만 인식하고,
+ * 평문 설명이거나 파싱 실패 시 null(= 하드코딩/평문 fallback)을 반환한다.
+ */
+export function parseDescTemplate(
+  description?: string | null,
+): ProductDetailTemplateData | null {
+  if (!description) return null;
+  try {
+    const obj = JSON.parse(description) as {
+      __type?: string;
+      data?: ProductDetailTemplateData;
+    };
+    if (obj && obj.__type === TEMPLATE_MARKER && obj.data) return obj.data;
+  } catch {
+    // 평문 설명 — 템플릿 아님
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

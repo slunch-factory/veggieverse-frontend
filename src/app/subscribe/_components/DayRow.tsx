@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { DayPlan, DisplayMenuData, MenuData } from "../_data/subscription";
 import { getHolidayMeta, WEEKDAY_KO } from "../_data/subscription";
 import { getSlotRecommend } from "@/lib/api/subscription";
+import { MealImage } from "./MealImage";
 
 interface DayRowProps {
   day: DayPlan;
@@ -48,8 +49,7 @@ function SlotRecPanel({ onPick }: { onPick: (meal: MenuData) => void }) {
               className="flex flex-col gap-[5px] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2"
             >
               <div className="aspect-square border border-black rounded-[4px] overflow-hidden bg-[#e8e4de]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={m.image} alt={m.name} className="w-full h-full object-cover" draggable={false} />
+                <MealImage src={m.image} alt={m.name} className="w-full h-full object-cover" draggable={false} />
               </div>
               <p className="text-[11px] leading-tight text-[#3d3d3d] line-clamp-2">{m.name}</p>
             </button>
@@ -161,8 +161,7 @@ export function DayRow({
               >
                 {/* 썸네일 */}
                 <div className="w-[46px] h-[46px] shrink-0 rounded-[3px] bg-[#fcfaf8] overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <MealImage
                     src={meal.image}
                     alt={meal.displayName}
                     className="w-full h-full object-cover"

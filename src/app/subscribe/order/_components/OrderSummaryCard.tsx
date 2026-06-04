@@ -10,6 +10,7 @@ import {
   formatPrice,
   type DisplayMenuData,
 } from "../../_data/subscription";
+import { MealImage } from "../../_components/MealImage";
 import type { OrderData } from "../../_data/order";
 import type { CustomPlanResponse } from "@/lib/api/subscription";
 
@@ -262,14 +263,10 @@ function MealCartItem({ slotId, meal }: { slotId: string; meal: DisplayMenuData 
           border: "1px solid var(--neutral-stone)",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <MealImage
           src={meal.image}
           alt={meal.displayName}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
         />
         {meal.isVariation && (
           <span
