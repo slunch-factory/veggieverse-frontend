@@ -18,7 +18,7 @@ import { useCart } from "@/contexts/CartContext";
 import { addCartItem } from "@/lib/api/cart";
 import { useRouter } from "next/navigation";
 import { ProductDetailTemplate } from "./ProductDetailTemplate";
-import { PRODUCT_TEMPLATE_DATA } from "../_data/templateData";
+import { PRODUCT_TEMPLATE_DATA, parseDescTemplate } from "../_data/templateData";
 
 /* ------------------------------------------------------------------ */
 /*  Tabs                                                               */
@@ -375,14 +375,20 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
         {/* 상세정보 */}
         <div ref={(el) => { sectionRefs.current.detail = el; }} className="pt-8">
           <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>상세정보</h2>
-          <ProductDetailTemplate data={PRODUCT_TEMPLATE_DATA[product.slug]} />
-          {!PRODUCT_TEMPLATE_DATA[product.slug] && (
-            <>
-              {product.description && (
-                <div className="p-6 t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--ink-light)", lineHeight: 1.65 }}>
-                  {product.description}
-                </div>
-              )}
+          {/* admin이 description에 실어보낸 템플릿을 우선 사용, 없으면 slug별 하드코딩 */}
+          {(() => {
+            const detailTemplate =
+              parseDescTemplate(product.description) ?? PRODUCT_TEMPLATE_DATA[product.slug];
+            return (
+              <>
+                <ProductDetailTemplate data={detailTemplate} />
+                {!detailTemplate && (
+                  <>
+                    {product.description && (
+                      <div className="p-6 t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--ink-light)", lineHeight: 1.65 }}>
+                        {product.description}
+                      </div>
+                    )}
               {product.images.details.length > 0 && (
                 <div className="mt-4 flex flex-col gap-2">
                   {product.images.details.map((img, i) => (
@@ -391,8 +397,11 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
                   ))}
                 </div>
               )}
-            </>
-          )}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* 반품/교환정보 */}

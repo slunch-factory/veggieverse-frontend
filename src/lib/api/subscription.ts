@@ -3,42 +3,6 @@ import { apiFetch } from "@/lib/api/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
-const NAME_TO_IMAGE: Record<string, string> = {
-  "로스티드 비트 카르파초":    "/images/menus/01_roasted_beet_carpaccio.png",
-  "렌틸 볼로네제":             "/images/menus/02_lentil_bolognese.png",
-  "해바라기씨 페스토 파스타":  "/images/menus/03_sunflower_seed_pesto_pasta.png",
-  "케일 월도프 샐러드":        "/images/menus/04_kale_waldorf_salad.png",
-  "지중해식 퀴노아 샐러드":    "/images/menus/05_mediterranean_quinoa_salad.png",
-  "아시안 피넛 누들":          "/images/menus/06_asian_peanut_noodles.png",
-  "크리스피 두부 스테이크":    "/images/menus/07_crispy_tofu_steak.png",
-  "구운 채소 라자냐":          "/images/menus/08_roasted_vegetable_lasagna.png",
-  "관자 버터 소테":            "/images/menus/09_scallop_butter_saute.png",
-  "미소 글레이즈드 삼치":      "/images/menus/10_miso_glazed_mackerel.png",
-  "그릴드 옥토퍼스":           "/images/menus/11_grilled_octopus.png",
-  "레몬 허브 농어 구이":       "/images/menus/12_lemon_herb_sea_bass.png",
-  "해물 짬뽕 리조또":          "/images/menus/13_seafood_jjambong_risotto.png",
-  "피쉬 타코":                 "/images/menus/14_fish_tacos.png",
-  "고추장 두부 덮밥":          "/images/menus/15_gochujang_tofu_bowl.png",
-  "지중해 후무스 랩":          "/images/menus/16_mediterranean_hummus_wrap.png",
-  "마라 두부 볶음":            "/images/menus/17_mala_tofu_stir_fry.png",
-  "버섯 잡채":                 "/images/menus/18_mushroom_japchae.png",
-  "스파이시 콜리플라워 타코":  "/images/menus/19_spicy_cauliflower_tacos.png",
-  "지중해 채소 파스타":        "/images/menus/20_mediterranean_vegetable_pasta.png",
-  "칠리 두부 스크램블":        "/images/menus/21_chili_tofu_scramble.png",
-  "아보카도 스시 볼":          "/images/menus/22_avocado_sushi_bowl.png",
-  "케일 시저 샐러드":          "/images/menus/23_kale_caesar_salad.png",
-  "흑임자 두부 샐러드":        "/images/menus/24_black_sesame_tofu_salad.png",
-  "카레 두부 라이스":          "/images/menus/25_curry_tofu_rice.png",
-  "퓨전 콩나물 비빔면":        "/images/menus/26_fusion_bean_sprout_noodles.png",
-  "구운 채소 퀴노아 샐러드":   "/images/menus/27_roasted_vegetable_quinoa_salad.png",
-  "반미 샌드위치 비건":        "/images/menus/28_vegan_banh_mi.png",
-  "두부 포케 볼":              "/images/menus/29_tofu_poke_bowl.png",
-  "지중해 채소 구이 랩":       "/images/menus/30_mediterranean_grilled_veg_wrap.png",
-  "연어 아보카도 덮밥":        "/images/menus/31_salmon_avocado_bowl.png",
-  "새우 아보카도 롤":          "/images/menus/32_shrimp_avocado_roll.png",
-  "참치 샐러드 랩":            "/images/menus/33_tuna_salad_wrap.png",
-};
-
 export interface ProductItem {
   id: number;
   name: string;
@@ -77,12 +41,10 @@ const ALLERGEN_MAP: Record<string, ExcludeCategory> = {
   gluten:    "gluten",
 };
 
-function resolveImageUrl(imageUrl: string | undefined, name: string): string {
-  if (imageUrl) {
-    if (imageUrl.startsWith("http")) return imageUrl;
-    return `${API_BASE}${imageUrl}`;
-  }
-  return NAME_TO_IMAGE[name] ?? "/images/menus/example.png";
+function resolveImageUrl(imageUrl: string | undefined): string {
+  if (!imageUrl) return "";
+  if (imageUrl.startsWith("http")) return imageUrl;
+  return `${API_BASE}${imageUrl}`;
 }
 
 function mapNutrition(raw: Record<string, unknown> | undefined): MenuNutrition | undefined {
@@ -119,7 +81,7 @@ export function mapToMenuData(p: ProductItem): MenuData {
     category,
     cost: p.price,
     price: p.price,
-    image: resolveImageUrl(p.imageUrl, p.name),
+    image: resolveImageUrl(p.imageUrl),
     description: "",
     excludable,
     ingredients: p.ingredients,

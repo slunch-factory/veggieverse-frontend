@@ -10,6 +10,7 @@ import {
   type OrderData,
 } from "@/app/subscribe/_data/order";
 import { WEEKDAY_KO, type DisplayMenuData } from "@/app/subscribe/_data/subscription";
+import { MealImage } from "@/app/subscribe/_components/MealImage";
 
 function toKoreanDate(iso: string) {
   const d = new Date(iso);
@@ -478,14 +479,10 @@ function MealCell({ meal }: { meal: DisplayMenuData | null }) {
         background: "var(--bg-off)",
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <MealImage
         src={meal.image}
         alt={meal.displayName}
         className="absolute inset-0 w-full h-full object-cover"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = "none";
-        }}
       />
     </div>
   );

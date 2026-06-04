@@ -1,6 +1,7 @@
 "use client";
 
 import type { DisplayMenuData } from "../_data/subscription";
+import { MealImage } from "./MealImage";
 
 export interface MobilePreviewState {
   meal: DisplayMenuData;
@@ -47,14 +48,10 @@ export function MobileMealPreview({ preview, onClose }: MobileMealPreviewProps) 
           height: IMG_SIZE,
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <MealImage
           src={preview.meal.image}
           alt={preview.meal.displayName}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
         />
       </div>
     </div>

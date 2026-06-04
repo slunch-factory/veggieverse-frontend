@@ -2,6 +2,7 @@
 
 import type { DisplayMenuData, ExcludeCategory } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
+import { MealImage } from "./MealImage";
 
 interface MealCardProps {
   meal: DisplayMenuData;
@@ -32,8 +33,7 @@ export function MealCard({ meal, draggingMealId, onDetail, onDragStart, onDragEn
     >
       {/* 썸네일 */}
       <div className="relative w-full aspect-[4/3] lg:aspect-square overflow-hidden bg-[#fcfaf8] rounded-[4px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <MealImage
           src={meal.image}
           alt={meal.displayName}
           className="h-full w-full object-cover"

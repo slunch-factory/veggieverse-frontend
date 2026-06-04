@@ -1,29 +1,40 @@
 "use client";
 
+/**
+ * veggieverse `src/app/store/[slug]/_components/ProductDetailTemplate.tsx`의 1:1 포트.
+ * 레이아웃·타이포·섹션 구조를 그대로 유지하되, admin 편집 미리보기를 위해
+ * 이미지 슬롯에 URL이 있으면 실제 이미지를 렌더하고 없으면 플레이스홀더를 보여준다.
+ */
 import type { ProductDetailTemplateData } from "../_data/templateData";
 
 /* ------------------------------------------------------------------ */
-/*  Design tokens — admin.html CSS + design.md 머지                     */
-/*  design.md: 색상·타이포·배지·서클                                    */
-/*  admin.html: 레이아웃 구조·cert·process·serving·info 세부 스타일     */
+/*  Design tokens — veggieverse와 동일                                  */
 /* ------------------------------------------------------------------ */
 const C = {
-  primary:    "#6e5035",   // admin.html --text-secondary — 강조, stats 숫자, body text
-  accent:     "#e6863f",
-  textMain:   "#250a00",   // admin.html --text-primary — 제목, 주요 텍스트
-  textBody:   "#6e5035",   // admin.html preview-text color
-  textMuted:  "#8a7a6e",   // admin.html --text-dim — 보조 설명
-  white:      "#fcfaf8",   // 흰 섹션 배경
-  sand:       "#e8e2e2",   // 샌드 섹션 배경
-  lime:       "#dcfd4a",   // 라임 섹션 배경
-  gray:       "#b4b4b4",   // 그레이 섹션 배경
-  border:     "#c9bcbe",   // admin.html Border
-  ink:        "#250a00",   // 리뷰 보더, 알레르기 bg, info 텍스트
-  certBorder: "#e0b6e5",   // admin.html cert 구분선
+  primary: "#6e5035",
+  accent: "#e6863f",
+  textMain: "#250a00",
+  textBody: "#6e5035",
+  textMuted: "#8a7a6e",
+  white: "#fcfaf8",
+  sand: "#e8e2e2",
+  lime: "#dcfd4a",
+  gray: "#b4b4b4",
+  border: "#c9bcbe",
+  ink: "#250a00",
+  certBorder: "#e0b6e5",
 };
 
 const NOISE_SVG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='3' intercept='-1'/%3E%3CfeFuncG type='linear' slope='3' intercept='-1'/%3E%3CfeFuncB type='linear' slope='3' intercept='-1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E\")";
+
+/** admin 업로드/외부 URL 판별 (veggieverse 미리보기와 동일 규칙) */
+function isImg(v?: string): v is string {
+  return (
+    !!v &&
+    (v.startsWith("http") || v.startsWith("/uploads/") || v.startsWith("data:image/") || v.startsWith("/"))
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Section variants                                                   */
@@ -32,9 +43,9 @@ type SectionVariant = "white" | "sand" | "lime" | "gray";
 
 const SECTION_BG: Record<SectionVariant, React.CSSProperties> = {
   white: { backgroundColor: C.white },
-  sand:  { backgroundColor: C.sand },
-  lime:  { backgroundColor: C.lime },
-  gray:  {
+  sand: { backgroundColor: C.sand },
+  lime: { backgroundColor: C.lime },
+  gray: {
     backgroundColor: C.gray,
     backgroundImage: NOISE_SVG,
     backgroundBlendMode: "overlay",
@@ -56,25 +67,17 @@ function Section({
   style?: React.CSSProperties;
 }) {
   return (
-    <div
-      style={{
-        ...SECTION_BG[variant],
-        padding: "72px 48px",     // admin.html: 섹션 패딩
-        textAlign: "center",
-        ...style,
-      }}
-    >
+    <div style={{ ...SECTION_BG[variant], padding: "72px 48px", textAlign: "center", ...style }}>
       {children}
     </div>
   );
 }
 
-/** admin.html CSS 기준: 섹션 variant에 따라 배지 색상 반전 */
 const BADGE_STYLE: Record<SectionVariant, React.CSSProperties> = {
-  white: { backgroundColor: C.lime,  color: C.ink },
-  sand:  { backgroundColor: C.lime,  color: C.ink },
-  lime:  { backgroundColor: C.ink,   color: C.lime },
-  gray:  { backgroundColor: C.lime,  color: C.ink },
+  white: { backgroundColor: C.lime, color: C.ink },
+  sand: { backgroundColor: C.lime, color: C.ink },
+  lime: { backgroundColor: C.ink, color: C.lime },
+  gray: { backgroundColor: C.lime, color: C.ink },
 };
 
 function Badge({ n, variant = "white" }: { n: number; variant?: SectionVariant }) {
@@ -98,7 +101,6 @@ function Badge({ n, variant = "white" }: { n: number; variant?: SectionVariant }
   );
 }
 
-/** admin.html: 38px / 700 / #250a00 */
 function PTitle({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div
@@ -118,7 +120,6 @@ function PTitle({ children, style }: { children: React.ReactNode; style?: React.
   );
 }
 
-/** admin.html: 18px / 600 / #6e5035 */
 function PSubtitle({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div
@@ -138,7 +139,6 @@ function PSubtitle({ children, style }: { children: React.ReactNode; style?: Rea
   );
 }
 
-/** admin.html: 18px / 1.6lh / #6e5035 / max-width 640 */
 function PText({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div
@@ -158,15 +158,31 @@ function PText({ children, style }: { children: React.ReactNode; style?: React.C
   );
 }
 
-/** 인라인 이미지 플레이스홀더 */
-function InlineImgPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
+/* ------------------------------------------------------------------ */
+/*  Image blocks — URL 있으면 실제 이미지, 없으면 플레이스홀더            */
+/* ------------------------------------------------------------------ */
+
+/** 박스형 placeholder/이미지 공통 */
+function ImgFill({
+  src,
+  label,
+  style,
+}: {
+  src?: string;
+  label: string;
+  style: React.CSSProperties;
+}) {
+  if (isImg(src)) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img src={src} alt="" style={{ ...style, objectFit: "cover", display: "block" }} />
+    );
+  }
   return (
     <div
       style={{
-        width: "100%",
-        height,
-        background: C.sand,
-        borderRadius: 12,
+        ...style,
+        background: style.background ?? C.sand,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -180,47 +196,30 @@ function InlineImgPlaceholder({ label, height = 480 }: { label: string; height?:
   );
 }
 
-/** 풀와이드 히어로 이미지 플레이스홀더 */
-function HeroImageBlock({ label }: { label: string }) {
+/** 섹션 내 인라인 이미지 (480px 등) */
+function InlineImg({ label, height = 480, src }: { label: string; height?: number; src?: string }) {
+  return <ImgFill src={src} label={label} style={{ width: "100%", height, borderRadius: 12 }} />;
+}
+
+/** 풀와이드 히어로 이미지 (3:1) */
+function HeroImageBlock({ label, src }: { label: string; src?: string }) {
   return (
-    <div
-      style={{
-        width: "100%",
-        aspectRatio: "3/1",
-        background: C.sand,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#999",
-        fontSize: 13,
-        textAlign: "center",
-        overflow: "hidden",
-      }}
-    >
-      {label}
-    </div>
+    <ImgFill src={src} label={label} style={{ width: "100%", aspectRatio: "3/1", overflow: "hidden" }} />
   );
 }
 
-/** 풀와이드 일반 이미지 플레이스홀더 */
-function FullWidthImage({ label, aspectRatio = "5/4" }: { label: string; aspectRatio?: string }) {
+/** 풀와이드 일반 이미지 */
+function FullWidthImage({
+  label,
+  aspectRatio = "5/4",
+  src,
+}: {
+  label: string;
+  aspectRatio?: string;
+  src?: string;
+}) {
   return (
-    <div
-      style={{
-        width: "100%",
-        aspectRatio,
-        background: C.sand,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#999",
-        fontSize: 13,
-        textAlign: "center",
-        overflow: "hidden",
-      }}
-    >
-      {label}
-    </div>
+    <ImgFill src={src} label={label} style={{ width: "100%", aspectRatio, overflow: "hidden" }} />
   );
 }
 
@@ -264,11 +263,10 @@ function Sec4Process({ data, n }: { data: NonNullable<ProductDetailTemplateData[
     <Section variant="lime">
       <Badge n={n} variant="lime" />
       <div style={{ margin: "0 -48px", padding: "0 16px" }}>
-        <InlineImgPlaceholder label="공정 이미지 영역" height={480} />
+        <InlineImg label="공정 이미지 영역" height={480} src={data.image} />
       </div>
       <PTitle style={{ marginTop: 24 }}>{data.title}</PTitle>
       <PText>{data.body}</PText>
-      {/* admin.html: preview-process-step 스타일 */}
       <div
         style={{
           display: "flex",
@@ -305,9 +303,7 @@ function Sec4Process({ data, n }: { data: NonNullable<ProductDetailTemplateData[
               <span style={{ color: C.textMain }}>{step}</span>
             </div>
             {i < data.steps.length - 1 && (
-              <div style={{ color: C.primary, fontSize: 16, textAlign: "center", padding: "2px 0" }}>
-                ↓
-              </div>
+              <div style={{ color: C.primary, fontSize: 16, textAlign: "center", padding: "2px 0" }}>↓</div>
             )}
           </div>
         ))}
@@ -321,26 +317,16 @@ function Sec5Ingredient({ data, n }: { data: NonNullable<ProductDetailTemplateDa
     <Section variant="gray">
       <Badge n={n} variant="gray" />
       <div style={{ margin: "0 -48px", padding: "0 16px" }}>
-        <InlineImgPlaceholder label="재료 그리드 이미지 영역" height={480} />
+        <InlineImg label="재료 그리드 이미지 영역" height={480} src={data.image} />
       </div>
       <PTitle style={{ marginTop: 24 }}>{data.title}</PTitle>
       <PText>{data.body}</PText>
       <div style={{ margin: "24px auto 0", maxWidth: "80%" }}>
-        <div
-          style={{
-            width: "100%",
-            aspectRatio: "1/1",
-            background: C.sand,
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#aaa",
-            fontSize: 13,
-          }}
-        >
-          재료 상세 이미지 (1:1)
-        </div>
+        <ImgFill
+          src={data.detailImage}
+          label="재료 상세 이미지 (1:1)"
+          style={{ width: "100%", aspectRatio: "1/1", borderRadius: 12 }}
+        />
       </div>
     </Section>
   );
@@ -353,24 +339,18 @@ function Sec6Cert({ data, n }: { data: NonNullable<ProductDetailTemplateData["ce
       <PSubtitle>{data.subtitle}</PSubtitle>
       <PTitle>{data.title}</PTitle>
       <PText>{data.body}</PText>
-      {/* admin.html: preview-cert-split 구조 */}
       <div style={{ display: "flex", gap: 32, marginTop: 54, alignItems: "stretch" }}>
-        <div
+        <ImgFill
+          src={data.image}
+          label="인증 이미지 영역"
           style={{
             flex: 1,
             minHeight: 280,
             borderRadius: 12,
             overflow: "hidden",
             background: `linear-gradient(135deg, ${C.sand} 0%, ${C.border} 100%)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#aaa",
-            fontSize: 13,
           }}
-        >
-          인증 이미지 영역
-        </div>
+        />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           {data.items.map((item, i) => (
             <div
@@ -403,7 +383,6 @@ function Sec7Heritage({ data, n }: { data: NonNullable<ProductDetailTemplateData
       <PSubtitle>{data.label}</PSubtitle>
       <PTitle>{data.title}</PTitle>
       {data.stats.length > 0 && (
-        /* admin.html: preview-stats 구조 / design.md: #6e5035 색상 */
         <div style={{ display: "flex", justifyContent: "center", gap: 56, marginTop: 72 }}>
           {data.stats.map((stat, i) => (
             <div key={i} style={{ textAlign: "center" }}>
@@ -428,49 +407,20 @@ function Sec8Serving({ data, n }: { data: NonNullable<ProductDetailTemplateData[
       <PTitle>{data.title}</PTitle>
       <PText style={{ marginBottom: 24 }}>{data.subtitle}</PText>
       <div style={{ margin: "0 -48px 24px", overflow: "hidden" }}>
-        <div
-          style={{
-            width: "100%",
-            height: 240,
-            background: C.sand,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#aaa",
-            fontSize: 13,
-          }}
-        >
-          서빙 배너 이미지 영역 (풀와이드)
-        </div>
+        <ImgFill
+          src={data.centerImage}
+          label="서빙 배너 이미지 영역 (풀와이드)"
+          style={{ width: "100%", height: 240 }}
+        />
       </div>
-      {/* admin.html: preview-servings 구조 */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          gap: 16,
-          marginTop: 63,
-        }}
-      >
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16, marginTop: 63 }}>
         {data.items.map((item, i) => (
           <div key={i} style={{ textAlign: "center", width: 180, flexShrink: 0 }}>
-            <div
-              style={{
-                width: 180,
-                height: 180,
-                overflow: "hidden",
-                borderRadius: 12,
-                background: C.sand,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                color: "#aaa",
-              }}
-            >
-              이미지 영역
-            </div>
+            <ImgFill
+              src={item.image}
+              label="이미지 영역"
+              style={{ width: 180, height: 180, overflow: "hidden", borderRadius: 12 }}
+            />
             <div style={{ fontSize: 19, fontWeight: 700, marginTop: 14, color: C.textMain }}>
               {item.title}
             </div>
@@ -497,7 +447,6 @@ function Sec9Strength({ data, n }: { data: NonNullable<ProductDetailTemplateData
       <PSubtitle style={{ letterSpacing: 0, textTransform: "none", color: C.textBody }}>
         {data.quote}
       </PSubtitle>
-      {/* design.md: 서클 — #e8e2e2 bg / #c9bcbe border / #6e5035 메인 텍스트 28px 700 / #666 서브 11px */}
       <div
         style={{
           display: "flex",
@@ -518,7 +467,6 @@ function Sec9Strength({ data, n }: { data: NonNullable<ProductDetailTemplateData
               height: 140,
               borderRadius: "50%",
               backgroundColor: C.ink,
-              border: "none",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -531,26 +479,14 @@ function Sec9Strength({ data, n }: { data: NonNullable<ProductDetailTemplateData
           </div>
         ))}
       </div>
-      {/* admin.html: preview-strengths 구조 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 32, marginTop: 72, width: "100%" }}>
         {data.items.map((item, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
-            <div
-              style={{
-                width: "100%",
-                aspectRatio: "16/7",
-                background: C.gray,
-                borderRadius: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-                fontSize: 12,
-                color: "#eee",
-              }}
-            >
-              이미지 영역 (16:7)
-            </div>
+            <ImgFill
+              src={item.image}
+              label="이미지 영역 (16:7)"
+              style={{ width: "100%", aspectRatio: "16/7", background: C.gray, borderRadius: 12, overflow: "hidden" }}
+            />
             <div style={{ padding: "12px 24px 28px" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.primary, marginBottom: 4, letterSpacing: "0.5px" }}>
                 {i + 1}
@@ -572,7 +508,7 @@ function Sec10Reveal({ data, n }: { data: NonNullable<ProductDetailTemplateData[
     <Section variant="white">
       <Badge n={n} />
       <div style={{ margin: "0 -48px", padding: "0 16px" }}>
-        <InlineImgPlaceholder label="리빌 이미지 영역" height={480} />
+        <InlineImg label="리빌 이미지 영역" height={480} src={data.image} />
       </div>
       <div
         style={{
@@ -598,7 +534,6 @@ function Sec11Review({ data, n }: { data: NonNullable<ProductDetailTemplateData[
       <Badge n={n} variant="lime" />
       <PTitle>{data.title}</PTitle>
       <PText style={{ marginBottom: 20 }}>{data.subtitle}</PText>
-      {/* admin.html: preview-reviews 구조 */}
       <div
         style={{
           display: "flex",
@@ -636,16 +571,10 @@ function Sec12QnA({ data, n }: { data: NonNullable<ProductDetailTemplateData["qn
       <Badge n={n} />
       <PTitle>{data.title}</PTitle>
       <PText style={{ marginBottom: 24 }}>{data.subtitle}</PText>
-      {/* admin.html: preview-qna 구조 */}
       <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "left" }}>
         {data.items.map((item, i) => (
-          <div
-            key={i}
-            style={{ padding: "18px 0", borderBottom: `1px solid ${C.border}` }}
-          >
-            <div style={{ fontWeight: 700, marginBottom: 10, color: C.ink, fontSize: 18 }}>
-              Q. {item.q}
-            </div>
+          <div key={i} style={{ padding: "18px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ fontWeight: 700, marginBottom: 10, color: C.ink, fontSize: 18 }}>Q. {item.q}</div>
             <div style={{ color: C.textBody, fontSize: 17, lineHeight: 1.6 }}>A. {item.a}</div>
           </div>
         ))}
@@ -656,7 +585,7 @@ function Sec12QnA({ data, n }: { data: NonNullable<ProductDetailTemplateData["qn
 
 function Sec13Info({ data, n }: { data: NonNullable<ProductDetailTemplateData["info"]>; n: number }) {
   const gridPairKeys = ["제품명", "식품유형", "품목보고번호", "내용량", "내포장재질", "유통기한"] as const;
-  const fullRowKeys  = ["제조원", "소분원", "판매원"] as const;
+  const fullRowKeys = ["제조원", "소분원", "판매원"] as const;
 
   const filteredPairs = gridPairKeys.filter((k) => data[k]);
   const infoRows: [string, string | undefined][] = [];
@@ -667,7 +596,6 @@ function Sec13Info({ data, n }: { data: NonNullable<ProductDetailTemplateData["i
   return (
     <Section variant="white" style={{ padding: "72px 48px", textAlign: "left" }}>
       <Badge n={n} />
-      {/* admin.html: preview-info-wrap 구조 / design.md: #6e5035 key 색상 */}
       <div style={{ width: "100%", textAlign: "left" }}>
         <div
           style={{
@@ -688,23 +616,14 @@ function Sec13Info({ data, n }: { data: NonNullable<ProductDetailTemplateData["i
                 k ? (
                   <div
                     key={k}
-                    style={{
-                      display: "flex",
-                      fontSize: 13,
-                      lineHeight: 1.6,
-                      padding: "10px 0",
-                      gap: 16,
-                      flex: 1,
-                    }}
+                    style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, flex: 1 }}
                   >
-                    <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>
-                      {k}
-                    </div>
+                    <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>{k}</div>
                     <div style={{ flex: 1, color: C.ink }}>{data[k as keyof typeof data]}</div>
                   </div>
                 ) : (
                   <div key="empty" style={{ flex: 1 }} />
-                )
+                ),
               )}
             </div>
           ))}
@@ -712,37 +631,17 @@ function Sec13Info({ data, n }: { data: NonNullable<ProductDetailTemplateData["i
           {fullRowKeys.map((k) =>
             data[k] ? (
               <div key={k} style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-                <div
-                  style={{
-                    display: "flex",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    padding: "10px 0",
-                    gap: 16,
-                    width: "100%",
-                  }}
-                >
-                  <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>
-                    {k}
-                  </div>
+                <div style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, width: "100%" }}>
+                  <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>{k}</div>
                   <div style={{ flex: 1, color: C.ink }}>{data[k]}</div>
                 </div>
               </div>
-            ) : null
+            ) : null,
           )}
 
           {data.원료명 && (
             <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-              <div
-                style={{
-                  display: "flex",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  padding: "10px 0",
-                  gap: 16,
-                  width: "100%",
-                }}
-              >
+              <div style={{ display: "flex", fontSize: 13, lineHeight: 1.6, padding: "10px 0", gap: 16, width: "100%" }}>
                 <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: C.primary }}>원료명</div>
                 <div style={{ flex: 1, color: C.ink }}>{data.원료명}</div>
               </div>
@@ -768,15 +667,7 @@ function Sec13Info({ data, n }: { data: NonNullable<ProductDetailTemplateData["i
         )}
 
         {data.참고사항 && (
-          <div
-            style={{
-              padding: "8px 0",
-              fontSize: 10,
-              color: "#999",
-              lineHeight: 1.5,
-              whiteSpace: "pre-line",
-            }}
-          >
+          <div style={{ padding: "8px 0", fontSize: 10, color: "#999", lineHeight: 1.5, whiteSpace: "pre-line" }}>
             {data.참고사항}
           </div>
         )}
@@ -796,35 +687,35 @@ export function ProductDetailTemplate({ data }: { data: ProductDetailTemplateDat
   const next = () => ++n;
 
   return (
-    <div className="pdt-bold" style={{ margin: "0 -16px" }}>
-      <HeroImageBlock label="히어로 이미지 영역 (3:1 비율)" />
-      <FullWidthImage label="디쉬 항공샷 이미지 영역" aspectRatio="5/3" />
+    <div style={{ margin: "0 -16px" }}>
+      <HeroImageBlock label="히어로 이미지 영역 (3:1 비율)" src={data.hero?.image} />
+      <FullWidthImage label="디쉬 항공샷 이미지 영역" aspectRatio="5/3" src={data.feature?.image} />
 
-      {data.hero      && <Sec1Hero      data={data.hero}      n={next()} />}
-      {data.intro     && <Sec2Intro     data={data.intro}     n={next()} />}
+      {data.hero && <Sec1Hero data={data.hero} n={next()} />}
+      {data.intro && <Sec2Intro data={data.intro} n={next()} />}
 
-      <FullWidthImage label="함께 나눠먹기 이미지 영역 (5:4)" aspectRatio="5/4" />
+      <FullWidthImage label="함께 나눠먹기 이미지 영역 (5:4)" aspectRatio="5/4" src={data.intro?.sharingImage} />
 
-      {data.feature   && <Sec3Feature   data={data.feature}   n={next()} />}
-      {data.process   && <Sec4Process   data={data.process}   n={next()} />}
+      {data.feature && <Sec3Feature data={data.feature} n={next()} />}
+      {data.process && <Sec4Process data={data.process} n={next()} />}
       {data.ingredient && <Sec5Ingredient data={data.ingredient} n={next()} />}
-      {data.cert      && <Sec6Cert      data={data.cert}      n={next()} />}
+      {data.cert && <Sec6Cert data={data.cert} n={next()} />}
 
-      <HeroImageBlock label="브랜드 스토리 이미지 영역 (3:1 비율)" />
+      <HeroImageBlock label="브랜드 스토리 이미지 영역 (3:1 비율)" src={data.heritage?.image} />
 
-      {data.heritage  && <Sec7Heritage  data={data.heritage}  n={next()} />}
-      {data.serving   && <Sec8Serving   data={data.serving}   n={next()} />}
-      {data.strength  && <Sec9Strength  data={data.strength}  n={next()} />}
-      {data.reveal    && <Sec10Reveal   data={data.reveal}    n={next()} />}
+      {data.heritage && <Sec7Heritage data={data.heritage} n={next()} />}
+      {data.serving && <Sec8Serving data={data.serving} n={next()} />}
+      {data.strength && <Sec9Strength data={data.strength} n={next()} />}
+      {data.reveal && <Sec10Reveal data={data.reveal} n={next()} />}
 
-      <FullWidthImage label="다같이 모여먹기 이미지 영역 (5:4)" aspectRatio="5/4" />
+      <FullWidthImage label="다같이 모여먹기 이미지 영역 (5:4)" aspectRatio="5/4" src={data.reveal?.gatheringImage} />
 
-      {data.review    && <Sec11Review   data={data.review}    n={next()} />}
-      {data.qna       && <Sec12QnA      data={data.qna}       n={next()} />}
+      {data.review && <Sec11Review data={data.review} n={next()} />}
+      {data.qna && <Sec12QnA data={data.qna} n={next()} />}
 
-      <HeroImageBlock label="제품 엔딩샷 (패키지+내용물 병렬)" />
+      <HeroImageBlock label="제품 엔딩샷 (패키지+내용물 병렬)" src={data.endingImage} />
 
-      {data.info      && <Sec13Info     data={data.info}      n={next()} />}
+      {data.info && <Sec13Info data={data.info} n={next()} />}
     </div>
   );
 }

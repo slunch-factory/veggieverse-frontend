@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { DisplayMenuData, ExcludeCategory } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
+import { MealImage } from "./MealImage";
 
 interface MenuDetailModalProps {
   meal: DisplayMenuData | null;
@@ -82,8 +83,7 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
         >
           {/* LEFT: 이미지 */}
           <div className="lg:aspect-square max-lg:shrink-0 max-lg:h-[26vh] max-lg:max-h-[240px] overflow-hidden bg-[#e8e4de]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={meal.image} alt={meal.displayName} className="w-full h-full object-cover" />
+            <MealImage src={meal.image} alt={meal.displayName} width={640} className="w-full h-full object-cover" />
           </div>
 
           {/* RIGHT: 바디 */}

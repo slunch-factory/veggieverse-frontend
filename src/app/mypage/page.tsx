@@ -11,6 +11,7 @@ import {
   type StoreOrderHistoryItem,
 } from "@/lib/api/store";
 import { getUserProfile } from "@/lib/api/user";
+import { supabaseRenderUrl } from "@/lib/supabaseImage";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
@@ -149,7 +150,7 @@ export default function MyPageHome() {
           >
             {profileImage ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={profileImage} alt="프로필" className="h-full w-full object-cover" />
+              <img src={supabaseRenderUrl(profileImage, { width: 160 })} alt="프로필" className="h-full w-full object-cover" decoding="async" />
             ) : (
               <User size={32} color="var(--neutral-stone)" />
             )}

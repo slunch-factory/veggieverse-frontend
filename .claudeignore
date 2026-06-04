@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+build/
+
+# Lock file (6000+ lines, no useful context)
+pnpm-lock.yaml
+
+# Static assets (images, fonts, lottie — 300+ binary files)
+public/vege_flot_img/
+public/vege_flot_img_optimized/
+public/characters/
+public/images/
+public/main/
+public/store/
+public/common/
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.ico
+*.svg
+*.mp4
+
+# Design/reference docs (HTML previews, not source code)
+docs/*.html
+
+# Git
+.git/
+
+# Sentry sourcemaps
+.sentryclirc

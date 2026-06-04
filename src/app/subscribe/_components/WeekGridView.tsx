@@ -3,6 +3,7 @@
 import type { DayPlan, DisplayMenuData } from "../_data/subscription";
 import { WEEKDAY_KO, getHolidayMeta } from "../_data/subscription";
 import { MiniCalendar } from "./MiniCalendar";
+import { MealImage } from "./MealImage";
 
 interface WeekGridViewProps {
   startDate: Date;
@@ -127,8 +128,7 @@ export function WeekGridView({
                   {meal ? (
                     <>
                       <div className="relative flex-1 min-h-0 bg-[#F5F5F5]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <MealImage
                           src={meal.image}
                           alt={meal.displayName}
                           className="absolute inset-0 w-full h-full object-cover"

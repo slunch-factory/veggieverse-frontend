@@ -7,6 +7,7 @@ import { User, Menu, ShoppingCart } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { useCart } from "@/contexts/CartContext";
 import { getUserProfile } from "@/lib/api/user";
+import { supabaseRenderUrl } from "@/lib/supabaseImage";
 import { NavigationDrawer } from "./NavigationDrawer";
 import { LoginModal } from "../modals/LoginModal";
 import { SearchModal } from "../modals/SearchModal";
@@ -58,7 +59,9 @@ export function Header({ showTopBanner = false }: HeaderProps) {
   };
 
   const spiritImageUrl = user?.spiritName ? getSpiritImageUrl(user.spiritName) : null;
-  const avatarUrl = profileImageUrl ?? spiritImageUrl;
+  const rawAvatarUrl = profileImageUrl ?? spiritImageUrl;
+  // 28px 아바타 — Supabase 프로필 사진(원본 수 MB)을 64px로 다운스케일. 스피릿 등 로컬 에셋은 그대로 통과.
+  const avatarUrl = rawAvatarUrl ? supabaseRenderUrl(rawAvatarUrl, { width: 64 }) : null;
 
   return (
     <>
@@ -130,6 +133,7 @@ export function Header({ showTopBanner = false }: HeaderProps) {
                     src={avatarUrl}
                     alt="프로필"
                     className="w-full h-full object-cover"
+                    decoding="async"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}

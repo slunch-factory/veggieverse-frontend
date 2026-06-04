@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
+import { supabaseRenderUrl } from "@/lib/supabaseImage";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
@@ -6,16 +7,21 @@ export type StoreSortParam = "nameAsc" | "nameDesc" | "priceAsc" | "popularDesc"
 
 const CDN_PATTERN = /^https?:\/\/cdn\.slunch\.com(\/.*)/;
 
-function resolveImageUrl(imageUrl: string): string {
+/** 절대 URL로 정규화한 뒤, Supabase 스토리지 이미지면 표시 크기에 맞춰 다운스케일한다.
+ *  width: 변환 가로 px(표시 크기의 2배 권장). Supabase 외 URL은 그대로 통과. */
+function resolveImageUrl(imageUrl: string, width?: number): string {
   if (!imageUrl) return "";
 
+  let resolved: string;
   if (process.env.NODE_ENV === "development") {
     const match = imageUrl.match(CDN_PATTERN);
-    if (match) return `${API_BASE}${match[1]}`;
+    if (match) resolved = `${API_BASE}${match[1]}`;
+    else resolved = imageUrl.startsWith("http") ? imageUrl : `${API_BASE}${imageUrl}`;
+  } else {
+    resolved = imageUrl.startsWith("http") ? imageUrl : `${API_BASE}${imageUrl}`;
   }
 
-  if (imageUrl.startsWith("http")) return imageUrl;
-  return `${API_BASE}${imageUrl}`;
+  return supabaseRenderUrl(resolved, { width });
 }
 
 /* ------------------------------------------------------------------ */
@@ -51,7 +57,8 @@ export async function getStoreProducts(sort: StoreSortParam = "nameAsc"): Promis
     }
     const data = await res.json();
     const list: StoreProduct[] = Array.isArray(data) ? data : [];
-    return list.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl) }));
+    // 목록 카드는 한 화면에 여러 장 — 표시폭 ~250px 기준 2배(500)로 다운스케일
+    return list.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl, 500) }));
   } catch (err) {
     console.error("[getStoreProducts] fetch failed:", err);
     return [];
@@ -106,7 +113,8 @@ export async function getProductBySlug(slug: string): Promise<StoreProductDetail
 }
 
 function resolveDetailImages(product: StoreProductDetail): StoreProductDetail {
-  const r = (img: StoreProductImage) => ({ ...img, url: resolveImageUrl(img.url) });
+  // 상세 페이지 메인/본문 이미지는 크게 표시 — 폭 ~900px로 다운스케일(비율 유지)
+  const r = (img: StoreProductImage) => ({ ...img, url: resolveImageUrl(img.url, 900) });
   return {
     ...product,
     images: {
@@ -165,7 +173,7 @@ export async function getStoreOrderHistory(
   // 이미지 URL CDN 변환 적용
   data.content = data.content.map((item) => ({
     ...item,
-    products: item.products.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl) })),
+    products: item.products.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl, 200) })),
   }));
   console.log(
     "%c[getStoreOrderHistory] ✅ 상품 주문 내역 조회 성공",
@@ -223,7 +231,7 @@ export async function getStoreOrderDetail(
     return null;
   }
   const data: StoreOrderDetailResponse = await res.json();
-  data.products = data.products.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl) }));
+  data.products = data.products.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl, 200) }));
   console.log(
     "%c[getStoreOrderDetail] ✅ 상품 주문 상세 조회 성공",
     "color: #4A7F52; font-weight: bold;",
