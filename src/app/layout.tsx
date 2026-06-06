@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/providers/Providers";
 import { LayoutShell } from "@/components/layout/LayoutShell";
+import { GoogleAds } from "@/components/GoogleAds";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
         <Providers>
           <LayoutShell>{children}</LayoutShell>
         </Providers>
+        <GoogleAds />
       </body>
     </html>
   );
