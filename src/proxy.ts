@@ -14,11 +14,13 @@ export const config = {
   matcher: [
     /*
      * 다음 경로를 제외한 모든 요청에 대해 실행:
+     * - api (API 라우트 — /api/proxy 등은 자체적으로 쿠키→토큰 인증을 처리하므로
+     *        여기서 getUser() 네트워크 왕복을 또 돌면 순수 중복 비용이다)
      * - _next/static (정적 자산)
      * - _next/image (Next 이미지 최적화)
      * - favicon.ico, sitemap.xml, robots.txt
      * - 이미지/폰트 등 정적 확장자
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|otf)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|otf)$).*)",
   ],
 };
