@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
-import type { StoreProduct } from "@/lib/api/store";
+import { isComingSoon, type StoreProduct } from "@/lib/api/store";
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const router = useRouter();
+  const comingSoon = isComingSoon(product.slug);
   const images = product.imageUrl ? [product.imageUrl] : [];
-  const useSlider = images.length >= 3;
+  const useSlider = images.length >= 3 && !comingSoon;
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [dragStartX, setDragStartX] = useState<number | null>(null);
@@ -44,10 +45,18 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   return (
     <div
       className="card"
-      onClick={() => router.push(`/store/${product.slug}`)}
+      style={comingSoon ? { cursor: "default" } : undefined}
+      aria-disabled={comingSoon || undefined}
+      onClick={() => {
+        if (comingSoon) return;
+        router.push(`/store/${product.slug}`);
+      }}
     >
       {/* 이미지 영역 */}
-      <div className="card-img" style={{ aspectRatio: "1 / 1" }}>
+      <div
+        className="card-img"
+        style={{ aspectRatio: "1 / 1", filter: comingSoon ? "grayscale(1)" : undefined }}
+      >
         {images.length > 0 ? (
           <div
             className="absolute inset-0 overflow-hidden"
@@ -99,7 +108,21 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           <span className="text-[13px]" style={{ color: "var(--neutral-stone)" }}>IMG</span>
         )}
 
-        {badgeVariant && (
+        {comingSoon && (
+          <div
+            className="absolute inset-0 z-30 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(90, 90, 90, 0.45)" }}
+          >
+            <span
+              className="rounded-full px-4 py-1.5 text-[13px] font-bold tracking-wide text-white"
+              style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
+            >
+              준비중
+            </span>
+          </div>
+        )}
+
+        {badgeVariant && !comingSoon && (
           <div className="card-badges">
             <Badge variant={badgeVariant} />
           </div>
@@ -127,7 +150,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
       </div>
 
       {/* 상품 정보 */}
-      <div className="card-body">
+      <div className="card-body" style={comingSoon ? { opacity: 0.5 } : undefined}>
         <p className="card-name">{product.name}</p>
         {product.tagline && (
           <p className="card-desc">{product.tagline}</p>

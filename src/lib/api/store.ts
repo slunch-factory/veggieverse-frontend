@@ -18,6 +18,22 @@ export function categoryLabel(code: string): string {
   return STORE_CATEGORY_LABELS[code] ?? code;
 }
 
+/** 정식 판매 중인 상품 slug. 이 목록에 없는 상품은 스토어에서 "준비중"으로 비활성화 표시한다. */
+export const AVAILABLE_PRODUCT_SLUGS = new Set<string>([
+  "kimchi-can",            // 비건 김치캔
+  "kimchi-pancake",        // 비건 김치전 밀키트
+  "peach-tart",            // 비건 복숭아 타르트
+  "peach-tart-slice",      // 비건 복숭아타르트 조각
+  "blueberry-tart",        // 비건 블루베리 타르트
+  "blueberry-tart-slice",  // 비건 블루베리타르트 조각
+  "peanut-butter-choco-bar", // 비건 피넛버터 초코바
+]);
+
+/** 해당 slug가 아직 판매 준비중(비활성화) 상태인지 여부 */
+export function isComingSoon(slug: string): boolean {
+  return !AVAILABLE_PRODUCT_SLUGS.has(slug);
+}
+
 const CDN_PATTERN = /^https?:\/\/cdn\.slunch\.com(\/.*)/;
 
 /** 절대 URL로 정규화한 뒤, Supabase 스토리지 이미지면 표시 크기에 맞춰 다운스케일한다.
