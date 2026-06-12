@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
-import { isComingSoon, type StoreProduct } from "@/lib/api/store";
+import { categoryLabel, isComingSoon, type StoreProduct } from "@/lib/api/store";
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const router = useRouter();
   const comingSoon = isComingSoon(product.slug);
+  // 카테고리 태그(기본값): 분류가 없으면 "기타"로 표시
+  const categoryTag = product.categories[0] ? categoryLabel(product.categories[0]) : "기타";
   const images = product.imageUrl ? [product.imageUrl] : [];
   const useSlider = images.length >= 3 && !comingSoon;
 
@@ -151,6 +153,12 @@ export function ProductCard({ product }: { product: StoreProduct }) {
 
       {/* 상품 정보 */}
       <div className="card-body" style={comingSoon ? { opacity: 0.5 } : undefined}>
+        <span
+          className="mb-1 inline-block text-[11px] font-semibold tracking-wide"
+          style={{ color: "var(--neutral-stone)" }}
+        >
+          {categoryTag}
+        </span>
         <p className="card-name">{product.name}</p>
         {product.tagline && (
           <p className="card-desc">{product.tagline}</p>
