@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import type { DisplayMenuData, ExcludeCategory } from "../_data/subscription";
+import type { DisplayMenuData, ExcludeCategory, MenuNutrition } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
+import { ImageCarousel } from "@/components/ImageCarousel";
 
 interface MenuDetailModalProps {
   meal: DisplayMenuData | null;
@@ -11,13 +12,31 @@ interface MenuDetailModalProps {
   onAdd: (meal: DisplayMenuData) => void;
 }
 
-const DUMMY_NUTRITION = { kcal: 520, protein: 18, carbs: 24, fat: 17 };
+/* admin SubscribePreview 카드와 동일한 타이포 토큰 */
+const sf = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+const mono = "'Courier New', Courier, monospace";
 
+const DUMMY_NUTRITION: MenuNutrition = { kcal: 520, protein: 18, carbs: 24, fat: 17 };
+
+/* mono 섹션 헤더 (INGREDIENTS / NUTRITION / DESCRIPTION) */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 8, fontSize: 9, letterSpacing: 3, color: "rgba(0,0,0,0.35)", fontFamily: mono }}>
+      {children}
+    </div>
+  );
+}
+
+const DIVIDER = <div style={{ margin: "24px 0", height: 1, background: "#c9bcbe" }} />;
+
+/**
+ * 식단 상세 모달 — admin `SubscribePreview` 카드 디자인 1:1 포트.
+ * 어드민에서 편집하는 미리보기와 동일한 레이아웃을 소비자에서도 렌더한다(최종적으로 admin→veggieverse 동기화 목표).
+ * 모바일에서는 사진이 위로, 상세 설명이 그 아래로 노출된다. +/× 버튼·담기·ESC 등 모달 상호작용은 유지.
+ */
 export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) {
   useEffect(() => {
     if (!meal) return;
-    // overflow:hidden으로 스크롤바가 사라지면 뷰포트 너비가 scrollbarWidth만큼 늘어남
-    // CSS 변수로 body와 fixed 요소 모두 동일하게 보상
     const sw = window.innerWidth - document.documentElement.clientWidth;
     document.documentElement.style.setProperty("--scrollbar-w", `${sw}px`);
     document.documentElement.classList.add("mm-open");
@@ -41,56 +60,123 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
   const categoryLabel = meal.category === "protein" ? "고단백" : "저칼로리";
 
   const nut = meal.nutrition ?? DUMMY_NUTRITION;
-  const nutritionItems = [
-    { label: "kcal",    value: nut.kcal,    unit: "" },
-    { label: "단백질",  value: nut.protein,  unit: "g" },
-    { label: "탄수화물", value: nut.carbs,   unit: "g" },
-    { label: "지방",    value: nut.fat,      unit: "g" },
+  const nutritionCells: [string | number, string][] = [
+    [nut.kcal ?? 0, "kcal"],
+    [`${nut.protein ?? 0}g`, "단백질"],
+    [`${nut.carbs ?? 0}g`, "탄수화물"],
+    [`${nut.fat ?? 0}g`, "지방"],
   ];
+  if (nut.sodium != null) nutritionCells.push([`${nut.sodium}mg`, "나트륨"]);
 
-  const ingredients = meal.ingredients?.slice(0, 4) ?? [];
+  const ingredients = meal.ingredients ?? [];
+  // images 배열이 있으면 슬라이드, 없으면 단일 image 1장(빈 값이면 MealImage placeholder)
+  const detailImages = meal.images?.length ? meal.images : [meal.image ?? ""];
+
+  const description = meal.description?.trim();
+  const sellingPoints = (meal.sellingPoints ?? []).filter((s) => s && s.title);
+  const cookingTip = meal.cookingTip?.trim();
+  const productInfo = (meal.productInfo ?? []).filter((r) => r && (r.label || r.value));
+
+  const pill = (key: string, label: string, danger = false) => (
+    <span
+      key={key}
+      style={{
+        display: "inline-block",
+        padding: "3px 10px",
+        border: `1px solid ${danger ? "#e6863f" : "#111"}`,
+        borderRadius: 100,
+        fontSize: 10.5,
+        fontWeight: 500,
+        color: danger ? "#e6863f" : "#250a00",
+        fontFamily: sf,
+      }}
+    >
+      {label}
+    </span>
+  );
+
+  const descriptionBlock = description ? (
+    <div data-field-id="field-description">
+      <SectionLabel>DESCRIPTION</SectionLabel>
+      <div style={{ fontSize: 12.5, color: "#444", lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: sf }}>
+        {description}
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
       {/* 딤 */}
-      <div
-        className="fixed inset-0 z-[200] bg-black/50"
-        aria-hidden="true"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-[200] bg-black/50" aria-hidden="true" onClick={onClose} />
 
-      {/* 포지셔닝 래퍼 — 데스크톱: 화면 중앙 / 모바일: 하단 */}
+      {/* 포지셔닝 래퍼 — 데스크톱: 중앙 / 모바일: 하단 */}
       <div
         className="fixed inset-0 z-[201] flex items-center justify-center p-6 max-lg:p-0 max-lg:items-end"
         onClick={onClose}
       >
-        {/* 다이얼로그 */}
+        {/* 다이얼로그 = admin 카드 */}
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="mm-name"
           data-menu-modal="true"
           className={[
-            "w-full bg-[#fcfaf8] overflow-hidden",
-            "lg:grid lg:max-w-[820px] lg:max-h-[90dvh]",
-            "lg:border lg:border-black lg:shadow-[0_16px_48px_rgba(26,10,5,0.18)]",
-            "max-lg:flex max-lg:flex-col max-lg:h-[88dvh]",
-            "max-lg:border-t max-lg:border-black",
-            "max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
+            "w-full overflow-hidden bg-[#fcfaf8] flex",
+            "lg:flex-row lg:max-w-[900px] lg:max-h-[90dvh] lg:rounded-[20px]",
+            "lg:border lg:border-black lg:shadow-[0_24px_64px_rgba(0,0,0,0.18)]",
+            "max-lg:flex-col max-lg:h-[88dvh] max-lg:rounded-t-[16px]",
+            "max-lg:border-t max-lg:border-black max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
           ].join(" ")}
-          style={{ gridTemplateColumns: "1fr 1.1fr" }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* LEFT: 이미지 */}
-          <div className="lg:aspect-square max-lg:shrink-0 max-lg:h-[26vh] max-lg:max-h-[240px] overflow-hidden bg-[#e8e4de]">
-            <MealImage src={meal.image} alt={meal.displayName} width={640} className="w-full h-full object-cover" />
+          {/* LEFT: 이미지 (어두운 배경 + 로고 오버레이, 여러 장이면 슬라이드) */}
+          <div className="relative overflow-hidden bg-[#250a00] lg:w-[44%] lg:shrink-0 max-lg:w-full max-lg:shrink-0 max-lg:h-[30vh] max-lg:max-h-[280px]">
+            <ImageCarousel
+              images={detailImages.map((url) => ({ url }))}
+              frameClassName="relative w-full h-full"
+              renderImage={(img) => (
+                <MealImage src={img.url} alt={meal.displayName} width={640} className="w-full h-full object-cover" />
+              )}
+            />
+            {/* 로고 오버레이 */}
+            <div className="absolute top-5 left-5 z-[2] pointer-events-none">
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#fff",
+                  letterSpacing: 1.5,
+                  lineHeight: 1.2,
+                  textShadow: "0 1px 6px rgba(0,0,0,0.5)",
+                  fontFamily: sf,
+                }}
+              >
+                SLUNCH
+                <br />
+                FACTORY
+              </div>
+              <div
+                style={{
+                  fontSize: 8,
+                  color: "rgba(255,255,255,0.6)",
+                  letterSpacing: 1,
+                  marginTop: 3,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                  fontFamily: sf,
+                }}
+              >
+                Slow &amp; Lunch
+              </div>
+            </div>
           </div>
 
-          {/* RIGHT: 바디 */}
-          <div className="flex flex-col lg:px-6 lg:py-5 max-lg:p-[18px] lg:gap-[10px] max-lg:gap-[10px] lg:border-l lg:border-black max-lg:border-t max-lg:border-black max-lg:flex-1 max-lg:min-h-0 max-lg:overflow-y-auto">
-
-            {/* + / × 원형 버튼 — 오른쪽 정렬 */}
-            <div className="flex flex-row items-center justify-end gap-[10px] shrink-0">
+          {/* RIGHT: 본문 */}
+          <div
+            className="flex-1 overflow-y-auto max-lg:min-h-0 lg:px-9 lg:py-10 max-lg:px-[22px] max-lg:py-7"
+            style={{ fontFamily: sf }}
+          >
+            {/* + / × 버튼 */}
+            <div className="flex flex-row items-center justify-end gap-[10px] mb-3">
               <button
                 type="button"
                 onClick={() => { onAdd(meal); onClose(); }}
@@ -110,76 +196,181 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
               </button>
             </div>
 
-            {/* 메뉴 이름 */}
-            <h3 id="mm-name" className="lg:text-[22px] max-lg:text-[18px] tracking-[-0.01em] leading-[1.3] text-[#1a0a05]">
-              {meal.displayName}
-            </h3>
-
-            {/* 설명 */}
-            <p className="lg:text-[13px] max-lg:text-[12px] text-[#9a928c] lg:leading-[1.7] max-lg:leading-[1.6]">
-              {meal.description || "슬런치 채식 식단"}
-            </p>
-
-            {/* 메타 태그 */}
-            <div className="flex flex-wrap gap-[6px]">
-              <span className="px-[10px] max-lg:px-[8px] py-[3px] border border-black lg:text-[11px] max-lg:text-[10px] text-[#3d3d3d]">
-                {categoryLabel}
-              </span>
-              {isSpicy && (
-                <span className="px-[10px] max-lg:px-[8px] py-[3px] border border-black lg:text-[11px] max-lg:text-[10px] text-[#3d3d3d]">
-                  매운맛
-                </span>
-              )}
-              {allergyTags.map((tag) => (
-                <span key={tag} className="px-[10px] max-lg:px-[8px] py-[3px] bg-[#fbf2f2] text-[#e05858] border border-[#e05858] lg:text-[11px] max-lg:text-[10px]">
-                  Allergy · {tag}
-                </span>
-              ))}
-            </div>
-
-            {/* 가격 */}
-            <div className="lg:text-[22px] max-lg:text-[18px] tracking-[-0.01em] text-[#1a0a05] tabular-nums">
-              {meal.price.toLocaleString()}원
-            </div>
-
-            {/* 구분선 */}
-            <div className="h-px bg-[#e5e2dc]" />
-
-            {/* 재료 (최대 4개) */}
-            {ingredients.length > 0 && (
-              <div className="shrink-0">
-                <h4 className="lg:text-[10px] max-lg:text-[9px] tracking-[0.14em] uppercase text-[#8c451d] mb-[6px]">
-                  Ingredients
-                </h4>
-                <ul className="list-none p-0 m-0 lg:text-[13px] max-lg:text-[12px] text-[#3d3d3d] leading-[1.8]">
-                  {ingredients.map((ing) => (
-                    <li key={ing.name} className="flex justify-between py-[2px]">
-                      <span>{ing.name}</span>
-                      <span className="text-[#9a928c]">{ing.amountG}g</span>
-                    </li>
-                  ))}
-                </ul>
+            {/* 모바일: 이미지 바로 아래에 상세 설명 */}
+            {description && (
+              <div className="lg:hidden" style={{ marginBottom: 4 }}>
+                {descriptionBlock}
+                {DIVIDER}
               </div>
             )}
 
-            {/* 영양 정보 */}
-            <div className="shrink-0">
-              <h4 className="lg:text-[10px] max-lg:text-[9px] tracking-[0.14em] uppercase text-[#8c451d] mb-[6px]">
-                Nutrition
-              </h4>
-              <div className="grid grid-cols-4 gap-[6px]">
-                {nutritionItems.map((n) => (
-                  <div key={n.label} className="border border-[#e5e2dc] px-[4px] lg:pt-[8px] lg:pb-[6px] max-lg:pt-[6px] max-lg:pb-[4px] text-center">
-                    <strong className="block lg:text-[15px] max-lg:text-[13px] font-normal text-[#3d3d3d] tracking-[-0.005em]">
-                      {n.value}{n.unit}
-                    </strong>
-                    <span className="text-[#9a928c] lg:text-[10px] max-lg:text-[9px] tracking-[0.04em]">
-                      {n.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {/* 제품명 */}
+            <div
+              id="mm-name"
+              style={{ fontSize: 26, fontWeight: 700, color: "#250a00", lineHeight: 1.25, letterSpacing: -0.5, fontFamily: sf }}
+            >
+              {meal.displayName}
             </div>
+
+            {/* 태그라인 */}
+            {meal.tagline && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "rgba(0,0,0,0.5)", lineHeight: 1.55, fontFamily: sf }}>
+                {meal.tagline}
+              </div>
+            )}
+
+            {/* 뱃지 */}
+            <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {meal.diet && pill("diet", meal.diet)}
+              {pill("cat", categoryLabel)}
+              {isSpicy && pill("spicy", "매운맛")}
+              {allergyTags.map((tag) => pill(`al-${tag}`, `Allergy · ${tag}`, true))}
+            </div>
+
+            {/* 가격 */}
+            <div style={{ marginTop: 18, fontSize: 21, fontWeight: 700, color: "#250a00", letterSpacing: -0.4, fontFamily: sf }}>
+              {meal.price.toLocaleString()}원
+            </div>
+
+            {DIVIDER}
+
+            {/* SELLING POINTS */}
+            {sellingPoints.length > 0 && (
+              <>
+                <div>
+                  <SectionLabel>SELLING POINTS</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {sellingPoints.map((s, i) => (
+                      <div key={i}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 18,
+                              height: 18,
+                              background: "#250a00",
+                              color: "#fff",
+                              borderRadius: 999,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              flexShrink: 0,
+                              fontFamily: sf,
+                            }}
+                          >
+                            {i + 1}
+                          </span>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#250a00", fontFamily: sf, lineHeight: 1.3 }}>
+                            {s.title}
+                          </span>
+                        </div>
+                        {s.desc && (
+                          <div style={{ fontSize: 11.5, color: "rgba(0,0,0,0.55)", lineHeight: 1.55, paddingLeft: 26, fontFamily: sf }}>
+                            {s.desc}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {DIVIDER}
+              </>
+            )}
+
+            {/* INGREDIENTS */}
+            {ingredients.length > 0 && (
+              <>
+                <div>
+                  <SectionLabel>INGREDIENTS</SectionLabel>
+                  {ingredients.map((ing) => (
+                    <div
+                      key={ing.name}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                        padding: "9px 0",
+                        borderBottom: "1px solid #e8e2e2",
+                      }}
+                    >
+                      <span style={{ fontSize: 12.5, color: "#250a00", fontFamily: sf }}>{ing.name}</span>
+                      <span style={{ fontSize: 11.5, color: "rgba(0,0,0,0.38)", fontFamily: sf, marginLeft: 12, flexShrink: 0 }}>
+                        {ing.amountG}g
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ height: 24 }} />
+              </>
+            )}
+
+            {/* NUTRITION */}
+            <SectionLabel>NUTRITION</SectionLabel>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${nutritionCells.length},1fr)`,
+                gap: 1,
+                background: "#c9bcbe",
+                border: "1px solid #c9bcbe",
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
+              {nutritionCells.map(([val, label]) => (
+                <div key={label} style={{ background: "#fff", padding: "14px 8px", textAlign: "center" }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: "#250a00", fontFamily: sf, lineHeight: 1.2 }}>{val}</div>
+                  <div style={{ fontSize: 9, color: "rgba(0,0,0,0.4)", marginTop: 4, fontFamily: sf, letterSpacing: 0.3 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* DESCRIPTION (데스크톱 — 모바일은 이미지 바로 아래에서 이미 노출) */}
+            {description && (
+              <div className="max-lg:hidden">
+                {DIVIDER}
+                {descriptionBlock}
+              </div>
+            )}
+
+            {/* COOKING TIP */}
+            {cookingTip && (
+              <>
+                {DIVIDER}
+                <div data-field-id="field-cooking-tip">
+                  <SectionLabel>COOKING TIP</SectionLabel>
+                  <div style={{ fontSize: 12.5, color: "#444", lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: sf }}>
+                    {cookingTip}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* PRODUCT INFO */}
+            {productInfo.length > 0 && (
+              <>
+                {DIVIDER}
+                <div>
+                  <SectionLabel>PRODUCT INFO</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {productInfo.map((row) => (
+                      <div
+                        key={row.label}
+                        style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid #e8e2e2" }}
+                      >
+                        <span style={{ flex: "0 0 34%", fontSize: 11.5, color: "rgba(0,0,0,0.45)", fontFamily: sf }}>
+                          {row.label}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 11.5, color: "#250a00", lineHeight: 1.6, fontFamily: sf, whiteSpace: "pre-wrap" }}>
+                          {row.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

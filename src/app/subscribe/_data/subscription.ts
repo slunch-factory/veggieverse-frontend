@@ -19,6 +19,19 @@ export interface MenuNutrition {
   protein?: number;
   carbs?: number;
   fat?: number;
+  sodium?: number;
+}
+
+/** 소구 포인트 (어드민 SubscribeProduct.selling_points 대응) */
+export interface MenuSellingPoint {
+  title: string;
+  desc: string;
+}
+
+/** 식품 정보 라벨 행 (어드민 info_* 필드 대응) */
+export interface MenuInfoRow {
+  label: string;
+  value: string;
 }
 
 export interface MenuSpirit {
@@ -34,11 +47,24 @@ export interface MenuData {
   cost: number;
   price: number;
   image: string;
+  /** 정규화된 이미지 URL 배열 (여러 장 슬라이드용). 없으면 image 1장으로 폴백 */
+  images?: string[];
   description: string;
   excludable: ExcludeCategory[];
   ingredients?: MenuIngredient[];
   nutrition?: MenuNutrition;
   spirit?: MenuSpirit;
+  // ── 어드민 카드 전체 섹션 대응 (백엔드가 내려주면 상세 모달에 렌더) ──
+  /** 한 줄 소개 */
+  tagline?: string;
+  /** 식단 타입 라벨 (비건 등) */
+  diet?: string;
+  /** 소구 포인트 */
+  sellingPoints?: MenuSellingPoint[];
+  /** 조리 팁 */
+  cookingTip?: string;
+  /** 식품 정보 라벨 표 */
+  productInfo?: MenuInfoRow[];
 }
 
 export interface DisplayMenuData extends MenuData {

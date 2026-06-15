@@ -351,24 +351,18 @@ export default function HomePage() {
 
             {/* Peek body */}
             <div className="bg-[#DCFD4A] border border-[#250a00] border-b-0 rounded-t-[24px] md:rounded-t-[32px] px-5 md:px-11 pt-4 pb-5 md:pb-6 relative z-[1]">
-              <div className="flex flex-col md:flex-row items-center justify-center gap-3">
-                {/* 선택된 야채 실루엣 */}
+              <div className="flex flex-col items-center justify-center gap-3">
+                {/* 선택된 야채 원본 이미지 */}
                 <div className="flex items-center gap-2">
                   {selectedItems.map((item) => (
                     <div key={item.id} className="relative w-[48px] h-[48px] md:w-[60px] md:h-[60px] flex items-center justify-center shrink-0">
-                      <div
-                        className="w-full h-full"
-                        style={{
-                          backgroundColor: item.labelColor,
-                          WebkitMaskImage: `url(${item.imageUrl})`,
-                          WebkitMaskSize: "contain",
-                          WebkitMaskRepeat: "no-repeat",
-                          WebkitMaskPosition: "center",
-                          maskImage: `url(${item.imageUrl})`,
-                          maskSize: "contain",
-                          maskRepeat: "no-repeat",
-                          maskPosition: "center",
-                        }}
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        sizes="60px"
+                        className="object-contain"
+                        draggable={false}
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); removeSelection(item.id); }}
