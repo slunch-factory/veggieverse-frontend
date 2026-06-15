@@ -3,13 +3,22 @@ import { apiFetch } from "@/lib/api/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
+export interface SubscriptionProductImage {
+  url: string;
+  altText?: string;
+  sortOrder?: number;
+}
+
 export interface ProductItem {
   id: number;
   name: string;
   price: number;
   ingredients?: { name: string; amountG: number }[];
   nutritionInfo?: Record<string, unknown>;
+  /** 단일 대표 이미지 (현행 백엔드 응답) */
   imageUrl?: string;
+  /** 이미지 배열 (백엔드가 여러 장 내려줄 때 대비 — 있으면 imageUrl 보다 우선) */
+  images?: SubscriptionProductImage[];
   spirit: {
     healthGoals: string[];
     allergens: string[];
@@ -17,6 +26,19 @@ export interface ProductItem {
     isSpicy?: boolean;
     spicy?: boolean;
   };
+  // ── 어드민 카드 전체 섹션 대비 (백엔드 확장 시 자동 렌더) — 필드명은 DTO 확정 시 조정 ──
+  /** 상세 설명 */
+  description?: string;
+  /** 한 줄 소개 */
+  tagline?: string;
+  /** 식단 타입 (비건 등) */
+  dietaryType?: string;
+  /** 소구 포인트 */
+  sellingPoints?: { title: string; desc: string }[];
+  /** 조리 팁 */
+  cookingTip?: string;
+  /** 식품 정보 라벨 표 */
+  productInfo?: { label: string; value: string }[];
 }
 
 export interface PlanItem {
@@ -47,6 +69,22 @@ function resolveImageUrl(imageUrl: string | undefined): string {
   return `${API_BASE}${imageUrl}`;
 }
 
+/**
+ * 제품의 이미지들을 정규화된 URL 배열로 변환한다.
+ * `images` 배열이 있으면 sortOrder 순으로 사용하고, 없으면 단일 `imageUrl`로 폴백한다.
+ * → 백엔드가 단일/배열 어느 쪽을 주든 소비자 컴포넌트는 항상 배열을 받는다.
+ */
+function resolveImageList(p: ProductItem): string[] {
+  if (p.images?.length) {
+    return [...p.images]
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .map((img) => resolveImageUrl(img.url))
+      .filter(Boolean);
+  }
+  const single = resolveImageUrl(p.imageUrl);
+  return single ? [single] : [];
+}
+
 function mapNutrition(raw: Record<string, unknown> | undefined): MenuNutrition | undefined {
   if (!raw) return undefined;
   const n = raw as Record<string, number>;
@@ -55,6 +93,7 @@ function mapNutrition(raw: Record<string, unknown> | undefined): MenuNutrition |
     protein: n.protein,
     carbs: n.carbohydrate ?? n.carbs ?? n.carb,
     fat: n.fat,
+    sodium: n.sodium ?? n.natrium,
   };
   const hasAny = Object.values(result).some((v) => v != null);
   return hasAny ? result : undefined;
@@ -75,14 +114,17 @@ export function mapToMenuData(p: ProductItem): MenuData {
     ? "protein"
     : "slim";
 
+  const images = resolveImageList(p);
+
   return {
     id: String(p.id),
     name: p.name,
     category,
     cost: p.price,
     price: p.price,
-    image: resolveImageUrl(p.imageUrl),
-    description: "",
+    image: images[0] ?? "",
+    images,
+    description: p.description ?? "",
     excludable,
     ingredients: p.ingredients,
     nutrition: mapNutrition(p.nutritionInfo),
@@ -91,6 +133,12 @@ export function mapToMenuData(p: ProductItem): MenuData {
       allergens: p.spirit.allergens ?? [],
       spicy: Boolean(p.spirit.isSpicy ?? p.spirit.spicy),
     },
+    // 어드민 카드 전체 섹션 — 백엔드가 내려주면 상세 모달에 자동 렌더
+    tagline: p.tagline,
+    diet: p.dietaryType,
+    sellingPoints: p.sellingPoints,
+    cookingTip: p.cookingTip,
+    productInfo: p.productInfo,
   };
 }
 

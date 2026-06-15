@@ -19,6 +19,7 @@ import { addCartItem } from "@/lib/api/cart";
 import { useRouter } from "next/navigation";
 import { ProductDetailTemplate } from "./ProductDetailTemplate";
 import { PRODUCT_TEMPLATE_DATA, parseDescTemplate } from "../_data/templateData";
+import { ImageCarousel } from "@/components/ImageCarousel";
 
 /* ------------------------------------------------------------------ */
 /*  Tabs                                                               */
@@ -49,7 +50,6 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
   const { addItem } = useCart();
   const router = useRouter();
 
-  const [mainIdx, setMainIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [liked, setLiked] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
@@ -187,51 +187,20 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
       <div className="mx-auto max-w-6xl px-4 pb-8 flex flex-col lg:flex-row gap-8">
         {/* LEFT: image gallery */}
         <div className="w-full lg:w-1/2">
-          <div className="relative aspect-square w-full overflow-hidden" style={{ borderRadius: "var(--r-btn)", border: "1px solid var(--ink)", background: "var(--bg-off)" }}>
-            {allImages[mainIdx] ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
+          <ImageCarousel
+            images={allImages.map((img) => ({ url: img.url, altText: img.altText }))}
+            showThumbnails
+            frameClassName="relative aspect-square w-full overflow-hidden"
+            frameStyle={{ borderRadius: "var(--r-btn)", border: "1px solid var(--ink)", background: "var(--bg-off)" }}
+            renderImage={(img) => (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={allImages[mainIdx].url}
-                alt={allImages[mainIdx].altText}
+                src={img.url}
+                alt={img.altText}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="t-caption" style={{ color: "var(--neutral-stone)" }}>이미지 준비 중</span>
-              </div>
             )}
-            {allImages.length > 1 && (
-              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-                {allImages.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setMainIdx(i)}
-                    className={`h-2 w-2 rounded-full transition-colors ${i === mainIdx ? "bg-black" : "bg-white/70"}`}
-                    aria-label={`이미지 ${i + 1}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {allImages.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto">
-              {allImages.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setMainIdx(i)}
-                  className="relative h-16 w-16 flex-shrink-0 overflow-hidden transition-colors"
-                  style={{
-                    borderRadius: "var(--r-btn)",
-                    border: `2px solid ${i === mainIdx ? "var(--ink)" : "var(--neutral-stone)"}`,
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={img.altText} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
+          />
         </div>
 
         {/* RIGHT: product info */}
