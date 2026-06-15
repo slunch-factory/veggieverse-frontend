@@ -62,7 +62,7 @@ const QUICK_MENU = [
 
 export default function MyPageHome() {
   const router = useRouter();
-  const { user, userProfile, isAuthenticated, isLoadingSession, profileVersion } = useUser();
+  const { user, userProfile, isAuthenticated, isLoadingSession, profileVersion, signOut } = useUser();
   const spiritName = user?.spiritName ?? null;
   const veganType = userProfile.veganType ?? null;
 
@@ -179,17 +179,32 @@ export default function MyPageHome() {
             <p className="t-caption mt-1" style={{ color: "var(--neutral-stone)" }}>배지 0개</p>
           </div>
 
-          <Link
-            href="/mypage/info"
-            className="t-small shrink-0 whitespace-nowrap"
-            style={{
-              color: "var(--ink-light)",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
-            }}
-          >
-            프로필 수정
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/mypage/info"
+              className="t-small whitespace-nowrap"
+              style={{
+                color: "var(--ink-light)",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              프로필 수정
+            </Link>
+            <span className="t-small" style={{ color: "var(--neutral-stone)" }}>|</span>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="t-small whitespace-nowrap"
+              style={{
+                color: "var(--ink-light)",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </Card>
 
