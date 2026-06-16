@@ -5,7 +5,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -19,24 +18,31 @@ import {
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
+// 메인페이지 자산은 로컬 public/main/ 에서 직접 서빙한다(외부/Supabase 의존 제거).
 const IMG = {
-  hero:           `${BASE}/images/menus/08_roasted_vegetable_lasagna.png`,
-  feat1:          `${BASE}/14meals.png`,
-  feat2:          `${BASE}/dawn.png`,
-  feat3:          `${BASE}/images/menus/15_gochujang_tofu_bowl.png`,
-  menu1:          `${BASE}/images/menus/22_avocado_sushi_bowl.png`,
-  menu2:          `${BASE}/images/menus/27_roasted_vegetable_quinoa_salad.png`,
-  menu3:          `${BASE}/images/menus/04_kale_waldorf_salad.png`,
-  menu4:          `${BASE}/images/menus/01_roasted_beet_carpaccio.png`,
-  menu5:          `${BASE}/images/menus/29_tofu_poke_bowl.png`,
-  menu6:          `${BASE}/images/menus/20_mediterranean_vegetable_pasta.png`,
-  menu7:          `${BASE}/images/menus/07_crispy_tofu_steak.png`,
-  menu8:          `${BASE}/images/menus/05_mediterranean_quinoa_salad.png`,
-  step1:          `${BASE}/images/menus/15_gochujang_tofu_bowl.png`,
-  step2:          `${BASE}/images/menus/27_roasted_vegetable_quinoa_salad.png`,
-  step3:          `${BASE}/dawn.png`,
-  testimonialImg: `${BASE}/images/menus/04_kale_waldorf_salad.png`,
+  why1:   `${BASE}/main/why-1.png`,
+  why2:   `${BASE}/main/why-2.png`,
+  why3:   `${BASE}/main/why-3.png`,
+  menu1:  `${BASE}/main/menu_1.png`,
+  menu2:  `${BASE}/main/menu_2.png`,
+  menu3:  `${BASE}/main/menu_3.png`,
+  menu4:  `${BASE}/main/menu_4.png`,
+  menu5:  `${BASE}/main/menu_5.png`,
+  menu6:  `${BASE}/main/menu_6.png`,
+  menu7:  `${BASE}/main/menu_7.png`,
+  menu8:  `${BASE}/main/menu_8.png`,
+  menu9:  `${BASE}/main/menu_9.png`,
+  menu10: `${BASE}/main/menu_10.png`,
+  menu11: `${BASE}/main/menu_11.png`,
+  menu12: `${BASE}/main/menu_12.png`,
+  how1:   `${BASE}/main/how-1.png`,
+  how2:   `${BASE}/main/how-2.png`,
+  how3:   `${BASE}/main/how-3.png`,
+  review: `${BASE}/main/review.png`,
 };
+
+// "매일 먹는 한 끼…" 섹션 배경 영상 (로컬, 웹 최적화 mp4)
+const WEEKLY_VIDEO = `${BASE}/main/weekly.mp4`;
 
 // ── 디자인 토큰 ─────────────────────────────────────────────────────
 const INK       = "var(--ink)";
@@ -112,6 +118,22 @@ const imgReveal = {
   },
 };
 
+// How it works 블록 — 각자 자기 쪽(좌/우)에서 슬라이드되어 들어온다.
+const slideFromLeft = {
+  hidden: { opacity: 0, x: -110 },
+  show: {
+    opacity: 1, x: 0,
+    transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+const slideFromRight = {
+  hidden: { opacity: 0, x: 110 },
+  show: {
+    opacity: 1, x: 0,
+    transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
 // ── 공통 컴포넌트 ────────────────────────────────────────────────────
 
 function Label({ children, light = false }: { children: ReactNode; light?: boolean }) {
@@ -145,8 +167,15 @@ function ParallaxHero({ src, children }: { src: string; children: ReactNode }) {
           className="absolute left-0 w-full will-change-transform"
           style={{ top: "-15%", height: "130%", y }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" className="h-full w-full object-cover" loading="eager" decoding="async" />
+          <video
+            src={src}
+            className="h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+          />
         </motion.div>
       </div>
       <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/75 via-black/52 to-black/68" aria-hidden />
@@ -163,7 +192,7 @@ function ParallaxHero({ src, children }: { src: string; children: ReactNode }) {
 
 function HeroBrand() {
   return (
-    <ParallaxHero src={IMG.hero}>
+    <ParallaxHero src={WEEKLY_VIDEO}>
       <motion.div
         variants={stagger}
         initial="hidden"
@@ -184,7 +213,7 @@ function HeroBrand() {
             letterSpacing: "-0.02em",
           }}
         >
-          맛있는 한 끼가<br />거창할 필요는 없어요
+          매일 먹는 한 끼가 나를<br />더 나답게 만든다면 어떨까요?
         </motion.h2>
 
         <motion.p
@@ -223,19 +252,19 @@ function HeroBrand() {
 
 const FEATURES = [
   {
-    img:   IMG.feat1,
+    img:   IMG.why1,
     num:   "01",
     title: "하루 2끼 × 7일",
     desc:  "잘 먹고 싶은데 매번 챙기기는 쉽지 않죠. 슬런치 위클리는 하루 2끼, 주 14끼 식단을 매주 새벽에 보내드려요. 식단 고민, 장보기, 칼로리 계산은 저희한테 맡겨두세요.",
   },
   {
-    img:   IMG.feat2,
+    img:   IMG.why2,
     num:   "02",
     title: "신선 새벽 배송",
     desc:  "매주 월요일 아침, 문 앞까지 신선하게. 재료는 새벽에 출발해요. 월요일 아침에 문을 열면, 일주일이 조금 가벼워질 거예요.",
   },
   {
-    img:   IMG.feat3,
+    img:   IMG.why3,
     num:   "03",
     title: "취향 맞춤 설계",
     desc:  "스피릿으로 나의 식취향을 파악하고, 주간 식단으로 한 주를 채워보세요. 맛과 건강, 둘 중 하나를 선택할 필요가 없다는 사실은—먹어보면서 자연스럽게 알게 됩니다.",
@@ -309,34 +338,64 @@ function Features() {
 // 3. 메뉴 쇼케이스 (framer-motion 자동 슬라이드)
 // ═══════════════════════════════════════════════════════════════════
 
-const MENUS = [
-  { img: IMG.menu1, name: "아보카도 스시볼",       tag: "비건" },
-  { img: IMG.menu2, name: "퀴노아 채소 샐러드",    tag: "채식" },
-  { img: IMG.menu3, name: "케일 월도프 샐러드",    tag: "비건" },
-  { img: IMG.menu4, name: "구운 비트 카르파치오",   tag: "채식" },
-  { img: IMG.menu5, name: "두부 포케볼",            tag: "비건" },
-  { img: IMG.menu6, name: "지중해 채소 파스타",     tag: "채식" },
-  { img: IMG.menu7, name: "크리스피 두부 스테이크", tag: "비건" },
-  { img: IMG.menu8, name: "지중해 퀴노아 샐러드",   tag: "채식" },
+// 콜라주 띠 — 각 컷아웃을 클러스터로 겹쳐 흩뿌린다.
+// size: 시각적 크기 = "가장 긴 변" 기준(px). 가로 긴 이미지·세로 긴 이미지 상관없이
+//       체감 크기가 균일해진다. aspect(=원본 w/h)로 실제 높이를 역산.
+// top: 띠 상단 기준 수직 오프셋, rotate: 기울기, ml: 좌측 간격(음수=겹침, 양수=여백)
+type MenuItem = { src: string; aspect: number; size: number; top: number; rotate: number; ml: number };
+
+// 폭·높이를 모두 명시적으로 계산한다(가장 긴 변 = size). width:auto로 두면 이미지 로드 전
+// 폭이 0으로 측정돼 무한 루프 폭(singleW)이 깨지므로 반드시 폭을 고정한다.
+const itemHeight = (it: MenuItem) =>
+  it.aspect <= 1 ? it.size : Math.round(it.size / it.aspect);
+const itemWidth = (it: MenuItem) =>
+  it.aspect >= 1 ? it.size : Math.round(it.size * it.aspect);
+
+// 썸네일 테스트.png 레퍼런스 — 거의 똑바로(회전 최소) + 클러스터로 겹침. 크기는 정규화해
+// 균일하게(앵커 250 · 일반 205~225 · 액센트 150), 간격은 촘촘하게.
+const MENU_ITEMS: MenuItem[] = [
+  // ── 클러스터 A: 의자 위에 라자냐 접시
+  { src: IMG.menu3,  aspect: 0.694, size: 205, top: 200, rotate: 0,  ml: 0   }, // 알록달록 의자
+  { src: IMG.menu10, aspect: 1.367, size: 225, top: 58,  rotate: -2, ml: -86 }, // 라자냐 (위로 겹침)
+  // ── 클러스터 B: SLUNCH 봉지 + 크레이트 + 작은 사람들
+  { src: IMG.menu11, aspect: 1.263, size: 255, top: 34,  rotate: 2,  ml: -24 }, // SLUNCH 봉지 (앵커)
+  { src: IMG.menu1,  aspect: 0.881, size: 210, top: 116, rotate: 0,  ml: -96 }, // 마켓 크레이트 (겹침)
+  { src: IMG.menu7,  aspect: 1.629, size: 175, top: 262, rotate: 0,  ml: -118}, // 채소 든 사람들 (바닥)
+  // ── 클러스터 C: 페스토 + 화분
+  { src: IMG.menu12, aspect: 3.847, size: 285, top: 120, rotate: -2, ml: -44 }, // 페스토 봉지
+  { src: IMG.menu2,  aspect: 0.592, size: 205, top: 24,  rotate: 0,  ml: -44 }, // 화분 (위로 겹침)
+  // ── 클러스터 D: 관자 + 비트 접시 + 별
+  { src: IMG.menu8,  aspect: 2.874, size: 290, top: 178, rotate: 1,  ml: -28 }, // 관자 접시
+  { src: IMG.menu9,  aspect: 1.012, size: 218, top: 116, rotate: 0,  ml: -72 }, // 비트 접시 (겹침)
+  { src: IMG.menu6,  aspect: 1.203, size: 150, top: 32,  rotate: 0,  ml: -44 }, // 금별 (위 액센트)
+  // ── 클러스터 E: 램프 + 눈알
+  { src: IMG.menu4,  aspect: 0.972, size: 198, top: 60,  rotate: 0,  ml: -16 }, // 램프
+  { src: IMG.menu5,  aspect: 2.083, size: 150, top: 236, rotate: 0,  ml: -98 }, // 눈알 (바닥에 작게)
 ];
 
-const CARD_GAP   = 12;   // px
-const LOOP_SPEED = 0.055; // px per ms (≈ 18s for ~1000px set)
+const BAND_HEIGHT = 420;   // px — 수직 흩뿌림을 담는 띠 높이
+const SEAM_GAP    = 44;    // px — 원본/복제 세트 이음새 간격
+const LOOP_SPEED  = 0.05;  // px per ms
 
 function MenuShowcase() {
-  const singleRef   = useRef<HTMLDivElement>(null);
-  const singleW     = useRef(0);
-  const x           = useMotionValue(0);
-  const hoveredRef  = useRef(false);
+  const singleRef = useRef<HTMLDivElement>(null);
+  const singleW   = useRef(0);
+  const x         = useMotionValue(0);
 
   useLayoutEffect(() => {
-    if (singleRef.current) {
-      singleW.current = singleRef.current.scrollWidth + CARD_GAP;
-    }
+    const el = singleRef.current;
+    if (!el) return;
+    const measure = () => { singleW.current = el.scrollWidth + SEAM_GAP; };
+    measure();
+    // 폭은 명시적이라 즉시 정확하지만, 폰트/이미지 디코드로 폭이 바뀔 때를 대비해 재측정
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   useAnimationFrame((_, delta) => {
-    if (hoveredRef.current || singleW.current <= 0) return;
+    if (singleW.current <= 0) return;
     const next = x.get() - LOOP_SPEED * delta;
     x.set(next <= -singleW.current ? next + singleW.current : next);
   });
@@ -364,38 +423,38 @@ function MenuShowcase() {
               color: INK,
             }}
           >
-            이번 주 슬런치 테이블
+            건강한 한 주를 채워가는 식탁
           </motion.h2>
           <motion.p
             variants={fadeUp}
             className="mt-3 text-[14px] leading-[1.75] max-w-md"
             style={{ color: INK_LIGHT }}
           >
-            같은 메뉴를 반복하는 게 아니라, 같은 취향의 결 위에서 매주 새롭게 이어지는 식탁입니다.
+            같은 취향의 결 위에서 흐르듯 이어지는 슬로우 라이프.
           </motion.p>
         </motion.div>
       </div>
 
-      {/* 슬라이드 트랙 */}
-      <div
-        className="overflow-hidden"
-        onMouseEnter={() => { hoveredRef.current = true; }}
-        onMouseLeave={() => { hoveredRef.current = false; }}
-      >
+      {/* 콜라주 트랙 — 무한 좌측 스크롤 (hover 정지 없음) */}
+      <div className="overflow-hidden">
         <motion.div
-          className="flex"
-          style={{ x, gap: `${CARD_GAP}px`, paddingLeft: "20px", willChange: "transform" }}
+          className="flex items-start"
+          style={{ x, height: `${BAND_HEIGHT}px`, paddingLeft: "20px", willChange: "transform" }}
         >
           {/* 원본 세트 — 폭 측정 기준 */}
-          <div ref={singleRef} className="flex" style={{ gap: `${CARD_GAP}px` }}>
-            {MENUS.map((m) => (
-              <MenuCard key={m.name} m={m} />
+          <div ref={singleRef} className="flex items-start" style={{ height: `${BAND_HEIGHT}px` }}>
+            {MENU_ITEMS.map((item, i) => (
+              <MenuCutout key={i} item={item} />
             ))}
           </div>
           {/* 복제 세트 — 무한 루프 */}
-          <div className="flex" style={{ gap: `${CARD_GAP}px` }}>
-            {MENUS.map((m) => (
-              <MenuCard key={`dup-${m.name}`} m={m} />
+          <div
+            className="flex items-start"
+            style={{ height: `${BAND_HEIGHT}px`, marginLeft: `${SEAM_GAP}px` }}
+            aria-hidden
+          >
+            {MENU_ITEMS.map((item, i) => (
+              <MenuCutout key={`dup-${i}`} item={item} />
             ))}
           </div>
         </motion.div>
@@ -414,20 +473,24 @@ function MenuShowcase() {
   );
 }
 
-function MenuCard({ m }: { m: { img: string; name: string; tag: string } }) {
+function MenuCutout({ item }: { item: MenuItem }) {
   return (
-    <div className="flex-shrink-0 w-[200px] sm:w-[220px]">
-      <div className="overflow-hidden rounded-sm aspect-[3/4] mb-3 bg-[var(--bg-off)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={m.img} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
-      </div>
-      <span
-        className="inline-block text-[10px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-full border"
-        style={{ color: INK_LIGHT, borderColor: "rgba(37,10,0,0.18)" }}
-      >
-        {m.tag}
-      </span>
-      <p className="mt-1.5 text-[14px]" style={{ color: INK }}>{m.name}</p>
+    <div
+      className="flex-shrink-0"
+      style={{ marginLeft: `${item.ml}px`, marginTop: `${item.top}px`, transform: `rotate(${item.rotate}deg)` }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={item.src}
+        alt=""
+        className="block max-w-none select-none"
+        style={{
+          width: `${itemWidth(item)}px`,
+          height: `${itemHeight(item)}px`,
+          filter: "drop-shadow(0 10px 16px rgba(37,10,0,0.08))",
+        }}
+        draggable={false}
+      />
     </div>
   );
 }
@@ -436,34 +499,17 @@ function MenuCard({ m }: { m: { img: string; name: string; tag: string } }) {
 // 4. 이용 흐름 3단계
 // ═══════════════════════════════════════════════════════════════════
 
+// 썸네일 테스트.png 레퍼런스 — 사진 블록이 좌우 지그재그로 화면 끝까지 bleed, 반대편에 단계 텍스트.
 const STEPS = [
-  {
-    num:   "1",
-    title: "스피릿 테스트",
-    desc:  "마음이 당기는 재료 세 가지를 고르면 나의 식취향이 분석됩니다. 그것이 당신만의 식탁이 시작되는 방식입니다.",
-    img:   IMG.step1,
-    cta:   { label: "테스트 시작 →", href: "/spirit" },
-  },
-  {
-    num:   "2",
-    title: "맞춤 식단 구성",
-    desc:  "14끼를 구성할 때, '또 이거야'라는 말이 나오지 않도록 무게와 재료를 나눕니다. 질리지 않는 다양성—그게 슬런치가 식단을 설계하는 방식이에요.",
-    img:   IMG.step2,
-    cta:   { label: "식단 살펴보기 →", href: "/subscribe" },
-  },
-  {
-    num:   "3",
-    title: "월요 새벽 배송",
-    desc:  "점심과 저녁이 나란히 정해지고, 배송 날짜가 맞춰지면 한 주가 조용히 완성됩니다. 손이 많이 가는 날도, 5분이 전부인 날도 슬런치는 그 옆에 맞는 한 끼를 미리 준비해 둡니다.",
-    img:   IMG.step3,
-    cta:   { label: "구독 시작 →", href: "/subscribe" },
-  },
+  { title: "스피릿 테스트",   desc: "재료 3가지를 고르면 취향을 분석해드려요.", img: IMG.how1 },
+  { title: "맞춤 식단",       desc: "분석한 취향으로 14끼를 구성해드려요.",   img: IMG.how2 },
+  { title: "당일 새벽 배송",   desc: "짜인 식단이 새벽 문 앞에 도착해요.",     img: IMG.how3 },
 ];
 
 function HowItWorks() {
   return (
     <section
-      className="py-20 md:py-28"
+      className="relative py-20 md:py-28 overflow-hidden"
       style={{ background: "var(--bg-pale)", borderBottom: `1px solid ${HAIRLINE}` }}
     >
       <div className="page-container">
@@ -472,7 +518,7 @@ function HowItWorks() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.3 }}
-          className="mb-14"
+          className="mb-12 md:mb-20"
         >
           <motion.div variants={fadeUp}><Label>How it works</Label></motion.div>
           <motion.h2
@@ -488,51 +534,67 @@ function HowItWorks() {
           </motion.h2>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
-          {STEPS.map((s, i) => (
+        {/* 행은 풀블리드를 위해 page-container 밖(섹션 폭 = 100vw)에 둔다 */}
+      </div>
+
+      <div className="flex flex-col gap-16 md:gap-28">
+        {STEPS.map((s, i) => {
+          const blockLeft = i % 2 === 0;
+          const slide = blockLeft ? slideFromLeft : slideFromRight;
+          return (
             <motion.div
-              key={s.num}
-              initial={{ opacity: 0, y: 32 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.25 }}
-              transition={{ duration: 0.65, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-              className="flex flex-col"
+              key={s.title}
+              variants={stagger}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.3 }}
+              className="relative w-full flex flex-col md:block md:min-h-[clamp(280px,34vw,460px)]"
             >
-              <div className="overflow-hidden rounded-sm aspect-[4/3] mb-5">
+              {/* 사진 블록 — md에서 화면 절반(50vw)을 자기 쪽 끝까지 차지하며 슬라이드 진입 */}
+              <motion.div
+                variants={slide}
+                className={`relative w-full aspect-[4/3] overflow-hidden md:aspect-auto md:absolute md:inset-y-0 md:w-1/2 ${
+                  blockLeft ? "md:left-0" : "md:right-0"
+                }`}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.img} alt={s.title} className="w-full h-full object-cover" loading="lazy" />
-              </div>
-              <div className="flex items-center gap-3 mb-4">
-                <span
-                  className="flex items-center justify-center w-7 h-7 rounded-full text-[12px] flex-shrink-0"
-                  style={{ background: INK, color: "var(--point)" }}
+                <img
+                  src={s.img}
+                  alt={s.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </motion.div>
+
+              {/* 단계 텍스트 — 반대편 절반 */}
+              <div
+                className={`relative z-10 flex w-full flex-col justify-center py-10 md:py-0 md:w-1/2 md:min-h-[clamp(280px,34vw,460px)] px-[clamp(24px,6vw,40px)] ${
+                  blockLeft
+                    ? "md:ml-auto md:pl-[clamp(32px,5vw,80px)] md:pr-[clamp(24px,5vw,72px)]"
+                    : "md:mr-auto md:pr-[clamp(32px,5vw,80px)] md:pl-[clamp(24px,5vw,72px)]"
+                }`}
+              >
+                <motion.h3
+                  variants={fadeUp}
+                  style={{
+                    fontSize: "clamp(22px, 2.6vw, 32px)",
+                    letterSpacing: "-0.01em",
+                    color: "#8a8a8a",
+                  }}
                 >
-                  {s.num}
-                </span>
-                <div className="flex-1 h-px" style={{ background: HAIRLINE }} />
+                  {s.title}
+                </motion.h3>
+                <motion.p
+                  variants={fadeUp}
+                  className="mt-3 text-[15px] md:text-[17px] leading-[1.7]"
+                  style={{ color: "#a9a9a9" }}
+                >
+                  {s.desc}
+                </motion.p>
               </div>
-              <h3
-                className="text-[17px] mb-2"
-                style={{ letterSpacing: "-0.01em", color: INK }}
-              >
-                {s.title}
-              </h3>
-              <p
-                className="text-[14px] leading-[1.75] mb-4 flex-1"
-                style={{ color: INK_LIGHT }}
-              >
-                {s.desc}
-              </p>
-              <Link
-                href={s.cta.href}
-                className="text-[13px] underline underline-offset-4 mt-auto"
-                style={{ color: INK_LIGHT }}
-              >
-                {s.cta.label}
-              </Link>
             </motion.div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -549,32 +611,29 @@ function Testimonial() {
       style={{ background: "var(--bg-white)", borderBottom: `1px solid ${HAIRLINE}` }}
     >
       <div className="page-container">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
+        {/* 부모가 whileInView를 구동 → 이미지 reveal도 확실히 발화(독립 motion이면 clipPath가 hidden에 멈추는 버그) */}
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center"
+        >
           {/* 이미지 */}
           <motion.div
             variants={imgReveal}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.25 }}
             className="overflow-hidden rounded-sm aspect-[4/5] md:aspect-[3/4]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={IMG.testimonialImg}
-              alt=""
+              src={IMG.review}
+              alt="슬런치 구독 멤버 후기"
               className="w-full h-full object-cover"
-              loading="lazy"
             />
           </motion.div>
 
           {/* 텍스트 */}
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.3 }}
-            className="flex flex-col gap-6"
-          >
+          <div className="flex flex-col gap-6">
             <motion.div variants={fadeUp}><Label>Review</Label></motion.div>
 
             <motion.blockquote
@@ -603,8 +662,8 @@ function Testimonial() {
                 <p className="text-[12px]" style={{ color: INK_LIGHT }}>슬런치 구독 멤버 · 서울</p>
               </div>
             </motion.div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
