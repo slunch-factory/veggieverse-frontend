@@ -57,7 +57,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
       {/* 이미지 영역 */}
       <div
         className="card-img"
-        style={{ aspectRatio: "1 / 1", filter: comingSoon ? "grayscale(1)" : undefined }}
+        style={{ aspectRatio: "1 / 1", filter: comingSoon ? "grayscale(0.9) opacity(0.55)" : undefined }}
       >
         {images.length > 0 ? (
           <div
@@ -113,13 +113,17 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         {comingSoon && (
           <div
             className="absolute inset-0 z-30 flex items-center justify-center"
-            style={{ backgroundColor: "rgba(90, 90, 90, 0.45)" }}
+            style={{ backgroundColor: "rgba(255, 255, 255, 0.45)" }}
           >
             <span
-              className="rounded-full px-4 py-1.5 text-[13px] font-bold tracking-wide text-white"
-              style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
+              className="rounded-full px-4 py-1.5 text-[12px] font-bold tracking-wide"
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.92)",
+                color: "var(--ink)",
+                border: "1px solid var(--ink)",
+              }}
             >
-              준비중
+              Sold Out
             </span>
           </div>
         )}
