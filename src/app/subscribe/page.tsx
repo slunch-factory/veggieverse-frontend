@@ -14,5 +14,18 @@ export const metadata: Metadata = {
 
 export default async function SubscribePage() {
   const menus = await getMenus();
-  return <SubscribeClient menus={menus} />;
+  return (
+    <>
+      <div
+        role="status"
+        className="w-full px-4 py-4 text-center"
+        style={{ background: "var(--point)", color: "var(--ink)" }}
+      >
+        <p className="text-[16px] md:text-[18px] font-bold">
+          구독 서비스는 현재 준비 중입니다 — 아직 이용하실 수 없어요. 곧 오픈할게요!
+        </p>
+      </div>
+      <SubscribeClient menus={menus} />
+    </>
+  );
 }
