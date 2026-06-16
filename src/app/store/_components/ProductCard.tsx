@@ -4,24 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { categoryLabel, isComingSoon, type StoreProduct } from "@/lib/api/store";
-import { SoldOutGateModal } from "./SoldOutGateModal";
-import { hasSoldOutAccess } from "../_lib/soldOutAccess";
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const router = useRouter();
   const comingSoon = isComingSoon(product.slug);
-  const [gateOpen, setGateOpen] = useState(false);
+  // Sold Out 상품도 상세는 누구나 볼 수 있다(구매 버튼만 상세 안에서 잠금).
   const detailHref = `/store/${product.slug}`;
-
-  // Sold Out 카드 클릭: 이미 코드를 통과했으면 바로 상세로, 아니면 코드 모달.
-  const handleCardClick = () => {
-    if (comingSoon) {
-      if (hasSoldOutAccess()) router.push(detailHref);
-      else setGateOpen(true);
-      return;
-    }
-    router.push(detailHref);
-  };
   // 카테고리 태그(기본값): 분류가 없으면 "기타"로 표시
   const categoryTag = product.categories[0] ? categoryLabel(product.categories[0]) : "기타";
   const images = product.imageUrl ? [product.imageUrl] : [];
@@ -59,10 +47,9 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   const hasDiscount = product.discountRate > 0;
 
   return (
-    <>
     <div
       className="card"
-      onClick={handleCardClick}
+      onClick={() => router.push(detailHref)}
     >
       {/* 이미지 영역 */}
       <div
@@ -192,15 +179,5 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         </div>
       </div>
     </div>
-
-    <SoldOutGateModal
-      open={gateOpen}
-      onClose={() => setGateOpen(false)}
-      onUnlock={() => {
-        setGateOpen(false);
-        router.push(detailHref);
-      }}
-    />
-    </>
   );
 }

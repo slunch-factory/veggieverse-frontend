@@ -20,8 +20,6 @@ import { useRouter } from "next/navigation";
 import { ProductDetailTemplate } from "./ProductDetailTemplate";
 import { PRODUCT_TEMPLATE_DATA, parseDescTemplate } from "../_data/templateData";
 import { ImageCarousel } from "@/components/ImageCarousel";
-import { SoldOutGateModal } from "../../_components/SoldOutGateModal";
-import { hasSoldOutAccess } from "../../_lib/soldOutAccess";
 
 /* ------------------------------------------------------------------ */
 /*  Tabs                                                               */
@@ -57,16 +55,11 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
   const [cartLoading, setCartLoading] = useState(false);
   const [showCartPopup, setShowCartPopup] = useState(false);
 
-  // Sold Out(준비중) 상품은 보안 코드를 통과한 사람만 상세를 볼 수 있게 막는다(직접 URL 접근 차단).
-  // access: null=확인 전(깜빡임 방지), false=차단, true=허용. comingSoon이 아니면 항상 허용.
+  // Sold Out(준비중) 상품: 상세는 누구나 볼 수 있고 구매 버튼만 잠근다.
   const comingSoon = isComingSoon(product.slug);
-  const [access, setAccess] = useState<boolean | null>(comingSoon ? null : true);
-  useEffect(() => {
-    if (comingSoon) setAccess(hasSoldOutAccess());
-  }, [comingSoon]);
 
   async function handleAddToCart() {
-    if (cartLoading) return;
+    if (comingSoon || cartLoading) return;
     setCartLoading(true);
     try {
       await addCartItem(product.productId, quantity);
@@ -89,6 +82,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
   }
 
   function handleBuyNow() {
+    if (comingSoon) return;
     sessionStorage.setItem(
       "directBuyItem",
       JSON.stringify({
@@ -158,19 +152,6 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
 
   const badge = product.labels.isNew ? "NEW" : product.labels.isBest ? "BEST" : null;
   const totalPrice = product.discountedPrice * quantity;
-
-  // 준비중 상품 접근 게이트: 확인 전이면 빈 화면, 차단이면 코드 모달만 노출.
-  if (comingSoon && access !== true) {
-    return (
-      <div className="min-h-screen" style={{ background: "var(--bg-pale)" }}>
-        <SoldOutGateModal
-          open={access === false}
-          onClose={() => router.push("/store")}
-          onUnlock={() => setAccess(true)}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-pale)]">
@@ -318,12 +299,12 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
                 <Plus size={16} />
               </button>
             </div>
-            <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-ghost flex-1 gap-1.5">
+            <button onClick={handleAddToCart} disabled={comingSoon || cartLoading} className="btn btn-ghost flex-1 gap-1.5">
               <ShoppingCart size={18} />
               장바구니
             </button>
-            <button onClick={handleBuyNow} className="btn btn-dark flex-1">
-              바로구매
+            <button onClick={handleBuyNow} disabled={comingSoon} className="btn btn-dark flex-1">
+              {comingSoon ? "판매 준비중" : "바로구매"}
             </button>
           </div>
         </div>
@@ -428,12 +409,12 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
           >
             <Heart size={20} fill={liked ? "currentColor" : "none"} />
           </button>
-          <button onClick={handleAddToCart} disabled={cartLoading} className="btn btn-ghost flex-1 gap-1.5">
+          <button onClick={handleAddToCart} disabled={comingSoon || cartLoading} className="btn btn-ghost flex-1 gap-1.5">
             <ShoppingCart size={18} />
             {cartLoading ? "담는 중..." : "장바구니"}
           </button>
-          <button onClick={handleBuyNow} className="btn btn-dark flex-1">
-            바로구매
+          <button onClick={handleBuyNow} disabled={comingSoon} className="btn btn-dark flex-1">
+            {comingSoon ? "판매 준비중" : "바로구매"}
           </button>
         </div>
       </div>
