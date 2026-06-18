@@ -34,7 +34,9 @@ export function AvatarCropModal({
   onComplete,
 }: AvatarCropModalProps) {
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
+  const zoomRef = useRef(1);
   const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -75,6 +77,35 @@ export function AvatarCropModal({
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // 모달 열림 동안 배경(body) 스크롤 잠금
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  // 마우스 휠로 확대/축소 — 배경 스크롤 방지 위해 non-passive 네이티브 리스너로 preventDefault
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el || !nat) return;
+    const onWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      const nz = Math.min(MAX_ZOOM, Math.max(1, zoomRef.current - e.deltaY * 0.0015));
+      const ns = baseScale * nz;
+      setZoom(nz);
+      setOffset((o) => clampAt(o.x, o.y, nat.w * ns, nat.h * ns));
+    };
+    el.addEventListener("wheel", onWheelNative, { passive: false });
+    return () => el.removeEventListener("wheel", onWheelNative);
+  }, [isOpen, nat, baseScale, clampAt]);
 
   const handleZoom = (z: number) => {
     const ns = baseScale * z;
@@ -155,6 +186,7 @@ export function AvatarCropModal({
         {/* 사각 편집 영역 — 사진 전체 표시, 원 밖은 어둡게 */}
         <div className="mt-4 flex justify-center">
           <div
+            ref={viewportRef}
             className="relative touch-none select-none cursor-grab active:cursor-grabbing"
             style={{
               width: VIEWPORT,
