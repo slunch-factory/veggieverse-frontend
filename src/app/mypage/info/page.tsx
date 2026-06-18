@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 import { WithdrawConfirmModal } from "@/components/modals/WithdrawConfirmModal";
+import { AvatarCropModal } from "../_components/AvatarCropModal";
 import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
@@ -80,6 +81,9 @@ export default function EditProfilePage() {
   );
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  // 크롭 모달에 넘길 원본 이미지(dataURL) — null이면 닫힘
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropName, setCropName] = useState("profile.jpg");
   const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -129,11 +133,12 @@ export default function EditProfilePage() {
       e.target.value = "";
       return;
     }
+    // 바로 적용하지 않고 크롭 모달을 띄워 프레임(위치·확대)을 조절하게 한다.
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setProfileImagePreview(reader.result);
-        setProfileImageFile(file);
+        setCropName(file.name);
+        setCropSrc(reader.result);
       }
     };
     reader.readAsDataURL(file);
@@ -230,6 +235,18 @@ export default function EditProfilePage() {
         onSelect={({ postalCode, address }) => {
           setForm((prev) => ({ ...prev, postalCode, address, addressDetail: "" }));
           setPostcodeOpen(false);
+        }}
+      />
+
+      <AvatarCropModal
+        isOpen={cropSrc !== null}
+        imageSrc={cropSrc}
+        fileName={cropName}
+        onClose={() => setCropSrc(null)}
+        onComplete={(file, previewUrl) => {
+          setProfileImageFile(file);
+          setProfileImagePreview(previewUrl);
+          setCropSrc(null);
         }}
       />
 
