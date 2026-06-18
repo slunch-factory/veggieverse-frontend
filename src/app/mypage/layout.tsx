@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 const MYPAGE_TABS = [
   { path: "/mypage", label: "홈" },
@@ -48,13 +49,18 @@ export default function MyPageLayout({ children }: { children: React.ReactNode }
                 key={tab.path}
                 href={tab.path}
                 data-path={tab.path}
-                className={`flex h-[48px] shrink-0 items-center justify-center px-4 text-[14px] transition-colors ${
-                  active
-                    ? "border-b-2 border-black font-bold text-black"
-                    : "text-gray-400"
+                className={`relative flex h-[48px] shrink-0 items-center justify-center px-4 text-[14px] transition-colors ${
+                  active ? "font-bold text-black" : "text-gray-400 hover:text-gray-600"
                 }`}
               >
                 {tab.label}
+                {active && (
+                  <motion.span
+                    layoutId="mypage-tab-underline"
+                    className="absolute inset-x-2 bottom-0 h-[2px] bg-black"
+                    transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                  />
+                )}
               </Link>
             );
           })}
