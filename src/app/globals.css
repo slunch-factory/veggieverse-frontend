@@ -399,6 +399,25 @@ html.mm-open .scroll-lock-compensate {
   animation: slideInUp 0.3s ease-out;
 }
 
+/* 스켈레톤 로딩용 shimmer — 마이페이지 등 비동기 카드 로딩에 사용 */
+@keyframes mp-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.mp-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--bg-off) 0%,
+    var(--bg-pale) 50%,
+    var(--bg-off) 100%
+  );
+  background-size: 200% 100%;
+  animation: mp-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-skeleton { animation: none; }
+}
+
 /* ============================================
    6. SCROLLBAR
    ============================================ */

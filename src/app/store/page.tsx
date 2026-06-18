@@ -20,9 +20,16 @@ export default async function StorePage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { sort } = await searchParams;
+  const { sort, search } = await searchParams;
   const currentSort = (VALID_SORTS.includes(sort as StoreSortParam) ? sort : "nameAsc") as StoreSortParam;
+  const searchQuery = typeof search === "string" ? search : "";
   const products = await getStoreProducts(currentSort);
 
-  return <StoreClient initialProducts={products} currentSort={currentSort} />;
+  return (
+    <StoreClient
+      initialProducts={products}
+      currentSort={currentSort}
+      searchQuery={searchQuery}
+    />
+  );
 }

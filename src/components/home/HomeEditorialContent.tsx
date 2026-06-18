@@ -351,8 +351,15 @@ const itemHeight = (it: MenuItem) =>
 const itemWidth = (it: MenuItem) =>
   it.aspect >= 1 ? it.size : Math.round(it.size * it.aspect);
 
-// 썸네일 테스트.png 레퍼런스 — 거의 똑바로(회전 최소) + 클러스터로 겹침. 크기는 정규화해
+// 썸네일 테스트.png 레퍼런스 — 거의 똑바로(회전 최소) + 클러스터로 겹침. 크기는 정규화
 // 균일하게(앵커 250 · 일반 205~225 · 액센트 150), 간격은 촘촘하게.
+/* 
+aspect: 원본 가로/세로 비율(건들이지 말 것) 
+size: 크기(앵커 250 - 일반 205~225 - 액센트 150)
+top: 위 아래 위치
+rotate: 회전 각도(시계 방향 회전)
+ml: 왼쪽 간격(양수=벌어짐, 음수=왼쪽 당겨 겹치게)
+*/
 const MENU_ITEMS: MenuItem[] = [
   // ── 클러스터 A: 의자 위에 라자냐 접시
   { src: IMG.menu3,  aspect: 0.694, size: 205, top: 200, rotate: 0,  ml: 0   }, // 알록달록 의자
@@ -365,12 +372,12 @@ const MENU_ITEMS: MenuItem[] = [
   { src: IMG.menu12, aspect: 3.847, size: 285, top: 120, rotate: -2, ml: -44 }, // 페스토 봉지
   { src: IMG.menu2,  aspect: 0.592, size: 205, top: 24,  rotate: 0,  ml: -44 }, // 화분 (위로 겹침)
   // ── 클러스터 D: 관자 + 비트 접시 + 별
-  { src: IMG.menu8,  aspect: 2.874, size: 290, top: 178, rotate: 1,  ml: -28 }, // 관자 접시
-  { src: IMG.menu9,  aspect: 1.012, size: 218, top: 116, rotate: 0,  ml: -72 }, // 비트 접시 (겹침)
+  { src: IMG.menu8,  aspect: 2.874, size: 290, top: 230, rotate: 1,  ml: -70 }, // 관자 접시
+  { src: IMG.menu9,  aspect: 1.012, size: 218, top: 116, rotate: 0,  ml: -60 }, // 비트 접시 (겹침)
   { src: IMG.menu6,  aspect: 1.203, size: 150, top: 32,  rotate: 0,  ml: -44 }, // 금별 (위 액센트)
   // ── 클러스터 E: 램프 + 눈알
   { src: IMG.menu4,  aspect: 0.972, size: 198, top: 60,  rotate: 0,  ml: -16 }, // 램프
-  { src: IMG.menu5,  aspect: 2.083, size: 150, top: 236, rotate: 0,  ml: -98 }, // 눈알 (바닥에 작게)
+  { src: IMG.menu5,  aspect: 2.083, size: 150, top: 280, rotate: 0,  ml: -98 }, // 눈알 (바닥에 작게)
 ];
 
 const BAND_HEIGHT = 420;   // px — 수직 흩뿌림을 담는 띠 높이

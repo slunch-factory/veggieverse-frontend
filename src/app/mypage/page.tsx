@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
@@ -12,6 +13,9 @@ import {
 } from "@/lib/api/store";
 import { getUserProfile } from "@/lib/api/user";
 import { supabaseRenderUrl } from "@/lib/supabaseImage";
+import { CountUp } from "./_components/CountUp";
+import { Skeleton, SkeletonRow } from "./_components/Skeleton";
+import { listContainer, cardItem } from "./_components/motion";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
@@ -44,6 +48,15 @@ function deriveSubscriptionStatus(startDate: string, endDate: string): Subscript
 function formatDate(iso: string) {
   const d = new Date(iso);
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// 시간대별 인사 — 프로필 카드 상단에 표시.
+function timeGreeting(): { text: string; emoji: string } {
+  const h = new Date().getHours();
+  if (h < 6) return { text: "늦은 밤이에요", emoji: "🌙" };
+  if (h < 12) return { text: "좋은 아침이에요", emoji: "☀️" };
+  if (h < 18) return { text: "좋은 오후예요", emoji: "🌤️" };
+  return { text: "편안한 저녁이에요", emoji: "🌆" };
 }
 
 function getProductSummary(order: OrderHistoryItem | StoreOrderHistoryItem) {
@@ -133,19 +146,28 @@ export default function MyPageHome() {
     };
   }, [isAuthenticated, isLoadingSession]);
 
+  const greeting = timeGreeting();
+  const tags = [spiritName, veganType].filter(Boolean) as string[];
+
   return (
-    <div className="mx-auto max-w-[720px] flex flex-col gap-4 sm:gap-5">
+    <motion.div
+      className="mx-auto max-w-[720px] flex flex-col gap-4 sm:gap-5"
+      variants={listContainer}
+      initial="hidden"
+      animate="show"
+    >
       {/* 프로필 요약 카드 */}
-      <Card>
+      <MotionCard>
         <div className="flex items-center gap-3 sm:gap-5 px-4 sm:px-5 py-4 sm:py-5">
           <div
-            className="flex shrink-0 items-center justify-center overflow-hidden mypage-profile-avatar"
+            className="relative flex shrink-0 items-center justify-center overflow-hidden mypage-profile-avatar"
             style={{
               width: 72,
               height: 72,
               borderRadius: "50%",
               background: "var(--bg-off)",
               border: "1px solid var(--ink)",
+              boxShadow: "0 0 0 3px var(--bg-white), 0 0 0 4px var(--point)",
             }}
           >
             {profileImage ? (
@@ -158,65 +180,73 @@ export default function MyPageHome() {
 
           <div className="flex-1 min-w-0">
             {profileLoading ? (
-              <p className="t-body truncate" style={{ color: "var(--ink-light)" }}>
-                불러오는 중...
-              </p>
+              <>
+                <Skeleton width={90} height={11} />
+                <Skeleton width={130} height={17} style={{ marginTop: 6 }} />
+              </>
             ) : (
-              <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
+              <>
+                <p className="t-caption" style={{ color: "var(--ink-light)" }}>
+                  {greeting.text} {greeting.emoji}
+                </p>
+                <p className="t-body truncate" style={{ color: "var(--ink)" }}>
+                  <strong>{username}</strong>님
+                </p>
+              </>
             )}
-            {profileLoading ? (
-              <p className="t-body truncate" style={{ color: "var(--ink-light)" }}>
-                불러오는 중...
-              </p>
-            ) : (
-              <p className="t-body truncate" style={{ color: "var(--ink)" }}>{username}</p>
+
+            {!profileLoading && tags.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="t-caption inline-flex items-center"
+                    style={{
+                      background: "var(--bg-pale)",
+                      color: "var(--ink-light)",
+                      padding: "1px 8px",
+                      borderRadius: "var(--r-pill)",
+                      border: "1px solid var(--neutral-stone)",
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
             )}
-            {(spiritName || veganType) && (
-              <p className="t-small mt-0.5 truncate" style={{ color: "var(--ink-light)" }}>
-                {[spiritName, veganType].filter(Boolean).join(" · ")}
-              </p>
-            )}
-            <p className="t-caption mt-1" style={{ color: "var(--neutral-stone)" }}>배지 0개</p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
             <Link
               href="/mypage/info"
               className="t-small whitespace-nowrap"
-              style={{
-                color: "var(--ink-light)",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
+              style={{ color: "var(--ink-light)", textDecoration: "underline", textUnderlineOffset: 3 }}
             >
               프로필 수정
             </Link>
-            <span className="t-small" style={{ color: "var(--neutral-stone)" }}>|</span>
             <button
               type="button"
               onClick={() => void signOut()}
               className="t-small whitespace-nowrap"
-              style={{
-                color: "var(--ink-light)",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
+              style={{ color: "var(--neutral-stone)", textDecoration: "underline", textUnderlineOffset: 3 }}
             >
               로그아웃
             </button>
           </div>
         </div>
-      </Card>
+      </MotionCard>
 
       {/* 활동 통계 */}
-      <div className="grid grid-cols-3 gap-3">
+      <motion.div className="grid grid-cols-3 gap-3" variants={cardItem}>
         {[
           { label: "레시피", value: 0 },
           { label: "댓글", value: 0 },
           { label: "좋아요", value: 0 },
         ].map((stat) => (
-          <div
+          <motion.div
             key={stat.label}
+            whileHover={{ y: -3 }}
+            transition={{ type: "spring", stiffness: 320, damping: 22 }}
             className="flex flex-col items-center justify-center py-5"
             style={{
               background: "var(--bg-white)",
@@ -224,45 +254,39 @@ export default function MyPageHome() {
               borderRadius: "var(--r-btn)",
             }}
           >
-            <p className="t-h3" style={{ color: "var(--ink)" }}>{stat.value}</p>
+            <p className="t-h3" style={{ color: "var(--ink)" }}>
+              <CountUp value={stat.value} />
+            </p>
             <p className="t-caption mt-1" style={{ color: "var(--ink-light)" }}>{stat.label}</p>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* 최근 구독 */}
-      <Card>
+      <MotionCard>
         <SectionHeader title="최근 구독" moreLink="/mypage/subscriptions" />
         <div className="px-5 pb-4">
           {subsLoading ? (
-            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
-              불러오는 중...
-            </p>
+            <>
+              <SkeletonRow />
+              <SkeletonRow />
+            </>
           ) : !recentSubs || recentSubs.length === 0 ? (
-            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
-              구독 내역이 없습니다.
-            </p>
+            <EmptyState
+              icon={Repeat}
+              message="아직 구독 내역이 없어요"
+              ctaLabel="구독 시작하기"
+              ctaHref="/subscribe"
+            />
           ) : (
             <ul>
               {recentSubs.map((sub, idx) => {
                 const status = deriveSubscriptionStatus(sub.startDate, sub.endDate);
-                const navigate = () => router.push(`/mypage/subscriptions/${sub.orderId}`);
                 return (
-                  <li
+                  <ListRow
                     key={sub.orderId}
-                    onClick={navigate}
-                    role="link"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate();
-                      }
-                    }}
-                    className="flex items-center justify-between gap-3 py-3 -mx-5 px-5 cursor-pointer transition-colors hover:bg-[var(--bg-pale)]"
-                    style={{
-                      borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
-                    }}
+                    onNavigate={() => router.push(`/mypage/subscriptions/${sub.orderId}`)}
+                    topBorder={idx !== 0}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="t-small" style={{ color: "var(--ink)" }}>
@@ -278,47 +302,39 @@ export default function MyPageHome() {
                         {sub.finalAmount.toLocaleString()}원
                       </p>
                     </div>
-                  </li>
+                  </ListRow>
                 );
               })}
             </ul>
           )}
         </div>
-      </Card>
+      </MotionCard>
 
       {/* 최근 주문 */}
-      <Card>
+      <MotionCard>
         <SectionHeader title="최근 주문" moreLink="/mypage/orders" />
         <div className="px-5 pb-4">
           {ordersLoading ? (
-            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
-              불러오는 중...
-            </p>
+            <>
+              <SkeletonRow />
+              <SkeletonRow />
+            </>
           ) : !recentOrders || recentOrders.length === 0 ? (
-            <p className="t-small text-center py-6" style={{ color: "var(--ink-light)" }}>
-              주문 내역이 없습니다.
-            </p>
+            <EmptyState
+              icon={ShoppingBag}
+              message="아직 주문 내역이 없어요"
+              ctaLabel="스토어 둘러보기"
+              ctaHref="/store"
+            />
           ) : (
             <ul>
               {recentOrders.map((order, idx) => {
                 const { names, remaining } = getProductSummary(order);
-                const navigate = () => router.push(`/mypage/orders/${order.orderId}`);
                 return (
-                  <li
+                  <ListRow
                     key={order.orderId}
-                    onClick={navigate}
-                    role="link"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate();
-                      }
-                    }}
-                    className="flex items-center justify-between gap-3 py-3 -mx-5 px-5 cursor-pointer transition-colors hover:bg-[var(--bg-pale)]"
-                    style={{
-                      borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
-                    }}
+                    onNavigate={() => router.push(`/mypage/orders/${order.orderId}`)}
+                    topBorder={idx !== 0}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="t-small truncate" style={{ color: "var(--ink)" }}>
@@ -337,40 +353,53 @@ export default function MyPageHome() {
                         {order.finalAmount.toLocaleString()}원
                       </p>
                     </div>
-                  </li>
+                  </ListRow>
                 );
               })}
             </ul>
           )}
         </div>
-      </Card>
+      </MotionCard>
 
       {/* 빠른 메뉴 */}
-      <Card>
+      <MotionCard>
         {QUICK_MENU.map((menu, idx) => (
           <Link
             key={menu.path}
             href={menu.path}
-            className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-[var(--bg-pale)]"
-            style={{
-              borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)",
-            }}
+            className="group flex items-center justify-between px-5 py-4 transition-colors hover:bg-[var(--bg-pale)]"
+            style={{ borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)" }}
           >
             <div className="flex items-center gap-3">
-              <menu.icon size={16} color="var(--ink-light)" />
+              <span
+                className="flex items-center justify-center transition-colors group-hover:bg-[var(--point)]"
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  background: "var(--bg-pale)",
+                }}
+              >
+                <menu.icon size={15} color="var(--ink)" />
+              </span>
               <span className="t-small" style={{ color: "var(--ink)" }}>{menu.label}</span>
             </div>
-            <ChevronRight size={16} color="var(--neutral-stone)" />
+            <ChevronRight
+              size={16}
+              color="var(--neutral-stone)"
+              className="transition-transform group-hover:translate-x-1"
+            />
           </Link>
         ))}
-      </Card>
-    </div>
+      </MotionCard>
+    </motion.div>
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function MotionCard({ children }: { children: React.ReactNode }) {
   return (
-    <div
+    <motion.div
+      variants={cardItem}
       style={{
         background: "var(--bg-white)",
         border: "1px solid var(--ink)",
@@ -378,6 +407,74 @@ function Card({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+    </motion.div>
+  );
+}
+
+/** 클릭 가능한 리스트 행 — 호버 배경 + 탭 시 살짝 눌림. */
+function ListRow({
+  children,
+  onNavigate,
+  topBorder,
+}: {
+  children: React.ReactNode;
+  onNavigate: () => void;
+  topBorder: boolean;
+}) {
+  return (
+    <motion.li
+      onClick={onNavigate}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onNavigate();
+        }
+      }}
+      whileTap={{ scale: 0.985 }}
+      className="flex items-center justify-between gap-3 py-3 -mx-5 px-5 cursor-pointer transition-colors hover:bg-[var(--bg-pale)]"
+      style={{ borderTop: topBorder ? "1px solid var(--neutral-stone)" : undefined }}
+    >
+      {children}
+    </motion.li>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  message,
+  ctaLabel,
+  ctaHref,
+}: {
+  icon: typeof Repeat;
+  message: string;
+  ctaLabel: string;
+  ctaHref: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2.5 py-7">
+      <span
+        className="flex items-center justify-center"
+        style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--bg-pale)" }}
+      >
+        <Icon size={20} color="var(--neutral-stone)" />
+      </span>
+      <p className="t-small" style={{ color: "var(--ink-light)" }}>{message}</p>
+      <Link
+        href={ctaHref}
+        className="t-small inline-flex items-center gap-1"
+        style={{
+          background: "var(--point)",
+          color: "var(--ink)",
+          padding: "6px 14px",
+          borderRadius: "var(--r-pill)",
+          border: "1px solid var(--ink)",
+        }}
+      >
+        {ctaLabel}
+        <ChevronRight size={14} />
+      </Link>
     </div>
   );
 }
@@ -392,11 +489,11 @@ function SectionHeader({ title, moreLink }: { title: string; moreLink?: string }
       {moreLink && (
         <Link
           href={moreLink}
-          className="t-caption flex items-center gap-1"
+          className="group t-caption flex items-center gap-1"
           style={{ color: "var(--ink-light)" }}
         >
           더보기
-          <ChevronRight size={14} />
+          <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
         </Link>
       )}
     </header>
@@ -455,4 +552,3 @@ function SubscriptionStatusBadge({ status }: { status: SubscriptionStatus }) {
     </span>
   );
 }
-

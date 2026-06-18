@@ -28,9 +28,10 @@ const CATEGORY_TABS: { id: string; label: string }[] = [
 interface Props {
   initialProducts: StoreProduct[];
   currentSort: StoreSortParam;
+  searchQuery?: string;
 }
 
-export function StoreClient({ initialProducts, currentSort }: Props) {
+export function StoreClient({ initialProducts, currentSort, searchQuery = "" }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
@@ -43,15 +44,35 @@ export function StoreClient({ initialProducts, currentSort }: Props) {
     foodTypes: [],
   });
 
+  // 검색어: 상품명/태그라인 부분일치(대소문자·공백 무시). 백엔드 검색 API 도입 시 이 블록을 교체.
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const searchBase = normalizedQuery
+    ? initialProducts.filter((p) =>
+        `${p.name} ${p.tagline}`.toLowerCase().includes(normalizedQuery),
+      )
+    : initialProducts;
+
+  function buildQuery(sort: string) {
+    const params = new URLSearchParams({ sort });
+    if (searchQuery.trim()) params.set("search", searchQuery.trim());
+    return `${pathname}?${params.toString()}`;
+  }
+
   function handleSortChange(value: string) {
     startTransition(() => {
-      router.push(`${pathname}?sort=${value}`);
+      router.push(buildQuery(value));
+    });
+  }
+
+  function handleClearSearch() {
+    startTransition(() => {
+      router.push(`${pathname}?sort=${currentSort}`);
     });
   }
 
   const filtered = activeTab === "전체"
-    ? initialProducts
-    : initialProducts.filter((p) => p.categories.includes(activeTab));
+    ? searchBase
+    : searchBase.filter((p) => p.categories.includes(activeTab));
 
   // 준비중 상품은 항상 목록 하단으로, 판매 상품은 위로. 같은 그룹 내 순서(상품명 A-Z 등 현재 정렬)는 stable sort로 유지.
   const ordered = [...filtered].sort(
@@ -62,8 +83,8 @@ export function StoreClient({ initialProducts, currentSort }: Props) {
     id: cat.id,
     label: cat.label,
     count: cat.id === "전체"
-      ? initialProducts.length
-      : initialProducts.filter((p) => p.categories.includes(cat.id)).length,
+      ? searchBase.length
+      : searchBase.filter((p) => p.categories.includes(cat.id)).length,
   }));
 
   const filterCount =
@@ -87,9 +108,27 @@ export function StoreClient({ initialProducts, currentSort }: Props) {
       />
 
       <div className="mx-auto max-w-[1400px] px-4 py-6 pt-[60px]">
+        {searchQuery.trim() && (
+          <div className="mb-5 flex flex-wrap items-center gap-2 text-[14px]">
+            <span className="text-[var(--ink)]">
+              <strong>&lsquo;{searchQuery.trim()}&rsquo;</strong> 검색 결과 {searchBase.length}건
+            </span>
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="rounded-full border border-[var(--ink)] px-3 py-1 text-[12px] transition-colors hover:bg-[var(--ink)] hover:text-white"
+            >
+              검색 초기화
+            </button>
+          </div>
+        )}
         {ordered.length === 0 ? (
           <div className="flex min-h-[30vh] items-center justify-center">
-            <p className="text-[14px] text-gray-400">상품이 없습니다.</p>
+            <p className="text-[14px] text-gray-400">
+              {searchQuery.trim()
+                ? `'${searchQuery.trim()}'에 대한 검색 결과가 없습니다.`
+                : "상품이 없습니다."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
