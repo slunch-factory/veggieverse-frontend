@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { HeartCrack } from "lucide-react";
 
@@ -27,11 +28,13 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
     return () => window.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
+  // 오버레이를 document.body에 portal — <main>(z-0 스태킹 컨텍스트)에 갇혀
+  // 헤더(z-50)/푸터 위로 못 덮는 문제 방지.
+  return createPortal(
     <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
       onClick={onClose}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -98,6 +101,7 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
