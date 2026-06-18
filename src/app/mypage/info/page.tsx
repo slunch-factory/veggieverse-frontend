@@ -20,6 +20,7 @@ import {
   User,
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+import { WithdrawConfirmModal } from "@/components/modals/WithdrawConfirmModal";
 import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
@@ -81,6 +82,7 @@ export default function EditProfilePage() {
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [postcodeOpen, setPostcodeOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -471,6 +473,7 @@ export default function EditProfilePage() {
           <div className="text-center mt-1">
             <button
               type="button"
+              onClick={() => setWithdrawOpen(true)}
               className="t-caption"
               style={{
                 color: "var(--neutral-stone)",
@@ -486,6 +489,17 @@ export default function EditProfilePage() {
           </div>
         </form>
       </div>
+
+      <WithdrawConfirmModal
+        isOpen={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+        onConfirm={() => {
+          // TODO(#60): 회원탈퇴 API 연동 — deleteAccount() 호출 후 로그아웃/홈 redirect.
+          // 현재는 백엔드 미구현이라 안내만 노출한다.
+          setWithdrawOpen(false);
+          setToast("회원탈퇴 기능은 곧 제공될 예정이에요.");
+        }}
+      />
 
       <Snackbar message={toast} onClose={() => setToast(null)} />
 
