@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface KakaoPostcodeModalProps {
@@ -55,9 +56,10 @@ export function KakaoPostcodeModal({ isOpen, onClose, onSelect }: KakaoPostcodeM
     });
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
+  // <main>(z-0 스태킹 컨텍스트)에 갇혀 헤더/푸터 위로 못 덮는 문제 방지 — body로 portal.
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50"
       onClick={onClose}
@@ -79,6 +81,7 @@ export function KakaoPostcodeModal({ isOpen, onClose, onSelect }: KakaoPostcodeM
         </div>
         <div ref={containerRef} style={{ width: "100%", height: "460px" }} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
