@@ -19,8 +19,11 @@ export const metadata: Metadata = {
     url: "https://slunch.co.kr/veggieverse",
     images: [{ url: `${basePath}/common/logo.png` }],
   },
+  // 파비콘은 정사각 팩토리 마크 사용 — 와이드 워드마크(logo.png)는 탭에서 찌그러져서 교체.
   icons: {
-    icon: `${basePath}/common/logo.png`,
+    icon: `${basePath}/common/favicon-mark.png`,
+    shortcut: `${basePath}/common/favicon-mark.png`,
+    apple: `${basePath}/common/favicon-mark.png`,
   },
 };
 
