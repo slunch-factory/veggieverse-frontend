@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { ZoomIn, ZoomOut } from "lucide-react";
 
-const VIEWPORT = 280; // 원형 크롭 뷰포트 한 변(px)
+const VIEWPORT = 300; // 정사각 편집 영역(px) — 사진 전체가 보이는 영역
+const CROP = 240; // 원형 크롭 지름(px) — 실제 잘리는 영역
+const MARGIN = (VIEWPORT - CROP) / 2; // 원 바깥 여백(px)
 const OUTPUT = 480; // 출력 이미지 한 변(px)
 const MAX_ZOOM = 3;
 
@@ -20,8 +22,9 @@ interface AvatarCropModalProps {
 }
 
 /**
- * 프로필 사진 크롭 모달 — 원형 프레임에 맞춰 드래그(이동)·슬라이더(확대)로 조절 후
- * 정사각 이미지로 크롭. 외부 라이브러리 없이 canvas로 출력.
+ * 프로필 사진 크롭 모달 — 사각 편집 영역에 사진 전체를 보여주고 원 밖은 어둡게 처리해
+ * 잘릴 부분을 미리 보며 드래그(이동)·슬라이더(확대)로 조절. canvas로 정사각 크롭 출력.
+ * 외부 라이브러리 없이 구현.
  */
 export function AvatarCropModal({
   isOpen,
@@ -36,12 +39,13 @@ export function AvatarCropModal({
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
+  // 사진이 사각 편집 영역을 항상 덮도록 cover 기준 스케일.
   const baseScale = nat ? Math.max(VIEWPORT / nat.w, VIEWPORT / nat.h) : 1;
   const scale = baseScale * zoom;
   const dw = nat ? nat.w * scale : 0;
   const dh = nat ? nat.h * scale : 0;
 
-  // 이미지가 항상 원을 덮도록 offset을 가둔다(여백 방지).
+  // 사진이 편집 영역(VIEWPORT)을 항상 덮도록 offset을 가둔다(여백 방지).
   const clampAt = useCallback((x: number, y: number, w: number, h: number) => {
     return {
       x: Math.min(0, Math.max(VIEWPORT - w, x)),
@@ -101,10 +105,10 @@ export function AvatarCropModal({
     canvas.height = OUTPUT;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    // 뷰포트(정사각)에 대응하는 원본 좌표 영역
-    const sx = -offset.x / scale;
-    const sy = -offset.y / scale;
-    const sSize = VIEWPORT / scale;
+    // 원형 크롭 영역(편집 영역 중앙의 CROP 정사각)에 대응하는 원본 좌표
+    const sx = (MARGIN - offset.x) / scale;
+    const sy = (MARGIN - offset.y) / scale;
+    const sSize = CROP / scale;
     ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUTPUT, OUTPUT);
     canvas.toBlob(
       (blob) => {
@@ -129,7 +133,7 @@ export function AvatarCropModal({
       transition={{ duration: 0.18 }}
     >
       <motion.div
-        className="w-full max-w-[340px] mx-[16px]"
+        className="w-full max-w-[360px] mx-[16px]"
         style={{
           background: "var(--bg-white)",
           border: "1px solid var(--ink)",
@@ -145,20 +149,19 @@ export function AvatarCropModal({
           프로필 사진 편집
         </p>
         <p className="t-caption text-center mt-1" style={{ color: "var(--ink-light)" }}>
-          드래그해서 위치 조정 · 슬라이더로 확대
+          드래그해서 위치 조정 · 슬라이더로 확대 (원 안이 잘립니다)
         </p>
 
-        {/* 원형 크롭 뷰포트 */}
+        {/* 사각 편집 영역 — 사진 전체 표시, 원 밖은 어둡게 */}
         <div className="mt-4 flex justify-center">
           <div
             className="relative touch-none select-none cursor-grab active:cursor-grabbing"
             style={{
               width: VIEWPORT,
               height: VIEWPORT,
-              borderRadius: "50%",
+              borderRadius: 10,
               overflow: "hidden",
               background: "var(--bg-off)",
-              boxShadow: "0 0 0 2px var(--ink)",
             }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -179,6 +182,20 @@ export function AvatarCropModal({
                 height: dh || "100%",
                 transform: `translate(${offset.x}px, ${offset.y}px)`,
                 maxWidth: "none",
+              }}
+            />
+            {/* 원형 크롭 가이드 — 바깥은 반투명 어둡게(box-shadow), 테두리 링 */}
+            <div
+              style={{
+                position: "absolute",
+                left: MARGIN,
+                top: MARGIN,
+                width: CROP,
+                height: CROP,
+                borderRadius: "50%",
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
+                border: "2px solid rgba(255,255,255,0.9)",
+                pointerEvents: "none",
               }}
             />
           </div>
