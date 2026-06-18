@@ -12,7 +12,6 @@ import {
 import {
   AtSign,
   CalendarDays,
-  Image as ImageIcon,
   Lock,
   MapPin,
   ShieldCheck,
@@ -234,51 +233,132 @@ export default function EditProfilePage() {
         }}
       />
 
-      <div className="mx-auto max-w-[560px]">
+      <div className="mx-auto max-w-[880px]">
         <form onSubmit={handleSubmit} className="edit-profile-form flex flex-col gap-5">
 
-          {/* 계정 정보 */}
+          {/* 프로필 사진 + 계정 정보 (통합 헤더) */}
           <FormSection icon={<User size={16} strokeWidth={1.5} />} title="계정 정보">
-            <FormField label="이메일" required>
-              <input
-                type="email"
-                className="ds-input"
-                value={form.email}
-                readOnly
-                style={{ background: "var(--bg-off)", color: "var(--ink-light)" }}
-              />
-            </FormField>
-
-            <FormField label="비밀번호" errorMessage={errors.password}>
-              <input
-                type="password"
-                className={`ds-input${errors.password ? " is-error" : ""}`}
-                value={form.password}
-                onChange={(e) => update("password", e.target.value)}
-                placeholder="변경 시 8자 이상 입력"
-                autoComplete="new-password"
-              />
-            </FormField>
-
-            <FormField label="비밀번호 확인" errorMessage={errors.passwordConfirm}>
-              <input
-                type="password"
-                className={`ds-input${errors.passwordConfirm ? " is-error" : ""}`}
-                value={form.passwordConfirm}
-                onChange={(e) => update("passwordConfirm", e.target.value)}
-                placeholder="비밀번호를 한 번 더 입력해 주세요"
-                autoComplete="new-password"
-              />
-              {!errors.passwordConfirm &&
-                form.passwordConfirm.length > 0 &&
-                form.password === form.passwordConfirm && (
-                  <p className="t-caption mt-1.5" style={{ color: "var(--primary)" }}>
-                    비밀번호가 일치합니다.
-                  </p>
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* 프로필 사진 */}
+              <div className="flex flex-col items-center gap-3 md:w-[150px] shrink-0">
+                <div
+                  className="flex shrink-0 items-center justify-center overflow-hidden"
+                  style={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: "50%",
+                    background: "var(--bg-off)",
+                    border: "1px solid var(--ink)",
+                  }}
+                >
+                  {displayImage ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={supabaseRenderUrl(displayImage, { width: 200 })}
+                      alt="프로필 미리보기"
+                      className="w-full h-full object-cover"
+                      decoding="async"
+                    />
+                  ) : (
+                    <User size={34} color="var(--neutral-stone)" />
+                  )}
+                </div>
+                {profileImageFile ? (
+                  <div className="w-full flex flex-col items-center gap-1">
+                    <p
+                      className="t-caption truncate max-w-full"
+                      title={profileImageFile.name}
+                      style={{ color: "var(--ink-light)" }}
+                    >
+                      📎 {profileImageFile.name}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearProfileImage}
+                      className="t-caption"
+                      style={{
+                        color: "var(--alert-red)",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 2,
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn btn-ghost w-full gap-1.5"
+                    style={{ border: "1px solid var(--neutral-stone)", height: 36 }}
+                  >
+                    <Upload size={14} />
+                    업로드
+                  </button>
                 )}
-            </FormField>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <p className="t-caption text-center" style={{ color: "var(--neutral-stone)" }}>
+                  JPG / PNG / WebP
+                  <br />
+                  최대 5MB
+                </p>
+              </div>
+
+              {/* 계정 정보 입력 */}
+              <div className="flex-1 min-w-0 flex flex-col gap-4">
+                <FormField label="이메일" required>
+                  <input
+                    type="email"
+                    className="ds-input"
+                    value={form.email}
+                    readOnly
+                    style={{ background: "var(--bg-off)", color: "var(--ink-light)" }}
+                  />
+                </FormField>
+
+                <FormField label="비밀번호" errorMessage={errors.password}>
+                  <input
+                    type="password"
+                    className={`ds-input${errors.password ? " is-error" : ""}`}
+                    value={form.password}
+                    onChange={(e) => update("password", e.target.value)}
+                    placeholder="변경 시 8자 이상 입력"
+                    autoComplete="new-password"
+                  />
+                </FormField>
+
+                <FormField label="비밀번호 확인" errorMessage={errors.passwordConfirm}>
+                  <input
+                    type="password"
+                    className={`ds-input${errors.passwordConfirm ? " is-error" : ""}`}
+                    value={form.passwordConfirm}
+                    onChange={(e) => update("passwordConfirm", e.target.value)}
+                    placeholder="비밀번호를 한 번 더 입력해 주세요"
+                    autoComplete="new-password"
+                  />
+                  {!errors.passwordConfirm &&
+                    form.passwordConfirm.length > 0 &&
+                    form.password === form.passwordConfirm && (
+                      <p className="t-caption mt-1.5" style={{ color: "var(--primary)" }}>
+                        비밀번호가 일치합니다.
+                      </p>
+                    )}
+                </FormField>
+              </div>
+            </div>
           </FormSection>
 
+          {/* 연락처 + 주소 (2단) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* 연락처 */}
           <FormSection icon={<AtSign size={16} strokeWidth={1.5} />} title="연락처">
             <FormField label="이름" required errorMessage={errors.name}>
@@ -357,6 +437,7 @@ export default function EditProfilePage() {
               />
             </FormField>
           </FormSection>
+          </div>
 
           {/* 마케팅 수신 동의 */}
           <FormSection icon={<ShieldCheck size={16} strokeWidth={1.5} />} title="마케팅 수신 동의">
@@ -382,76 +463,6 @@ export default function EditProfilePage() {
                 <span style={{ color: "var(--neutral-stone)" }}>(선택)</span>
               </span>
             </label>
-          </FormSection>
-
-          {/* 프로필 사진 */}
-          <FormSection icon={<ImageIcon size={16} strokeWidth={1.5} />} title="프로필 사진">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div
-                className="flex shrink-0 items-center justify-center overflow-hidden self-center sm:self-auto"
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: "50%",
-                  background: "var(--bg-off)",
-                  border: "1px solid var(--ink)",
-                }}
-              >
-                {displayImage ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={supabaseRenderUrl(displayImage, { width: 200 })}
-                    alt="프로필 미리보기"
-                    className="w-full h-full object-cover"
-                    decoding="async"
-                  />
-                ) : (
-                  <User size={32} color="var(--neutral-stone)" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <FormField label="프로필 이미지">
-                  {profileImageFile ? (
-                    <div className="flex items-stretch gap-2">
-                      <input
-                        type="text"
-                        className="ds-input"
-                        value={`📎 ${profileImageFile.name}`}
-                        readOnly
-                      />
-                      <button
-                        type="button"
-                        onClick={clearProfileImage}
-                        className="btn btn-ghost edit-aligned-btn flex-shrink-0"
-                        style={{ border: "1px solid var(--neutral-stone)" }}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn btn-ghost edit-aligned-btn w-full gap-1.5"
-                      style={{ border: "1px solid var(--neutral-stone)" }}
-                    >
-                      <Upload size={14} />
-                      이미지 업로드
-                    </button>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <p className="t-caption mt-1.5" style={{ color: "var(--neutral-stone)" }}>
-                    JPG / PNG / WebP, 최대 5MB
-                  </p>
-                </FormField>
-              </div>
-            </div>
           </FormSection>
 
           {/* 제출 */}
