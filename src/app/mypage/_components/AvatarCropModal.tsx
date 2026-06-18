@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { ZoomIn, ZoomOut } from "lucide-react";
@@ -10,6 +10,18 @@ const CROP = 240; // 원형 크롭 지름(px) — 실제 잘리는 영역
 const MARGIN = (VIEWPORT - CROP) / 2; // 원 바깥 여백(px)
 const OUTPUT = 480; // 출력 이미지 한 변(px)
 const MAX_ZOOM = 3;
+
+// 사진이 편집 영역을 항상 덮는 cover 기준 스케일
+function coverScale(w: number, h: number) {
+  return Math.max(VIEWPORT / w, VIEWPORT / h);
+}
+// 사진이 편집 영역을 항상 덮도록 offset을 가둔다(여백 방지)
+function clampOffset(x: number, y: number, w: number, h: number) {
+  return {
+    x: Math.min(0, Math.max(VIEWPORT - w, x)),
+    y: Math.min(0, Math.max(VIEWPORT - h, y)),
+  };
+}
 
 interface AvatarCropModalProps {
   isOpen: boolean;
@@ -23,7 +35,7 @@ interface AvatarCropModalProps {
 
 /**
  * 프로필 사진 크롭 모달 — 사각 편집 영역에 사진 전체를 보여주고 원 밖은 어둡게 처리해
- * 잘릴 부분을 미리 보며 드래그(이동)·슬라이더(확대)로 조절. canvas로 정사각 크롭 출력.
+ * 잘릴 부분을 미리 보며 드래그(이동)·슬라이더/휠(원 중앙 기준 확대)로 조절. canvas로 출력.
  * 외부 라이브러리 없이 구현.
  */
 export function AvatarCropModal({
@@ -36,24 +48,14 @@ export function AvatarCropModal({
   const imgRef = useRef<HTMLImageElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
-  const zoomRef = useRef(1);
+  const zoomRef = useRef(1); // 이벤트 핸들러에서 최신 zoom 참조용
   const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
-  // 사진이 사각 편집 영역을 항상 덮도록 cover 기준 스케일.
-  const baseScale = nat ? Math.max(VIEWPORT / nat.w, VIEWPORT / nat.h) : 1;
-  const scale = baseScale * zoom;
+  const scale = (nat ? coverScale(nat.w, nat.h) : 1) * zoom;
   const dw = nat ? nat.w * scale : 0;
   const dh = nat ? nat.h * scale : 0;
-
-  // 사진이 편집 영역(VIEWPORT)을 항상 덮도록 offset을 가둔다(여백 방지).
-  const clampAt = useCallback((x: number, y: number, w: number, h: number) => {
-    return {
-      x: Math.min(0, Math.max(VIEWPORT - w, x)),
-      y: Math.min(0, Math.max(VIEWPORT - h, y)),
-    };
-  }, []);
 
   // 원본 크기 로드 → 중앙 정렬(비동기 콜백이라 effect 동기 setState 아님)
   useEffect(() => {
@@ -62,7 +64,8 @@ export function AvatarCropModal({
     im.onload = () => {
       const w = im.naturalWidth;
       const h = im.naturalHeight;
-      const bs = Math.max(VIEWPORT / w, VIEWPORT / h);
+      const bs = coverScale(w, h);
+      zoomRef.current = 1;
       setNat({ w, h });
       setZoom(1);
       setOffset({ x: (VIEWPORT - w * bs) / 2, y: (VIEWPORT - h * bs) / 2 });
@@ -78,10 +81,6 @@ export function AvatarCropModal({
     return () => window.removeEventListener("keydown", onEsc);
   }, [isOpen, onClose]);
 
-  useEffect(() => {
-    zoomRef.current = zoom;
-  }, [zoom]);
-
   // 모달 열림 동안 배경(body) 스크롤 잠금
   useEffect(() => {
     if (!isOpen) return;
@@ -92,27 +91,40 @@ export function AvatarCropModal({
     };
   }, [isOpen]);
 
-  // 마우스 휠로 확대/축소 — 배경 스크롤 방지 위해 non-passive 네이티브 리스너로 preventDefault
+  // 마우스 휠로 원 중앙 기준 확대/축소 — 배경 스크롤 방지 위해 non-passive 네이티브 리스너
   useEffect(() => {
     const el = viewportRef.current;
     if (!el || !nat) return;
+    const C = VIEWPORT / 2;
     const onWheelNative = (e: WheelEvent) => {
       e.preventDefault();
-      const nz = Math.min(MAX_ZOOM, Math.max(1, zoomRef.current - e.deltaY * 0.0015));
-      const ns = baseScale * nz;
+      const prev = zoomRef.current;
+      const nz = Math.min(MAX_ZOOM, Math.max(1, prev - e.deltaY * 0.0015));
+      const ratio = nz / prev;
+      const s = coverScale(nat.w, nat.h) * nz;
+      zoomRef.current = nz;
       setZoom(nz);
-      setOffset((o) => clampAt(o.x, o.y, nat.w * ns, nat.h * ns));
+      setOffset((o) =>
+        clampOffset(C - (C - o.x) * ratio, C - (C - o.y) * ratio, nat.w * s, nat.h * s),
+      );
     };
     el.addEventListener("wheel", onWheelNative, { passive: false });
     return () => el.removeEventListener("wheel", onWheelNative);
-  }, [isOpen, nat, baseScale, clampAt]);
+  }, [isOpen, nat]);
 
-  const handleZoom = (z: number) => {
-    const ns = baseScale * z;
-    const nw = (nat?.w ?? 0) * ns;
-    const nh = (nat?.h ?? 0) * ns;
-    setZoom(z);
-    setOffset((o) => clampAt(o.x, o.y, nw, nh));
+  // 슬라이더 — 원 중앙 기준 확대/축소
+  const zoomToCenter = (target: number) => {
+    if (!nat) return;
+    const prev = zoomRef.current;
+    const nz = Math.min(MAX_ZOOM, Math.max(1, target));
+    const ratio = nz / prev;
+    const s = coverScale(nat.w, nat.h) * nz;
+    const C = VIEWPORT / 2;
+    zoomRef.current = nz;
+    setZoom(nz);
+    setOffset((o) =>
+      clampOffset(C - (C - o.x) * ratio, C - (C - o.y) * ratio, nat.w * s, nat.h * s),
+    );
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -122,7 +134,7 @@ export function AvatarCropModal({
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
-    setOffset(clampAt(d.ox + (e.clientX - d.px), d.oy + (e.clientY - d.py), dw, dh));
+    setOffset(clampOffset(d.ox + (e.clientX - d.px), d.oy + (e.clientY - d.py), dw, dh));
   };
   const onPointerUp = () => {
     dragRef.current = null;
@@ -180,7 +192,7 @@ export function AvatarCropModal({
           프로필 사진 편집
         </p>
         <p className="t-caption text-center mt-1" style={{ color: "var(--ink-light)" }}>
-          드래그해서 위치 조정 · 슬라이더로 확대 (원 안이 잘립니다)
+          드래그해서 위치 조정 · 휠/슬라이더로 확대 (원 안이 잘립니다)
         </p>
 
         {/* 사각 편집 영역 — 사진 전체 표시, 원 밖은 어둡게 */}
@@ -242,7 +254,7 @@ export function AvatarCropModal({
             max={MAX_ZOOM}
             step={0.01}
             value={zoom}
-            onChange={(e) => handleZoom(Number(e.target.value))}
+            onChange={(e) => zoomToCenter(Number(e.target.value))}
             className="flex-1"
             style={{ accentColor: "var(--ink)" }}
             aria-label="확대"
