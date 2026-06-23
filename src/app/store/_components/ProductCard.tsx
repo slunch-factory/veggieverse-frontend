@@ -54,7 +54,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
       {/* 이미지 영역 */}
       <div
         className="card-img"
-        style={{ aspectRatio: "1 / 1", filter: comingSoon ? "grayscale(0.9) opacity(0.55)" : undefined }}
+        style={{ aspectRatio: "1 / 1" }}
       >
         {images.length > 0 ? (
           <div
@@ -108,21 +108,28 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         )}
 
         {comingSoon && (
-          <div
-            className="absolute inset-0 z-30 flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255, 255, 255, 0.45)" }}
-          >
-            <span
-              className="rounded-full px-4 py-1.5 text-[12px] font-bold tracking-wide"
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.92)",
-                color: "var(--ink)",
-                border: "1px solid var(--ink)",
-              }}
-            >
-              Sold Out
-            </span>
-          </div>
+          <>
+            {/* 최암색(--ink) 40% 디밍 막 — sticky 탭바(z-30)보다 낮게 둔다 */}
+            <div
+              className="absolute inset-0 z-[5] pointer-events-none"
+              style={{ background: "rgba(37, 10, 0, 0.4)" }}
+            />
+            {/* 좌상단 SOLD OUT 배지 — 최암색 배경, 탭바(z-30) 아래로 */}
+            <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+              <span
+                className="text-[12px] font-bold tracking-[0.1em]"
+                style={{
+                  color: "var(--bg-white)",
+                  background: "var(--ink)",
+                  borderRadius: "var(--r-btn)",
+                  padding: "6px 12px",
+                  boxShadow: "0 2px 8px rgba(37, 10, 0, 0.35)",
+                }}
+              >
+                SOLD OUT
+              </span>
+            </div>
+          </>
         )}
 
         {badgeVariant && !comingSoon && (
@@ -153,7 +160,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
       </div>
 
       {/* 상품 정보 */}
-      <div className="card-body" style={comingSoon ? { opacity: 0.5 } : undefined}>
+      <div className="card-body">
         <span
           className="mb-1 inline-block text-[11px] font-semibold tracking-wide"
           style={{ color: "var(--neutral-stone)" }}
