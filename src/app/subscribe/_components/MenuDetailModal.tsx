@@ -137,7 +137,7 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
               className="w-full max-lg:h-full"
               frameClassName="relative w-full max-lg:h-full"
               renderImage={(img) => (
-                <MealImage src={img.url} alt={meal.displayName} width={640} className="block w-full lg:h-auto max-lg:h-full max-lg:object-cover" />
+                <MealImage src={img.url} alt={meal.displayName} full className="block w-full lg:h-auto max-lg:h-full max-lg:object-cover" />
               )}
             />
           </div>
