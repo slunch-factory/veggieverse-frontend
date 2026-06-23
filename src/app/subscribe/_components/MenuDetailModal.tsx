@@ -129,7 +129,8 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
           ].join(" ")}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* LEFT: 이미지 (어두운 배경 + 로고 오버레이, 여러 장이면 슬라이드) */}
+          {/* LEFT: 이미지 (어두운 배경, 여러 장이면 슬라이드)
+              ※ 로고는 이미지 자체에 워터마크로 포함되어 있어 별도 오버레이를 그리지 않는다(중복 방지). */}
           <div className="relative overflow-hidden bg-[#250a00] lg:w-[44%] lg:shrink-0 max-lg:w-full max-lg:shrink-0 max-lg:h-[30vh] max-lg:max-h-[280px]">
             <ImageCarousel
               images={detailImages.map((url) => ({ url }))}
@@ -138,36 +139,6 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
                 <MealImage src={img.url} alt={meal.displayName} width={640} className="w-full h-full object-cover" />
               )}
             />
-            {/* 로고 오버레이 */}
-            <div className="absolute top-5 left-5 z-[2] pointer-events-none">
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  color: "#fff",
-                  letterSpacing: 1.5,
-                  lineHeight: 1.2,
-                  textShadow: "0 1px 6px rgba(0,0,0,0.5)",
-                  fontFamily: sf,
-                }}
-              >
-                SLUNCH
-                <br />
-                FACTORY
-              </div>
-              <div
-                style={{
-                  fontSize: 8,
-                  color: "rgba(255,255,255,0.6)",
-                  letterSpacing: 1,
-                  marginTop: 3,
-                  textShadow: "0 1px 4px rgba(0,0,0,0.4)",
-                  fontFamily: sf,
-                }}
-              >
-                Slow &amp; Lunch
-              </div>
-            </div>
           </div>
 
           {/* RIGHT: 본문 */}
