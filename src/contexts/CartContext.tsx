@@ -116,8 +116,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         }
       }
+      // 복원·병합이 끝난 뒤에야 저장 활성화 — 동기화 창 사이에 빈/부분 카트가
+      // localStorage를 덮어써 게스트 항목이 유실되던 레이스 방지.
+      hydrated.current = true;
     })();
-    hydrated.current = true;
   }, [sessionUserId, isAuthenticated, isLoadingSession]);
 
   useEffect(() => {
