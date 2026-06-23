@@ -32,6 +32,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${msg}`);
   }
 
+  // 비밀번호 재설정 등 명시적 목적지가 지정된 흐름은 email-check 분기를 건너뛴다.
+  // (recovery 링크는 next=/auth/update-password 로 들어온다.)
+  if (next !== "/") {
+    return NextResponse.redirect(`${origin}${next}`);
+  }
+
   const userEmail = data.session.user.email ?? null;
 
   // BE의 자사몰 가입 상태(providers)를 단일 시그널로 사용한다.

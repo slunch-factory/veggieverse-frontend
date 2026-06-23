@@ -1,42 +1,36 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { requestPasswordResetAction } from "@/app/auth/actions";
 
 type Tab = "phone" | "email";
 
-function formatPhone(v: string) {
-  const digits = v.replace(/\D/g, "").slice(0, 11);
-  if (digits.length < 4) return digits;
-  if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-}
-
-function filterAlphanumeric(v: string) {
-  return v.replace(/[^a-zA-Z0-9]/g, "");
-}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function FindPasswordClient() {
-  const [tab, setTab] = useState<Tab>("phone");
-
-  // 휴대폰 인증 탭 상태
-  const [phoneUserId, setPhoneUserId] = useState("");
-  const [phone, setPhone] = useState("");
+  const [tab, setTab] = useState<Tab>("email");
 
   // 이메일 인증 탭 상태
-  const [emailUserId, setEmailUserId] = useState("");
   const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const phoneCanSubmit = Boolean(phoneUserId.trim() && phone.trim());
-  const emailCanSubmit = Boolean(emailUserId.trim() && email.trim());
+  const emailCanSubmit = EMAIL_RE.test(email.trim()) && !submitting;
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: 실제 인증 API 연동
-    if (tab === "phone" && phoneCanSubmit) {
-      alert("휴대폰으로 비밀번호 재설정 링크가 전송되었습니다. (mock)");
-    } else if (tab === "email" && emailCanSubmit) {
-      alert("이메일로 비밀번호 재설정 링크가 전송되었습니다. (mock)");
+    if (!emailCanSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    const result = await requestPasswordResetAction(email.trim());
+    setSubmitting(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
     }
+    // 계정 열거 방지 — 가입 여부와 무관하게 동일한 완료 화면을 보여준다.
+    setSent(true);
   };
 
   return (
@@ -54,69 +48,47 @@ export function FindPasswordClient() {
 
         <Tabs tab={tab} onChange={setTab} />
 
-        <form onSubmit={handleSubmit} className="find-form flex flex-col gap-5 mt-8">
-          {tab === "phone" ? (
-            <>
-              <Field label="아이디">
-                <input
-                  className="ds-input"
-                  value={phoneUserId}
-                  onChange={(e) => setPhoneUserId(filterAlphanumeric(e.target.value))}
-                  placeholder="아이디를 입력해 주세요"
-                  autoComplete="username"
-                />
-              </Field>
-              <Field label="휴대폰 번호">
-                <input
-                  type="tel"
-                  className="ds-input"
-                  value={phone}
-                  onChange={(e) => setPhone(formatPhone(e.target.value))}
-                  placeholder="휴대폰 번호를 입력해 주세요"
-                  autoComplete="tel"
-                  inputMode="numeric"
-                  maxLength={13}
-                />
-              </Field>
-              <button
-                type="submit"
-                disabled={!phoneCanSubmit}
-                className="btn btn-dark btn-lg w-full mt-2"
-              >
-                인증번호 받기
-              </button>
-            </>
-          ) : (
-            <>
-              <Field label="아이디">
-                <input
-                  className="ds-input"
-                  value={emailUserId}
-                  onChange={(e) => setEmailUserId(filterAlphanumeric(e.target.value))}
-                  placeholder="아이디를 입력해 주세요"
-                  autoComplete="username"
-                />
-              </Field>
-              <Field label="이메일">
-                <input
-                  type="email"
-                  className="ds-input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="이메일을 입력해 주세요"
-                  autoComplete="email"
-                />
-              </Field>
-              <button
-                type="submit"
-                disabled={!emailCanSubmit}
-                className="btn btn-dark btn-lg w-full mt-2"
-              >
-                확인
-              </button>
-            </>
-          )}
-        </form>
+        {tab === "phone" ? (
+          <PhoneTabComingSoon />
+        ) : sent ? (
+          <div className="mt-8 flex flex-col gap-4 text-center">
+            <p className="t-body" style={{ color: "var(--ink)" }}>
+              <b>{email.trim()}</b> 으로
+              <br />
+              비밀번호 재설정 메일을 보냈습니다.
+            </p>
+            <p className="t-small" style={{ color: "var(--neutral-stone)" }}>
+              메일이 보이지 않으면 스팸함을 확인해 주세요.
+              <br />
+              해당 이메일로 가입된 계정이 있는 경우에만 메일이 전송됩니다.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="find-form flex flex-col gap-5 mt-8">
+            <Field label="이메일">
+              <input
+                type="email"
+                className="ds-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="가입한 이메일을 입력해 주세요"
+                autoComplete="email"
+              />
+            </Field>
+            {error && (
+              <p className="t-small" style={{ color: "var(--alert-red)" }}>
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={!emailCanSubmit}
+              className="btn btn-dark btn-lg w-full mt-2"
+            >
+              {submitting ? "전송 중…" : "재설정 메일 받기"}
+            </button>
+          </form>
+        )}
       </div>
 
       <style>{`
@@ -131,6 +103,19 @@ export function FindPasswordClient() {
 }
 
 /* ─── 보조 컴포넌트 ─── */
+
+function PhoneTabComingSoon() {
+  return (
+    <div className="mt-8 flex flex-col gap-4 text-center">
+      <p className="t-body" style={{ color: "var(--ink)" }}>
+        휴대폰 인증은 준비 중입니다.
+      </p>
+      <p className="t-small" style={{ color: "var(--neutral-stone)" }}>
+        지금은 이메일 인증으로 비밀번호를 재설정할 수 있습니다.
+      </p>
+    </div>
+  );
+}
 
 function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   return (
