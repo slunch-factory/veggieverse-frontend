@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { PreparingBanner } from "@/components/common/PreparingBanner";
+// TODO(시연): 촬영 후 PreparingBanner import·사용 복구할 것
+// import { PreparingBanner } from "@/components/common/PreparingBanner";
 import { SubscribeClient } from "./_components/SubscribeClient";
 import { getMenus } from "@/lib/api/subscription";
 
@@ -17,7 +18,8 @@ export default async function SubscribePage() {
   const menus = await getMenus();
   return (
     <>
-      <PreparingBanner dismissible />
+      {/* TODO(시연): 시연 영상 촬영용 임시 비활성화 — 촬영 후 복구할 것 */}
+      {/* <PreparingBanner dismissible /> */}
       <SubscribeClient menus={menus} />
     </>
   );
