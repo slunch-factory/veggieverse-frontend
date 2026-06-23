@@ -16,10 +16,22 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const BACKEND_BASE =
   process.env.API_BASE_INTERNAL ?? process.env.NEXT_PUBLIC_API_BASE_PATH ?? "";
 
+/**
+ * 오픈 리다이렉트 방지 — 같은 출처의 경로만 허용한다.
+ * 허용: "/" 단일 슬래시로 시작하는 내부 경로.
+ * 차단: "//evil.com"(protocol-relative), "/\evil.com"(백슬래시 우회),
+ *       "https://..."(절대 URL), "@evil.com"(userinfo 트릭 — origin 접두로 host 탈취).
+ */
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/")) return "/";
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return "/";
+  return raw;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const next = safeNextPath(searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);

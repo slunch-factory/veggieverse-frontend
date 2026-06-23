@@ -118,6 +118,7 @@ export function OrderClient() {
   const [confirmedPlan, setConfirmedPlan] = useState<CustomPlanResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState(false);
   const [payError, setPayError] = useState<PayErrorView | null>(null);
 
   useEffect(() => {
@@ -134,7 +135,9 @@ export function OrderClient() {
     });
   }, []);
 
-  useEffect(() => {
+  // getUserProfile은 실패 시 throw 대신 null을 반환한다.
+  // (인증 필수 호출이라 401은 apiFetch가 로그인으로 redirect — 여기 도달 시 null은 일시 오류로 간주)
+  const fetchProfile = useCallback(() => {
     getUserProfile().then((profile) => {
       if (profile) {
         setForm((prev) => ({
@@ -146,10 +149,23 @@ export function OrderClient() {
           customerAddress: profile.address?.street || "",
           customerAddressDetail: profile.address?.detail || "",
         }));
+      } else {
+        setProfileError(true);
       }
       setProfileLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // 재시도(이벤트 핸들러) — 동기 상태 reset 후 재요청.
+  const retryProfile = useCallback(() => {
+    setProfileLoading(true);
+    setProfileError(false);
+    fetchProfile();
+  }, [fetchProfile]);
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -297,6 +313,23 @@ export function OrderClient() {
                   <p className="t-small text-center py-4" style={{ color: "var(--ink-light)" }}>
                     불러오는 중...
                   </p>
+                ) : profileError ? (
+                  <div className="flex flex-col items-center gap-3 py-4 text-center">
+                    <p className="t-small" style={{ color: "var(--ink)" }}>
+                      주문자 정보를 불러오지 못했습니다.
+                    </p>
+                    <p className="t-caption" style={{ color: "var(--ink-light)" }}>
+                      네트워크 상태를 확인한 뒤 다시 시도해 주세요.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={retryProfile}
+                      className="btn btn-ghost btn-sm"
+                      style={{ border: "1px solid var(--ink)" }}
+                    >
+                      다시 불러오기
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <div className="flex flex-col md:flex-row gap-4">

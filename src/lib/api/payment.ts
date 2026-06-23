@@ -98,13 +98,11 @@ function mapPaymentError(status: number, body: string): SubscriptionPaymentError
     // body가 JSON이 아니면 status 기반으로만 추정
   }
 
-  if (status === 401) code = "Rejected"; // 실제로는 apiFetch가 로그인으로 redirect
+  if (status === 401) code = "Auth"; // apiFetch가 로그인 페이지로 redirect
   else if (status === 409) code = "Conflict";
   else if (status === 404 || status === 410) code = "PlanInvalid";
   else if (status === 503 || status >= 500) code = "Retryable";
   else if (status === 400 || status === 402) code = "Rejected";
-
-  if (status === 401) code = "Auth";
 
   if (!message) message = defaultMessageFor(code);
   return new SubscriptionPaymentError(status, code, message, body || undefined);
