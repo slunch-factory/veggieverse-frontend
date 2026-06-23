@@ -134,18 +134,23 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
           <div className="relative overflow-hidden bg-[#250a00] lg:w-[44%] lg:shrink-0 max-lg:w-full max-lg:shrink-0 max-lg:h-[30vh] max-lg:max-h-[280px]">
             <ImageCarousel
               images={detailImages.map((url) => ({ url }))}
-              frameClassName="relative w-full h-full"
+              className="w-full max-lg:h-full"
+              frameClassName="relative w-full max-lg:h-full"
               renderImage={(img) => (
-                <MealImage src={img.url} alt={meal.displayName} width={640} className="w-full h-full object-cover" />
+                <MealImage src={img.url} alt={meal.displayName} width={640} className="block w-full lg:h-auto max-lg:h-full max-lg:object-cover" />
               )}
             />
           </div>
 
-          {/* RIGHT: 본문 */}
+          {/* RIGHT: 본문
+              데스크톱: 모달 높이를 왼쪽 이미지(자연 높이)에 맞추기 위해 본문은 absolute로 띄워
+                        칼럼 자체 높이에 기여하지 않게 하고, 내부에서만 스크롤한다.
+              모바일: 일반 흐름 + 스크롤. */}
           <div
-            className="flex-1 overflow-y-auto max-lg:min-h-0 lg:px-9 lg:py-10 max-lg:px-[22px] max-lg:py-7"
+            className="flex-1 min-w-0 lg:relative max-lg:overflow-y-auto max-lg:min-h-0"
             style={{ fontFamily: sf }}
           >
+          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:px-9 lg:pt-5 lg:pb-10 max-lg:px-[22px] max-lg:py-7">
             {/* + / × 버튼 */}
             <div className="flex flex-row items-center justify-end gap-[10px] mb-3">
               <button
@@ -267,7 +272,7 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
                     >
                       <span style={{ fontSize: 12.5, color: "#250a00", fontFamily: sf }}>{ing.name}</span>
                       <span style={{ fontSize: 11.5, color: "rgba(0,0,0,0.38)", fontFamily: sf, marginLeft: 12, flexShrink: 0 }}>
-                        {ing.amountG}g
+                        {ing.amountText ?? (ing.amountG ? `${ing.amountG}g` : "")}
                       </span>
                     </div>
                   ))}
@@ -342,6 +347,7 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
                 </div>
               </>
             )}
+          </div>
           </div>
         </div>
       </div>

@@ -255,12 +255,12 @@ export async function getOrderDetail(
 }
 
 export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/plan`;
+  // 브라우저 호출 — 프록시(apiFetch) 경유. 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.
   try {
-    const res = await fetch(url, {
+    const res = await apiFetch("/api/v1/veggieverse/subscription/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ items }),
+      body: { items },
+      auth: "auto",
     });
     if (!res.ok) {
       console.error("[postPlan] HTTP error:", res.status, res.statusText);
@@ -274,11 +274,9 @@ export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | 
 }
 
 export async function getCustomedPlan(planId: string): Promise<CustomPlanResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/customedPlan?planId=${encodeURIComponent(planId)}`;
+  const path = `/api/v1/veggieverse/subscription/customedPlan?planId=${encodeURIComponent(planId)}`;
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-    });
+    const res = await apiFetch(path, { auth: "auto" });
     if (!res.ok) {
       console.error("[getCustomedPlan] HTTP error:", res.status, res.statusText);
       return null;
@@ -312,7 +310,11 @@ export async function getMenus(): Promise<MenuData[]> {
     }
     const data: ProductItem[] = await res.json();
     const list = Array.isArray(data) ? data : [];
-    return list.map(mapToMenuData);
+    const menus = list.map(mapToMenuData);
+    // admin 상세 내용(태그라인/설명/소구포인트/영양/원재료/조리팁/식품정보)을 이름으로 병합.
+    // 동적 import로 admin JSON을 서버 청크에만 두어 클라이언트 번들을 가볍게 유지.
+    const { enrichMenusWithDetail } = await import("@/app/subscribe/_data/productDetails");
+    return enrichMenusWithDetail(menus);
   } catch (err) {
     console.error("[getMenus] fetch failed:", err);
     return [];
@@ -320,10 +322,10 @@ export async function getMenus(): Promise<MenuData[]> {
 }
 
 export async function getSlotRecommend(): Promise<MenuData[]> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/products`;
+  // 브라우저 호출(DayRow) — 프록시 경유.
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
+    const res = await apiFetch("/api/v1/veggieverse/subscription/products", {
+      auth: "auto",
       cache: "no-store",
     });
     if (!res.ok) return [];

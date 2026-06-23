@@ -12,6 +12,8 @@ export type PackComposition = "14day" | "14day+random7" | "14day+random14" | "14
 export interface MenuIngredient {
   name: string;
   amountG: number;
+  /** 원본 표기(단위 포함, 예: "30ml"). 있으면 모달이 amountG 대신 이 값을 그대로 표시. */
+  amountText?: string;
 }
 
 export interface MenuNutrition {

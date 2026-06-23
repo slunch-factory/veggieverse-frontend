@@ -1,8 +1,7 @@
 import type { SurveyAnswers } from "@/app/spirit/_types";
 import type { MenuData } from "@/app/subscribe/_data/subscription";
 import { type ProductItem, type PlanItem, type CustomPlanResponse, mapToMenuData } from "@/lib/api/subscription";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
+import { apiFetch } from "@/lib/api/client";
 
 const NUTRITION_GOAL_MAP: Record<string, string> = {
   "plant-based":  "plant_based",
@@ -54,10 +53,11 @@ export async function getAutoPlan(
   }
   console.log("[getAutoPlan] request:", body);
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggieverse/subscription/autoPlan`, {
+    // 프록시(apiFetch) 경유 — 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.
+    const res = await apiFetch("/api/v1/veggieverse/subscription/autoPlan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
+      body,
+      auth: "auto",
       signal: options?.signal,
     });
     if (!res.ok) {
@@ -82,10 +82,10 @@ export async function getAutoPlan(
 export async function savePlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
   console.log("[savePlan] request:", { items });
   try {
-    const res = await fetch(`${API_BASE}/api/v1/veggieverse/subscription/plan`, {
+    const res = await apiFetch("/api/v1/veggieverse/subscription/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ items }),
+      body: { items },
+      auth: "auto",
     });
     if (!res.ok) {
       console.error("[savePlan] HTTP error:", res.status, res.statusText);
