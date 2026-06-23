@@ -45,8 +45,8 @@ const menuItems: MenuItem[] = [
   { name: "Newsletter", path: "/newsletter" },
   // 이벤트 기능 임시 숨김 — 재오픈 시 주석 해제
   // { name: "Event", path: "/event" },
-  { name: "Experts", path: "https://slunch-catalog.vercel.app/ko/fob", external: true },
-  { name: "OEM", path: "https://slunch-catalog.vercel.app/ko/oemodm", external: true },
+  { name: "Experts", path: "https://catalogue.slunch.co.kr/ko/fob", external: true },
+  { name: "OEM", path: "https://catalogue.slunch.co.kr/ko/oemodm", external: true },
 ];
 
 export function NavigationDrawer({
