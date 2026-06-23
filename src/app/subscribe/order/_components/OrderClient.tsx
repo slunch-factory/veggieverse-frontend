@@ -10,6 +10,7 @@ import {
   MapPin,
   CreditCard,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import {
   getOrderSnapshot,
@@ -21,6 +22,8 @@ import { getUserProfile } from "@/lib/api/user";
 import {
   postPayment,
   PAYMENT_RESULT_KEY,
+  SubscriptionPaymentError,
+  type SubscriptionPaymentErrorCode,
 } from "@/lib/api/payment";
 import { OrderSummaryCard } from "./OrderSummaryCard";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
@@ -86,6 +89,22 @@ function formatPhone(v: string) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
+interface PayErrorView {
+  code: SubscriptionPaymentErrorCode;
+  title: string;
+  message: string;
+  retryable: boolean;
+}
+
+const PAY_ERROR_TITLE: Record<SubscriptionPaymentErrorCode, string> = {
+  Retryable: "결제 처리가 지연되고 있습니다",
+  Rejected: "결제가 거절되었습니다",
+  Conflict: "이미 진행 중인 구독이 있습니다",
+  PlanInvalid: "식단 정보가 만료되었습니다",
+  Auth: "로그인이 필요합니다",
+  Unknown: "결제를 완료하지 못했습니다",
+};
+
 export function OrderClient() {
   const router = useRouter();
   const order = useSyncExternalStore(
@@ -99,6 +118,8 @@ export function OrderClient() {
   const [confirmedPlan, setConfirmedPlan] = useState<CustomPlanResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState(false);
+  const [payError, setPayError] = useState<PayErrorView | null>(null);
 
   useEffect(() => {
     if (order === null || Object.keys(order.mealPlan).length === 0) {
@@ -114,7 +135,9 @@ export function OrderClient() {
     });
   }, []);
 
-  useEffect(() => {
+  // getUserProfile은 실패 시 throw 대신 null을 반환한다.
+  // (인증 필수 호출이라 401은 apiFetch가 로그인으로 redirect — 여기 도달 시 null은 일시 오류로 간주)
+  const fetchProfile = useCallback(() => {
     getUserProfile().then((profile) => {
       if (profile) {
         setForm((prev) => ({
@@ -126,10 +149,23 @@ export function OrderClient() {
           customerAddress: profile.address?.street || "",
           customerAddressDetail: profile.address?.detail || "",
         }));
+      } else {
+        setProfileError(true);
       }
       setProfileLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // 재시도(이벤트 핸들러) — 동기 상태 reset 후 재요청.
+  const retryProfile = useCallback(() => {
+    setProfileLoading(true);
+    setProfileError(false);
+    fetchProfile();
+  }, [fetchProfile]);
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -173,6 +209,7 @@ export function OrderClient() {
   const handleSubmit = useCallback(async () => {
     if (!order || !canSubmit || submitting) return;
     setSubmitting(true);
+    setPayError(null);
 
     const planId = sessionStorage.getItem("veggieverse-plan-id") ?? "";
 
@@ -193,23 +230,32 @@ export function OrderClient() {
       detail: toStr(rawAddr.detail),
     };
 
-    const result = await postPayment({
-      planId,
-      subscriptionStartDate: toDateStr(startD),
-      subscriptionEndDate: toDateStr(endD),
-      deliveryCycle: "WEEKLY",
-      deliveryAddress: addr,
-    });
-
-    setSubmitting(false);
-
-    if (!result) {
-      alert("결제 중 오류가 발생했습니다. 다시 시도해 주세요.");
-      return;
+    try {
+      const result = await postPayment({
+        planId,
+        subscriptionStartDate: toDateStr(startD),
+        subscriptionEndDate: toDateStr(endD),
+        deliveryCycle: "WEEKLY",
+        deliveryAddress: addr,
+      });
+      sessionStorage.setItem(PAYMENT_RESULT_KEY, JSON.stringify(result));
+      router.push("/subscribe/order/complete");
+    } catch (err) {
+      const code: SubscriptionPaymentErrorCode =
+        err instanceof SubscriptionPaymentError ? err.code : "Unknown";
+      const message =
+        err instanceof SubscriptionPaymentError
+          ? err.message
+          : "결제 중 알 수 없는 오류가 발생했습니다. 다시 시도해 주세요.";
+      setPayError({
+        code,
+        title: PAY_ERROR_TITLE[code],
+        message,
+        // 일시적 오류·거절·미인증은 동일 화면에서 재시도 가능. 플랜 만료·중복 구독은 재구성 필요.
+        retryable: code === "Retryable" || code === "Rejected" || code === "Unknown",
+      });
+      setSubmitting(false);
     }
-
-    sessionStorage.setItem(PAYMENT_RESULT_KEY, JSON.stringify(result));
-    router.push("/subscribe/order/complete");
   }, [order, canSubmit, submitting, form, router]);
 
   if (!order) {
@@ -267,6 +313,23 @@ export function OrderClient() {
                   <p className="t-small text-center py-4" style={{ color: "var(--ink-light)" }}>
                     불러오는 중...
                   </p>
+                ) : profileError ? (
+                  <div className="flex flex-col items-center gap-3 py-4 text-center">
+                    <p className="t-small" style={{ color: "var(--ink)" }}>
+                      주문자 정보를 불러오지 못했습니다.
+                    </p>
+                    <p className="t-caption" style={{ color: "var(--ink-light)" }}>
+                      네트워크 상태를 확인한 뒤 다시 시도해 주세요.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={retryProfile}
+                      className="btn btn-ghost btn-sm"
+                      style={{ border: "1px solid var(--ink)" }}
+                    >
+                      다시 불러오기
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <div className="flex flex-col md:flex-row gap-4">
@@ -513,6 +576,15 @@ export function OrderClient() {
                   confirmedPlan={confirmedPlan}
                   submitting={submitting}
                 />
+
+                {payError && (
+                  <PaymentErrorPanel
+                    error={payError}
+                    submitting={submitting}
+                    onRetry={handleSubmit}
+                    onReconfigure={() => router.push("/subscribe")}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -644,6 +716,68 @@ function StoreCheckBox({ checked, size = 18 }: { checked: boolean; size?: number
     >
       {checked && <Check size={size * 0.65} strokeWidth={2.5} style={{ color: "var(--ink)" }} />}
     </span>
+  );
+}
+
+function PaymentErrorPanel({
+  error,
+  submitting,
+  onRetry,
+  onReconfigure,
+}: {
+  error: PayErrorView;
+  submitting: boolean;
+  onRetry: () => void;
+  onReconfigure: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="mt-4 px-5 py-4"
+      style={{
+        background: "var(--bg-white)",
+        border: "1px solid var(--alert-red)",
+        borderRadius: "var(--r-btn)",
+      }}
+    >
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle
+          size={18}
+          strokeWidth={2}
+          style={{ color: "var(--alert-red)", flexShrink: 0, marginTop: 1 }}
+        />
+        <div className="flex-1 min-w-0">
+          <p className="t-small" style={{ color: "var(--ink)", fontWeight: 600 }}>
+            {error.title}
+          </p>
+          <p className="t-caption mt-1" style={{ color: "var(--ink-light)" }}>
+            {error.message}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 mt-4">
+        {error.retryable && (
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={onRetry}
+            className="btn btn-dark btn-md w-full"
+          >
+            {submitting ? "처리 중..." : "다시 시도"}
+          </button>
+        )}
+        {(error.code === "PlanInvalid" || error.code === "Conflict") && (
+          <button
+            type="button"
+            onClick={onReconfigure}
+            className="btn btn-dark btn-md w-full"
+          >
+            식단 다시 구성하기
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

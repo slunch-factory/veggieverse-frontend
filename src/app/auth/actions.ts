@@ -103,6 +103,33 @@ export async function signInWithKakaoAction(
 }
 
 /**
+ * 비밀번호 재설정 메일 발송.
+ * Supabase가 `${origin}/auth/callback?next=/auth/update-password`로 돌아오는
+ * recovery 링크(?code=...)를 메일로 보낸다. callback이 code를 세션으로 교환한 뒤
+ * update-password 페이지로 보낸다.
+ *
+ * 보안: 계정 열거(account enumeration) 방지를 위해 가입 여부와 무관하게 항상 ok를 반환한다.
+ * (Supabase도 미가입 이메일에는 실제로 메일을 보내지 않는다.)
+ */
+export async function requestPasswordResetAction(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createSupabaseServerClient();
+  const reqHeaders = await headers();
+  const origin = reqHeaders.get("origin") ?? reqHeaders.get("x-forwarded-host") ?? "";
+  const redirectTo = origin
+    ? `${origin}/auth/callback?next=/auth/update-password`
+    : `/auth/callback?next=/auth/update-password`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo,
+  });
+  // rate-limit 등 호출 자체가 실패한 경우만 에러로 노출, "미가입"은 노출하지 않는다.
+  if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
+  return { ok: true };
+}
+
+/**
  * 카카오 가입자의 자사몰 비밀번호 추가(연동) — link 모드.
  */
 export async function linkPasswordAction(
