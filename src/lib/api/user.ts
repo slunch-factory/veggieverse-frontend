@@ -25,6 +25,9 @@ export async function checkEmailExists(email: string): Promise<EmailCheckResult>
   return { exists: Boolean(data?.exists) };
 }
 
+/** 계정 상태 — ACTIVE(정상) | PENDING_DELETION(탈퇴 신청, 유예 중) */
+export type AccountStatus = "ACTIVE" | "PENDING_DELETION";
+
 /** 백엔드 UserProfileResponse 스키마 그대로 매핑 */
 export interface UserProfile {
   email: string;
@@ -40,6 +43,10 @@ export interface UserProfile {
     detail: string | null;
   };
   profileImageUrl?: string | null;
+  /** 계정 상태 — 탈퇴 신청(PENDING_DELETION) 분기에 사용 */
+  status?: AccountStatus;
+  /** 완전 삭제 예정 시각(ISO) — PENDING_DELETION일 때만 의미 있음. "N일 후 삭제" 표시용 */
+  scheduledPurgeAt?: string | null;
 }
 
 export interface UpdateUserProfileRequest {
@@ -77,14 +84,20 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 }
 
 /**
- * 백엔드 프로필 완성도 probe — UserContext가 "가입 미완료"를 구분하기 위해 사용.
+ * 백엔드 프로필 완성도 probe — UserContext가 "가입 미완료"/"탈퇴 신청"을 구분하기 위해 사용.
  * GET /users/profile/completeness 응답으로 row 존재뿐 아니라 필수 필드 충족 여부까지 판단.
- *   - "complete"        : 200 + { complete: true }
- *   - "incomplete"      : 200 + { complete: false } (row는 있으나 step2 미완) 또는 404 (row 자체 없음)
- *   - "unauthenticated" : 401
- *   - "error"           : 그 외 네트워크/서버 오류, 일시적
+ *   - "complete"         : 200 + { complete: true } 이며 계정 status가 ACTIVE
+ *   - "pending_deletion" : 가입은 됐으나 계정이 PENDING_DELETION(탈퇴 신청, 유예 중)
+ *   - "incomplete"       : 200 + { complete: false } (row는 있으나 step2 미완) 또는 404 (row 자체 없음)
+ *   - "unauthenticated"  : 401
+ *   - "error"            : 그 외 네트워크/서버 오류, 일시적
  */
-export type ProfileProbe = "complete" | "incomplete" | "unauthenticated" | "error";
+export type ProfileProbe =
+  | "complete"
+  | "pending_deletion"
+  | "incomplete"
+  | "unauthenticated"
+  | "error";
 
 export async function probeProfileStatus(): Promise<ProfileProbe> {
   const res = await apiFetch("/api/v1/veggieverse/users/profile/completeness", {
@@ -98,7 +111,12 @@ export async function probeProfileStatus(): Promise<ProfileProbe> {
     return "error";
   }
   const data = (await res.json().catch(() => null)) as { complete?: boolean } | null;
-  return data?.complete ? "complete" : "incomplete";
+  if (!data?.complete) return "incomplete";
+  // 가입은 완료 — 탈퇴 신청(PENDING_DELETION) 상태인지 프로필에서 확인.
+  // completeness 응답엔 계정 상태가 없어 GET /profile로 한 번 더 본다.
+  const profile = await getUserProfile();
+  if (profile?.status === "PENDING_DELETION") return "pending_deletion";
+  return "complete";
 }
 
 /**
@@ -130,6 +148,39 @@ export async function updateUserProfile(
   });
   if (!res.ok) {
     console.error("[updateUserProfile] HTTP error:", res.status, res.statusText);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 회원 탈퇴 신청 — DELETE /users/profile.
+ * BE는 soft delete 후 204 No Content를 반환한다. 성공 시 호출 측에서
+ * Supabase 세션 종료 + 홈 redirect를 수행한다(UserContext.signOut).
+ */
+export async function deleteAccount(): Promise<boolean> {
+  const res = await apiFetch("/api/v1/veggieverse/users/profile", {
+    method: "DELETE",
+    auth: "required",
+  });
+  if (!res.ok) {
+    console.error("[deleteAccount] HTTP error:", res.status, res.statusText);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 회원 탈퇴 복구 — POST /users/profile/restore.
+ * soft delete된 계정을 유예 기간 내에 되살린다.
+ */
+export async function restoreAccount(): Promise<boolean> {
+  const res = await apiFetch("/api/v1/veggieverse/users/profile/restore", {
+    method: "POST",
+    auth: "required",
+  });
+  if (!res.ok) {
+    console.error("[restoreAccount] HTTP error:", res.status, res.statusText);
     return false;
   }
   return true;

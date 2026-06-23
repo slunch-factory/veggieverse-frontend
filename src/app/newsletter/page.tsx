@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PreparingBanner } from "@/components/common/PreparingBanner";
 import { ARTICLES } from "./_data/articles";
 import { ArticleGrid } from "./_components/ArticleGrid";
 
@@ -19,6 +20,7 @@ export default function NewsletterPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <PreparingBanner />
       {/* 히어로 - 최신 아티클 */}
       {featured && (
         <Link href={`/newsletter/${featured.id}`} className="block group">

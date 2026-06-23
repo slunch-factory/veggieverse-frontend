@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { PreparingBanner } from "@/components/common/PreparingBanner";
 import { RecipeClient } from "./_components/RecipeClient";
 
 export const metadata: Metadata = {
@@ -14,8 +15,11 @@ export const metadata: Metadata = {
 
 export default function RecipePage() {
   return (
-    <Suspense>
-      <RecipeClient />
-    </Suspense>
+    <>
+      <PreparingBanner />
+      <Suspense>
+        <RecipeClient />
+      </Suspense>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PreparingBanner } from "@/components/common/PreparingBanner";
 import { SubscribeClient } from "./_components/SubscribeClient";
 import { getMenus } from "@/lib/api/subscription";
 
@@ -16,15 +17,7 @@ export default async function SubscribePage() {
   const menus = await getMenus();
   return (
     <>
-      <div
-        role="status"
-        className="w-full px-4 py-4 text-center"
-        style={{ background: "var(--point)", color: "var(--ink)" }}
-      >
-        <p className="text-[16px] md:text-[18px] font-bold">
-          구독 서비스는 현재 준비 중입니다 — 아직 이용하실 수 없어요. 곧 오픈할게요!
-        </p>
-      </div>
+      <PreparingBanner dismissible />
       <SubscribeClient menus={menus} />
     </>
   );

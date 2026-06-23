@@ -24,7 +24,7 @@ import { AvatarCropModal } from "../_components/AvatarCropModal";
 import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
-import { getUserProfile, updateUserProfile } from "@/lib/api/user";
+import { deleteAccount, getUserProfile, updateUserProfile } from "@/lib/api/user";
 import { supabaseRenderUrl } from "@/lib/supabaseImage";
 
 interface FormState {
@@ -60,7 +60,7 @@ function stripPhoneDashes(v: string) {
 }
 
 export default function EditProfilePage() {
-  const { user, userProfile, refetchProfile } = useUser();
+  const { user, userProfile, refetchProfile, signOut } = useUser();
 
   const [form, setForm] = useState<FormState>({
     password: "",
@@ -86,6 +86,7 @@ export default function EditProfilePage() {
   const [cropName, setCropName] = useState("profile.jpg");
   const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -520,12 +521,20 @@ export default function EditProfilePage() {
 
       <WithdrawConfirmModal
         isOpen={withdrawOpen}
+        loading={withdrawing}
         onClose={() => setWithdrawOpen(false)}
-        onConfirm={() => {
-          // TODO(#60): 회원탈퇴 API 연동 — deleteAccount() 호출 후 로그아웃/홈 redirect.
-          // 현재는 백엔드 미구현이라 안내만 노출한다.
-          setWithdrawOpen(false);
-          setToast("회원탈퇴 기능은 곧 제공될 예정이에요.");
+        onConfirm={async () => {
+          if (withdrawing) return;
+          setWithdrawing(true);
+          const ok = await deleteAccount();
+          if (!ok) {
+            setWithdrawing(false);
+            setWithdrawOpen(false);
+            setToast("탈퇴 처리에 실패했어요. 잠시 후 다시 시도해주세요.");
+            return;
+          }
+          // 성공 — Supabase 세션 종료 + 로컬 정리 후 홈으로 redirect
+          await signOut();
         }}
       />
 
