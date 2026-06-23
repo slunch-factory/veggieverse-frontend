@@ -183,8 +183,12 @@ export default function HomePage() {
         ref={containerRef}
         className="relative w-full bg-white flex flex-col pt-[clamp(40px,8vw,80px)] px-[clamp(20px,5vw,60px)]"
         style={{
-          minHeight: "calc(100vh - var(--header-h, 0px))",
-          height: "calc(100vh - var(--header-h, 0px))",
+          // 콘텐츠 영역은 main이 padding-top: var(--header-area-h)(프로모배너+헤더)만큼 내려가 있으므로
+          // hero도 같은 값을 빼야 한다. (과거 --header-h만 빼서, 프로모배너가 보이는 화면에선 배너
+          // 높이만큼 넘쳐 하단 텍스트/버튼이 잘리던 버그)
+          // 또한 고정 height 대신 minHeight만 둔다 — 짧은 뷰포트에서 텍스트가 섹션을 넘으면
+          // clipPath(하단 0)에 잘리던 문제를 막기 위해 콘텐츠에 맞춰 늘어나게 한다.
+          minHeight: "calc(100dvh - var(--header-area-h, var(--header-h, 64px)))",
           clipPath: "inset(-40px -50px 0 -50px)",
         }}
       >
