@@ -16,15 +16,17 @@ import { probeProfileStatus, type ProfileProbe } from "@/lib/api/user";
 
 /**
  * 백엔드 자사몰 프로필 보유 여부.
- *   - loading    : 세션 로딩 중 또는 probe 진행 중
- *   - complete   : 200, 정상 사용자
- *   - incomplete : 404, Supabase 세션은 있으나 자사몰 users 레코드 없음 (회원가입 step2 이탈)
- *   - error      : 그 외 일시적 오류 — 보호 라우트 게이팅은 보수적으로 처리
- *   - none       : 세션 자체가 없음
+ *   - loading          : 세션 로딩 중 또는 probe 진행 중
+ *   - complete         : 200, 정상 사용자
+ *   - pending_deletion : 탈퇴 신청 상태(PENDING_DELETION) — 유예 기간 중, 복구 가능
+ *   - incomplete       : 404, Supabase 세션은 있으나 자사몰 users 레코드 없음 (회원가입 step2 이탈)
+ *   - error            : 그 외 일시적 오류 — 보호 라우트 게이팅은 보수적으로 처리
+ *   - none             : 세션 자체가 없음
  */
 export type ProfileStatus =
   | "loading"
   | "complete"
+  | "pending_deletion"
   | "incomplete"
   | "error"
   | "none";

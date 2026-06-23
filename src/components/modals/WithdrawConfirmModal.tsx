@@ -65,8 +65,9 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm, loading = fal
           정말 슬런치 팩토리를 떠나시나요?
         </p>
         <p className="t-small mt-2" style={{ color: "var(--ink-light)", lineHeight: 1.6 }}>
-          탈퇴하시면 구독·주문 내역, 배지, 관심상품 등<br />
-          모든 정보가 삭제되며 복구할 수 없어요.
+          탈퇴 신청 후 <strong>15일이 지나면</strong> 구독·주문 내역, 배지,<br />
+          관심상품 등 모든 정보가 완전히 삭제돼요.<br />
+          그 전에 다시 로그인하면 복구할 수 있어요.
         </p>
 
         <div className="mt-6 flex gap-3">

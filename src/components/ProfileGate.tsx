@@ -14,6 +14,7 @@ import { useUser } from "@/contexts/UserContext";
  * 해결: profileStatus === "incomplete"일 때 회원가입 step2로 강제 redirect.
  * 단, /signup·/auth/* 자체에서는 가입을 마저 진행해야 하므로 예외.
  *
+ * 탈퇴 신청(pending_deletion) 상태는 redirect가 아니라 전역 모달(WithdrawalPendingGate)로 처리한다.
  * "error" 상태는 일시적일 수 있어 차단하지 않는다 — 다음 probe 결과를 기다린다.
  */
 const ALLOWED_PATH_PREFIXES = ["/signup", "/auth", "/api"];
