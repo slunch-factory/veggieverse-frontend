@@ -109,20 +109,20 @@ export function ProductCard({ product }: { product: StoreProduct }) {
 
         {comingSoon && (
           <>
-            {/* 최암색(--ink) 40% 디밍 막 — sticky 탭바(z-30)보다 낮게 둔다 */}
+            {/* 최암색(--ink) 디밍 막 — sticky 탭바(z-30)보다 낮게 둔다 */}
             <div
               className="absolute inset-0 z-[5] pointer-events-none"
-              style={{ background: "rgba(37, 10, 0, 0.4)" }}
+              style={{ background: "rgba(37, 10, 0, 0.25)" }}
             />
-            {/* 좌상단 SOLD OUT 배지 — 최암색 배경, 탭바(z-30) 아래로 */}
+            {/* 좌상단 SOLD OUT 배지 — BEST 배지(10px)와 동일 폰트 크기, 탭바(z-30) 아래로 */}
             <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
               <span
-                className="text-[12px] font-bold tracking-[0.1em]"
+                className="text-[10px] font-bold tracking-[0.04em]"
                 style={{
                   color: "var(--bg-white)",
                   background: "var(--ink)",
                   borderRadius: "var(--r-btn)",
-                  padding: "6px 12px",
+                  padding: "4px 8px",
                   boxShadow: "0 2px 8px rgba(37, 10, 0, 0.35)",
                 }}
               >
