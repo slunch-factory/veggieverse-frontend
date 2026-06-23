@@ -8,18 +8,19 @@ import { HeartCrack } from "lucide-react";
 interface WithdrawConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** "탈퇴하기" 확정 시 호출. 회원탈퇴 API(#60) 연동 전까지는 부모가 안내 처리. */
+  /** "탈퇴하기" 확정 시 호출 — deleteAccount() + 로그아웃/홈 redirect 수행. */
   onConfirm: () => void;
+  /** 탈퇴 처리 중이면 버튼을 비활성화하고 진행 상태를 표시. */
+  loading?: boolean;
 }
 
 /**
  * 회원 탈퇴 확인 모달 — "정말 슬런치 팩토리를 떠나시나요?".
  *
- * NOTE: 회원탈퇴 백엔드 API는 아직 미구현(이슈 #60). 현재는 확인 UX만 제공하고
- * 실제 삭제는 onConfirm 콜백에서 안내(준비 중)로 처리한다. API 준비되면
- * onConfirm 내부에서 deleteAccount() 호출 + 로그아웃/홈 redirect로 교체.
+ * 확정 시 부모의 onConfirm이 deleteAccount() API(DELETE /users/profile)를 호출하고
+ * 성공하면 Supabase 세션 종료 + 홈 redirect를 수행한다.
  */
-export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawConfirmModalProps) {
+export function WithdrawConfirmModal({ isOpen, onClose, onConfirm, loading = false }: WithdrawConfirmModalProps) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
@@ -35,7 +36,7 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
   return createPortal(
     <motion.div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
-      onClick={onClose}
+      onClick={loading ? undefined : onClose}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.18 }}
@@ -72,6 +73,7 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
           <button
             type="button"
             onClick={onClose}
+            disabled={loading}
             className="flex-1 t-small"
             style={{
               padding: 12,
@@ -79,7 +81,8 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
               background: "var(--point)",
               border: "1px solid var(--ink)",
               borderRadius: "var(--r-btn)",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.5 : 1,
             }}
           >
             더 둘러볼게요
@@ -87,6 +90,7 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
           <button
             type="button"
             onClick={onConfirm}
+            disabled={loading}
             className="flex-1 t-small"
             style={{
               padding: 12,
@@ -94,10 +98,11 @@ export function WithdrawConfirmModal({ isOpen, onClose, onConfirm }: WithdrawCon
               background: "transparent",
               border: "1px solid var(--alert-red)",
               borderRadius: "var(--r-btn)",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
             }}
           >
-            탈퇴하기
+            {loading ? "처리 중..." : "탈퇴하기"}
           </button>
         </div>
       </motion.div>

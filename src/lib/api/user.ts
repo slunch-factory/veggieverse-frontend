@@ -134,3 +134,36 @@ export async function updateUserProfile(
   }
   return true;
 }
+
+/**
+ * 회원 탈퇴 신청 — DELETE /users/profile.
+ * BE는 soft delete 후 204 No Content를 반환한다. 성공 시 호출 측에서
+ * Supabase 세션 종료 + 홈 redirect를 수행한다(UserContext.signOut).
+ */
+export async function deleteAccount(): Promise<boolean> {
+  const res = await apiFetch("/api/v1/veggieverse/users/profile", {
+    method: "DELETE",
+    auth: "required",
+  });
+  if (!res.ok) {
+    console.error("[deleteAccount] HTTP error:", res.status, res.statusText);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 회원 탈퇴 복구 — POST /users/profile/restore.
+ * soft delete된 계정을 유예 기간 내에 되살린다.
+ */
+export async function restoreAccount(): Promise<boolean> {
+  const res = await apiFetch("/api/v1/veggieverse/users/profile/restore", {
+    method: "POST",
+    auth: "required",
+  });
+  if (!res.ok) {
+    console.error("[restoreAccount] HTTP error:", res.status, res.statusText);
+    return false;
+  }
+  return true;
+}
