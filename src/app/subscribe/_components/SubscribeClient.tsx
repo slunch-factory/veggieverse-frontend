@@ -13,6 +13,7 @@ import { CheckoutBar } from "./CheckoutBar";
 import { MobileCheckoutBar } from "./MobileCheckoutBar";
 import { Snackbar } from "./Snackbar";
 import { AllergyWarningModal } from "./AllergyWarningModal";
+import { SubscribeTutorial } from "./SubscribeTutorial";
 
 interface SubscribeClientProps {
   menus: MenuData[];
@@ -139,6 +140,7 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
         onClose={() => setShowAllergyModal(false)}
         onConfirm={proceedToOrder}
       />
+      <SubscribeTutorial />
     </>
   );
 }

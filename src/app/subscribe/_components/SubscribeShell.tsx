@@ -33,12 +33,12 @@ export function SubscribeShell({
         }}
       >
         {/* LEFT: 메뉴 카탈로그 — 자체 스크롤 */}
-        <div className="border-r border-black overflow-y-auto no-scrollbar bg-[#fcfaf8] flex flex-col">
+        <div data-tutorial="menu" className="border-r border-black overflow-y-auto no-scrollbar bg-[#fcfaf8] flex flex-col">
           {menuColumn}
         </div>
 
         {/* RIGHT: 캘린더 패널 — 내부 스크롤 */}
-        <div className="flex flex-col bg-[#fcfaf8] overflow-hidden">
+        <div data-tutorial="schedule" className="flex flex-col bg-[#fcfaf8] overflow-hidden">
           <div className="flex-1 min-h-0 overflow-hidden">{plannerTopColumn}</div>
           <div className="shrink-0">{plannerBottomColumn}</div>
         </div>

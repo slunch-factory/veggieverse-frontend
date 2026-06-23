@@ -89,6 +89,24 @@ const DEFAULT_PROFILE: UserProfile = {
   savedAt: null,
 };
 
+/**
+ * 로그아웃/세션 종료 시 앱 자체 클라이언트 잔여 데이터 일괄 정리.
+ * veggieverse-* 외에 spirit-*(타로)·subscribe-*(스케줄/튜토리얼) 키까지 local/sessionStorage 양쪽에서 비워
+ * 재로그인 시 깨끗한 초기 상태(빈 스케줄 + 직접진입 튜토리얼)로 시작하게 한다.
+ */
+function clearAppStorage() {
+  if (typeof window === "undefined") return;
+  const PREFIXES = ["veggieverse-", "spirit-", "subscribe-"];
+  const matches = (key: string | null) =>
+    !!key && PREFIXES.some((p) => key.startsWith(p));
+  for (const store of [localStorage, sessionStorage]) {
+    for (let i = store.length - 1; i >= 0; i--) {
+      const key = store.key(i);
+      if (matches(key)) store.removeItem(key as string);
+    }
+  }
+}
+
 const UserContext = createContext<UserContextType | null>(null);
 
 function deriveUser(session: Session | null): User | null {
@@ -145,11 +163,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setIsLoadingSession(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setIsLoadingSession(false);
-      // 세션이 끊기면 backend userId도 초기화 — profileStatus는 session에서 derived
       if (!newSession) setBackendUserId(null);
+      // 실제 로그아웃 전환(SIGNED_OUT)에서만 앱 잔여 데이터 정리.
+      // INITIAL_SESSION/null(게스트 초기 로드)에서는 지우지 않는다 —
+      // 타로가 막 세팅한 spirit-*/subscribe-* 키를 날려 튜토리얼이 안 뜨는 문제 방지.
+      if (event === "SIGNED_OUT") clearAppStorage();
     });
 
     return () => {
@@ -219,13 +240,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setSession(null);
     setBackendUserId(null);
-    // 2) localStorage에 남은 앱 자체 키 일괄 정리 (veggieverse-* 모두)
-    if (typeof window !== "undefined") {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("veggieverse-")) localStorage.removeItem(key);
-      }
-    }
+    // 2) 앱 자체 클라이언트 잔여 데이터 정리 (local/sessionStorage)
+    clearAppStorage();
     setUserProfile(DEFAULT_PROFILE);
     // 3) Server Action — 쿠키 삭제 후 홈으로 redirect
     await signOutAction();

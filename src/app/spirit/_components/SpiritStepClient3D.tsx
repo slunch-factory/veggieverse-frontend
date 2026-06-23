@@ -290,6 +290,8 @@ export function SpiritStepClient3D({ questions }: Props) {
 
     if (recommended.length > 0) {
       sessionStorage.setItem('spirit-auto-plan', JSON.stringify(recommended));
+      // 카드 타로를 거쳐 구독으로 진입할 때만 스포트라이트 튜토리얼 1회 노출
+      sessionStorage.setItem('spirit-tutorial', '1');
     }
 
     /** 📊 측정: 클릭 → 이동까지의 총 체감 로딩 시간 + P50 자동 집계 */

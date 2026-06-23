@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useUser } from "@/contexts/UserContext";
 import {
   type AllergyFilter,
   type DayPlan,
@@ -69,6 +70,9 @@ export interface SubscribePlannerActions {
 }
 
 export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState & SubscribePlannerActions {
+  // 비로그인(게스트)은 구독 메뉴 리스트를 sessionStorage에 저장/복원하지 않는다.
+  const { isLoggedIn, isLoadingSession } = useUser();
+
   const menusMap = useMemo(
     () => Object.fromEntries(menuList.map((m) => [m.id, m])),
     [menuList],
@@ -136,14 +140,20 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
 
   const allDays = useMemo(() => generateWeekDays(startDate), [startDate]);
 
+  // 저장된 식단 복원 — 로그인 사용자만. (게스트는 저장하지 않으므로 복원도 하지 않음)
+  const restoredRef = useRef(false);
   useEffect(() => {
+    if (isLoadingSession || restoredRef.current) return;
+    restoredRef.current = true;
+    if (!isLoggedIn) return;
     try {
       const raw = sessionStorage.getItem("subscribe-meal-plan");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setMealPlan(JSON.parse(raw) as Record<string, DisplayMenuData>);
     } catch {
       // ignore
     }
-  }, []);
+  }, [isLoadingSession, isLoggedIn]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("spirit-auto-plan");
@@ -159,13 +169,19 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
   }, []);
 
+  // 식단 저장 — 로그인 사용자만. 게스트는 저장하지 않고(창 나가면 사라짐) 기존 키도 제거.
   useEffect(() => {
+    if (isLoadingSession) return;
+    if (!isLoggedIn) {
+      sessionStorage.removeItem("subscribe-meal-plan");
+      return;
+    }
     if (Object.keys(mealPlan).length > 0) {
       sessionStorage.setItem("subscribe-meal-plan", JSON.stringify(mealPlan));
     } else {
       sessionStorage.removeItem("subscribe-meal-plan");
     }
-  }, [mealPlan]);
+  }, [mealPlan, isLoggedIn, isLoadingSession]);
 
   useEffect(() => {
     if (spiritAppliedRef.current) return;
