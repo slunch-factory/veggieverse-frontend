@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { LoginClient } from "./_components/LoginClient";
 
@@ -7,5 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginClient />;
+  // LoginClient가 useSearchParams(?email= prefill)를 사용하므로 Suspense 경계로 감싼다
+  // (정적 prerender 시 CSR bailout 빌드 오류 방지 — signup 페이지와 동일 패턴).
+  return (
+    <Suspense>
+      <LoginClient />
+    </Suspense>
+  );
 }
