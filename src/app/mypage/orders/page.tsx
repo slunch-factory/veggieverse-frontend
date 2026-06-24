@@ -12,12 +12,11 @@ import { useUser } from "@/contexts/UserContext";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 
-const STATUS_TABS = ["전체", "결제대기", "결제완료", "배송중", "배송완료", "취소됨"] as const;
+const STATUS_TABS = ["전체", "결제완료", "배송중", "배송완료", "취소됨"] as const;
 
-// PENDING은 주문 row 생성 후 confirm 전 — "결제 대기".
+// PENDING(결제대기) 주문은 getStoreOrderHistory에서 걸러져 목록에 오지 않는다.
 // PAID는 confirm 성공으로 결제 확정 — "결제 완료".
 const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
-  PENDING: "결제대기",
   PAID: "결제완료",
   COMPLETED: "배송완료",
   SHIPPING: "배송중",
