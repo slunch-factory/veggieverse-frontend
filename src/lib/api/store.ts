@@ -19,19 +19,18 @@ export function categoryLabel(code: string): string {
 }
 
 /** 정식 판매 중인 상품 slug. 이 목록에 없는 상품은 스토어에서 "준비중"으로 비활성화 표시한다. */
-export const AVAILABLE_PRODUCT_SLUGS = new Set<string>([
-  "kimchi-can",            // 비건 김치캔
-  "kimchi-pancake",        // 비건 김치전 밀키트
-  "peach-tart",            // 비건 복숭아 타르트
-  "peach-tart-slice",      // 비건 복숭아타르트 조각
-  "blueberry-tart",        // 비건 블루베리 타르트
-  "blueberry-tart-slice",  // 비건 블루베리타르트 조각
-  "peanut-butter-choco-bar", // 비건 피넛버터 초코바
-]);
+/** 백엔드 StoreProductStockView — 재고 표시 상태. */
+export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "SOLD_OUT";
 
-/** 해당 slug가 아직 판매 준비중(비활성화) 상태인지 여부 */
-export function isComingSoon(slug: string): boolean {
-  return !AVAILABLE_PRODUCT_SLUGS.has(slug);
+export interface StoreProductStock {
+  status: StockStatus;
+  /** 남은 수량 — 품절임박(LOW_STOCK) + 상세에서만 채워짐. 그 외 null. */
+  remaining: number | null;
+}
+
+/** 재고 기준 품절 여부 (status가 SOLD_OUT). stock 누락 시 false(판매 가능)로 간주. */
+export function isStockSoldOut(stock?: StoreProductStock | null): boolean {
+  return stock?.status === "SOLD_OUT";
 }
 
 const CDN_PATTERN = /^https?:\/\/cdn\.slunch\.com(\/.*)/;
@@ -71,6 +70,8 @@ export interface StoreProduct {
     isNew: boolean;
     isBest: boolean;
   };
+  /** 재고 표시 상태 — 목록 응답엔 remaining이 보통 null(품절임박+상세에서만 채워짐). */
+  stock?: StoreProductStock | null;
 }
 
 export async function getStoreProducts(sort: StoreSortParam = "nameAsc"): Promise<StoreProduct[]> {
@@ -123,6 +124,8 @@ export interface StoreProductDetail {
     details: StoreProductImage[];
     subs: StoreProductImage[];
   };
+  /** 재고 표시 상태 — 상세에선 LOW_STOCK 시 remaining(남은 수량)이 채워진다. */
+  stock?: StoreProductStock | null;
 }
 
 export async function getProductBySlug(slug: string): Promise<StoreProductDetail | null> {
@@ -199,11 +202,15 @@ export async function getStoreOrderHistory(
     return null;
   }
   const data: StoreOrderHistoryResponse = await res.json();
-  // 이미지 URL CDN 변환 적용
-  data.content = data.content.map((item) => ({
-    ...item,
-    products: item.products.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl, 200) })),
-  }));
+  // PENDING(결제대기)은 결제창을 닫은 미완료 주문 — 사용자에게 노출하지 않는다.
+  // 결제 성공 시 즉시 PAID로 전환되므로, 남은 PENDING은 버려진 주문뿐이며
+  // 백엔드 reconciler가 추후 FAILED로 정리한다.
+  data.content = data.content
+    .filter((item) => item.status !== "PENDING")
+    .map((item) => ({
+      ...item,
+      products: item.products.map((p) => ({ ...p, imageUrl: resolveImageUrl(p.imageUrl, 200) })),
+    }));
   console.log(
     "%c[getStoreOrderHistory] ✅ 상품 주문 내역 조회 성공",
     "color: #4A7F52; font-weight: bold;",

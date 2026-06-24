@@ -3,17 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
-import { categoryLabel, isComingSoon, type StoreProduct } from "@/lib/api/store";
+import { categoryLabel, isStockSoldOut, type StoreProduct } from "@/lib/api/store";
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const router = useRouter();
-  const comingSoon = isComingSoon(product.slug);
+  // 품절 = 실제 재고 SOLD_OUT. SOLD OUT 디자인(디밍 + 배지)으로 표시.
+  const soldOut = isStockSoldOut(product.stock);
+  // 품절임박 — 품절이 아닐 때만. (재고 LOW_STOCK)
+  const lowStock = !soldOut && product.stock?.status === "LOW_STOCK";
   // Sold Out 상품도 상세는 누구나 볼 수 있다(구매 버튼만 상세 안에서 잠금).
   const detailHref = `/store/${product.slug}`;
   // 카테고리 태그(기본값): 분류가 없으면 "기타"로 표시
   const categoryTag = product.categories[0] ? categoryLabel(product.categories[0]) : "기타";
   const images = product.imageUrl ? [product.imageUrl] : [];
-  const useSlider = images.length >= 3 && !comingSoon;
+  const useSlider = images.length >= 3 && !soldOut;
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [dragStartX, setDragStartX] = useState<number | null>(null);
@@ -107,7 +110,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           <span className="text-[13px]" style={{ color: "var(--neutral-stone)" }}>IMG</span>
         )}
 
-        {comingSoon && (
+        {soldOut && (
           <>
             {/* 최암색(--ink) 디밍 막 — sticky 탭바(z-30)보다 낮게 둔다 */}
             <div
@@ -132,7 +135,25 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           </>
         )}
 
-        {badgeVariant && !comingSoon && (
+        {/* 품절임박 — 우상단. NEW/BEST(좌상단 .card-badges)와 겹치지 않도록 분리. */}
+        {lowStock && (
+          <div className="absolute top-2.5 right-2.5 z-10 pointer-events-none">
+            <span
+              className="text-[10px] font-bold tracking-[0.04em]"
+              style={{
+                color: "var(--bg-white)",
+                background: "var(--alert-red)",
+                borderRadius: "var(--r-btn)",
+                padding: "4px 8px",
+                boxShadow: "0 2px 8px rgba(37, 10, 0, 0.25)",
+              }}
+            >
+              품절임박
+            </span>
+          </div>
+        )}
+
+        {badgeVariant && !soldOut && (
           <div className="card-badges">
             <Badge variant={badgeVariant} />
           </div>
