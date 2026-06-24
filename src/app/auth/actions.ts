@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   isAlreadyRegisteredError,
+  isEmailNotConfirmedError,
   translateSupabaseAuthError,
 } from "@/lib/supabase-errors";
 
@@ -26,7 +27,13 @@ export type AuthSessionTokens = {
 
 export type AuthActionResult =
   | { ok: true; session?: AuthSessionTokens | null }
-  | { ok: false; error: string; alreadyRegistered?: boolean };
+  | {
+      ok: false;
+      error: string;
+      alreadyRegistered?: boolean;
+      /** 'Email not confirmed' — 가입은 됐으나 이메일 인증 미완료 계정 */
+      emailNotConfirmed?: boolean;
+    };
 
 /**
  * 이메일/비밀번호 로그인 — 성공 시 쿠키에 세션 저장.
@@ -43,7 +50,12 @@ export async function signInAction(formData: {
     email: formData.email.trim(),
     password: formData.password,
   });
-  if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
+  if (error)
+    return {
+      ok: false,
+      error: translateSupabaseAuthError(error.message),
+      emailNotConfirmed: isEmailNotConfirmedError(error.message),
+    };
   return {
     ok: true,
     session: data.session
@@ -56,17 +68,37 @@ export async function signInAction(formData: {
 }
 
 /**
- * 이메일/비밀번호 회원가입 — 성공 시 쿠키에 세션 저장.
- * 클라이언트가 후속 단계(step2 프로필 작성)를 진행하므로 여기서 redirect하지 않는다.
+ * 인증 메일(가입/비번재설정)이 돌아올 도착지(= GoTrue `redirect_to`, 템플릿의 `{{ .RedirectTo }}`).
+ *
+ * token_hash 방식을 쓰므로 메일 템플릿이 이 값 뒤에 쿼리를 붙여 최종 링크를 만든다:
+ *   가입:   {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=signup&next=%2Fsignup%3Fstep%3D2
+ *   재설정: {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery&next=%2Fauth%2Fupdate-password
+ *   = {origin}/auth/confirm?token_hash=...&type=...&next=...
+ * `{{ .SiteURL }}`(단일 고정값) 대신 요청 origin 기반이라 로컬·운영 모두 자기 도메인으로 돌아온다.
+ *
+ * ⚠️ Supabase 대시보드 URL Configuration의 Redirect URLs에 `/auth/confirm`(로컬·운영)을
+ *    등록해야 `{{ .RedirectTo }}`가 채워진다. 미등록 시 링크가 비어 인증이 깨진다.
+ */
+function buildAuthConfirmRedirect(origin: string): string {
+  return origin ? `${origin}/auth/confirm` : `/auth/confirm`;
+}
+
+/**
+ * 이메일/비밀번호 회원가입 — Supabase "Confirm email" 활성화 상태.
+ * signUp은 세션을 생성하지 않고 인증 메일만 발송한다. 사용자가 메일 링크를 눌러야
+ * 세션이 생기므로, 호출자는 ok 응답을 받으면 "메일을 확인하세요" 화면을 띄운다.
  */
 export async function signUpAction(formData: {
   email: string;
   password: string;
 }): Promise<AuthActionResult> {
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
+  const reqHeaders = await headers();
+  const origin = reqHeaders.get("origin") ?? reqHeaders.get("x-forwarded-host") ?? "";
+  const { data, error } = await supabase.auth.signUp({
     email: formData.email.trim(),
     password: formData.password,
+    options: { emailRedirectTo: buildAuthConfirmRedirect(origin) },
   });
   if (error) {
     return {
@@ -75,6 +107,36 @@ export async function signUpAction(formData: {
       alreadyRegistered: isAlreadyRegisteredError(error.message),
     };
   }
+  // 이메일 enumeration 보호가 켜져 있으면, 이미 가입된 이메일은 에러 없이 obfuscate되어
+  // 반환된다(빈 identities 배열). 이 경우를 "이미 가입됨"으로 판별한다.
+  // (신규 가입은 identities에 email identity 1개가 채워져 들어온다.)
+  const identities = data.user?.identities;
+  if (identities && identities.length === 0) {
+    return {
+      ok: false,
+      error: "이미 가입된 이메일입니다.",
+      alreadyRegistered: true,
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * 회원가입 인증 메일 재발송 — "메일 확인" 화면의 재발송 버튼에서 호출.
+ * signUp과 동일한 emailRedirectTo를 사용해 링크 도착지를 일치시킨다.
+ */
+export async function resendSignupConfirmationAction(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createSupabaseServerClient();
+  const reqHeaders = await headers();
+  const origin = reqHeaders.get("origin") ?? reqHeaders.get("x-forwarded-host") ?? "";
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: email.trim(),
+    options: { emailRedirectTo: buildAuthConfirmRedirect(origin) },
+  });
+  if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
   return { ok: true };
 }
 
@@ -104,9 +166,15 @@ export async function signInWithKakaoAction(
 
 /**
  * 비밀번호 재설정 메일 발송.
- * Supabase가 `${origin}/auth/callback?next=/auth/update-password`로 돌아오는
- * recovery 링크(?code=...)를 메일로 보낸다. callback이 code를 세션으로 교환한 뒤
- * update-password 페이지로 보낸다.
+ *
+ * signup과 동일하게 token_hash 방식을 쓴다(`/auth/confirm` 재사용). PKCE `?code=` 방식은
+ * resetPasswordForEmail 시점에 구운 code_verifier가 메일 클릭 시점(나중·다른 기기)에 없어
+ * "PKCE code verifier not found"로 깨질 수 있다. token_hash는 verifier가 필요 없어 안전하다.
+ *
+ * redirectTo(= `{{ .RedirectTo }}`)는 `${origin}/auth/confirm`. Reset Password 메일 템플릿이
+ * 그 뒤에 쿼리를 붙여 최종 링크를 만든다:
+ *   {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery&next=%2Fauth%2Fupdate-password
+ * /auth/confirm이 verifyOtp(type=recovery)로 세션을 발급한 뒤 /auth/update-password로 보낸다.
  *
  * 보안: 계정 열거(account enumeration) 방지를 위해 가입 여부와 무관하게 항상 ok를 반환한다.
  * (Supabase도 미가입 이메일에는 실제로 메일을 보내지 않는다.)
@@ -117,12 +185,9 @@ export async function requestPasswordResetAction(
   const supabase = await createSupabaseServerClient();
   const reqHeaders = await headers();
   const origin = reqHeaders.get("origin") ?? reqHeaders.get("x-forwarded-host") ?? "";
-  const redirectTo = origin
-    ? `${origin}/auth/callback?next=/auth/update-password`
-    : `/auth/callback?next=/auth/update-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo,
+    redirectTo: buildAuthConfirmRedirect(origin),
   });
   // rate-limit 등 호출 자체가 실패한 경우만 에러로 노출, "미가입"은 노출하지 않는다.
   if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };

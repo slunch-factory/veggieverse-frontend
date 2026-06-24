@@ -30,3 +30,9 @@ export function isAlreadyRegisteredError(message: string | undefined | null): bo
   if (!message) return false;
   return message.toLowerCase().includes("user already registered");
 }
+
+/** 'Email not confirmed' 케이스 구분 — 로그인 시도 시 미인증 계정 판별에 사용 */
+export function isEmailNotConfirmedError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return message.toLowerCase().includes("email not confirmed");
+}

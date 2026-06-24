@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -12,7 +12,9 @@ const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
 
 export function LoginClient() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  // 중복 이메일 안내 모달에서 "이메일로 로그인"으로 넘어온 경우 이메일을 미리 채운다.
+  const [email, setEmail] = useState(() => searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
