@@ -5,10 +5,11 @@ import { formatPrice } from "../_data/subscription";
 interface CheckoutBarProps {
   totalPrice: number;
   filledSlots: number;
+  totalSlots: number;
   onSubmit: () => void;
 }
 
-export function CheckoutBar({ totalPrice, filledSlots, onSubmit }: CheckoutBarProps) {
+export function CheckoutBar({ totalPrice, filledSlots, totalSlots, onSubmit }: CheckoutBarProps) {
   const disabled = filledSlots === 0;
 
   return (
@@ -17,13 +18,13 @@ export function CheckoutBar({ totalPrice, filledSlots, onSubmit }: CheckoutBarPr
       aria-label="결제"
     >
       <div className="flex flex-row items-center gap-[10px]">
-        {/* 좌: 끼 수 + 식단 타입 */}
+        {/* 좌: 선택 진행도 */}
         <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
           <span className="text-[11px] font-medium text-[#9a928c] tracking-[-0.01em] leading-snug">
-            식단 총 14끼(1주) · {filledSlots}/14끼
+            선택한 식단
           </span>
-          <span className="text-[18px] font-extrabold text-black tracking-[-0.02em] leading-tight">
-            하루 두 끼
+          <span className="text-[18px] font-extrabold text-black tracking-[-0.02em] leading-tight tabular-nums">
+            {filledSlots} / {totalSlots}끼
           </span>
         </div>
         {/* 우: 총 금액 */}

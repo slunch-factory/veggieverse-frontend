@@ -1,80 +1,89 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { Shuffle, Trash2 } from "lucide-react";
 import type {
   DayPlan,
   DisplayMenuData,
-  MenuCategory,
-  PlanType,
+  MealsPerDay,
+  PlanDays,
 } from "../_data/subscription";
-import { WEEKDAY_KO } from "../_data/subscription";
+import { MEALS_PER_DAY_OPTIONS, PLAN_DAYS_OPTIONS } from "../_data/subscription";
 import { DayRow } from "./DayRow";
 
 interface PlannerColumnProps {
-  startDate: Date;
-  earliestStart: Date;
   allDays: DayPlan[];
   mealPlan: Record<string, DisplayMenuData>;
   selectedSlotId: string | null;
-  selectedPlan: PlanType | null;
-  selectedPlanType: MenuCategory | null;
+  planDays: PlanDays;
+  mealsPerDay: MealsPerDay;
   filledSlots: number;
   draggingMealId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
-  onStartDateChange: (d: Date) => void;
+  onPlanDaysChange: (n: PlanDays) => void;
+  onMealsPerDayChange: (n: MealsPerDay) => void;
   onSelectSlot: (slotId: string) => void;
   onRemoveMeal: (slotId: string, e: React.MouseEvent) => void;
+  onCopyDay: (dateKey: string) => void;
   onDragOverDay: (key: string | null) => void;
   onDropMeal: (dateKey: string, mealId: string) => void;
   onResetMealPlan: () => void;
+  onFillRandom: () => void;
+  onReshuffle: () => void;
   onSetMeal: (slotId: string, meal: DisplayMenuData) => void;
 }
 
-const stripTime = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-
 export function PlannerColumn({
-  startDate,
-  earliestStart,
   allDays,
   mealPlan,
   selectedSlotId,
+  planDays,
+  mealsPerDay,
   filledSlots,
   draggingMealId,
   dragOverDayKey,
   listScrollRef,
-  onStartDateChange,
+  onPlanDaysChange,
+  onMealsPerDayChange,
   onSelectSlot,
   onRemoveMeal,
+  onCopyDay,
   onDragOverDay,
   onDropMeal,
   onResetMealPlan,
+  onFillRandom,
+  onReshuffle,
   onSetMeal,
 }: PlannerColumnProps) {
-  const atMin = stripTime(startDate) <= stripTime(earliestStart);
-  const shift = (days: number) => {
-    const next = new Date(startDate);
-    next.setDate(next.getDate() + days);
-    if (stripTime(next) < stripTime(earliestStart)) return;
-    onStartDateChange(next);
-  };
-
-  const scrollToDay = (dateKey: string) => {
-    const container = listScrollRef.current;
-    const target = container?.querySelector(`[data-day-key="${dateKey}"]`) as HTMLElement | null;
-    if (container && target) {
-      container.scrollTo({ top: target.offsetTop, behavior: "smooth" });
-    }
-  };
+  const hasEmpty = allDays.some((d) => d.slots.some((s) => !mealPlan[s.slotId]));
+  const hasSlots = allDays.some((d) => d.slots.length > 0);
 
   return (
     <section
       className="relative flex flex-col h-full min-h-0 bg-[#fcfaf8]"
       aria-label="구독 일정 플래너"
     >
-      {/* cal-title-row */}
+      {/* 타이틀 행 — 랜덤 채우기(좌) / 전체 비우기(우) */}
       <div className="relative shrink-0 h-[48px] px-5 flex items-center justify-center border-b border-black bg-white">
         <h2 className="text-[14px] font-normal tracking-[-0.005em] text-black">구독 스케쥴</h2>
+        {hasSlots && (
+          <button
+            type="button"
+            onClick={() => {
+              if (hasEmpty) {
+                onFillRandom();
+              } else if (confirm("이미 모두 채워져 있어요. 전체를 새로 랜덤 구성할까요?")) {
+                onReshuffle();
+              }
+            }}
+            aria-label={hasEmpty ? "빈 칸 랜덤 채우기" : "전체 랜덤 재구성"}
+            title={hasEmpty ? "빈 칸 랜덤 채우기" : "전체 랜덤 재구성"}
+            className="absolute left-5 flex items-center gap-1 text-[#9a928c] hover:text-black transition-colors"
+          >
+            <Shuffle className="w-4 h-4" strokeWidth={1.6} />
+            <span className="text-[11px]">랜덤</span>
+          </button>
+        )}
         {filledSlots > 0 && (
           <button
             type="button"
@@ -82,70 +91,39 @@ export function PlannerColumn({
               if (!confirm("선택한 식단을 모두 삭제할까요?")) return;
               onResetMealPlan();
             }}
-            aria-label="식단 초기화"
-            title="식단 초기화"
-            className="absolute right-5 flex items-center justify-center text-[#9a928c] hover:text-black transition-colors"
+            aria-label="식단 전체 비우기"
+            title="식단 전체 비우기"
+            className="absolute right-5 flex items-center gap-1 text-[#9a928c] hover:text-[#d4513b] transition-colors"
           >
-            <RotateCcw className="w-4 h-4" strokeWidth={1.6} />
+            <Trash2 className="w-4 h-4" strokeWidth={1.6} />
+            <span className="text-[11px]">비우기</span>
           </button>
         )}
       </div>
 
-      {/* week-nav: 이전/다음 + 날짜 탭 스트립 (7일 균등 분배) */}
-      <div className="shrink-0 h-[56px] flex items-stretch border-b border-black bg-white">
-        <button
-          type="button"
-          onClick={() => shift(-1)}
-          disabled={atMin}
-          aria-label="이전 기간"
-          className={`shrink-0 w-8 border-r border-black flex items-center justify-center bg-white text-[16px] leading-none transition-colors ${
-            atMin
-              ? "opacity-30 cursor-not-allowed"
-              : "hover:bg-[#fcfaf8] cursor-pointer"
-          }`}
-        >
-          ‹
-        </button>
-
-        {/* 7일 균등 분배 탭 */}
-        <div className="flex-1 flex items-stretch">
-          {allDays.slice(0, 7).map((day) => {
-            const d = day.date;
-            const dow = d.getDay();
-            const isSun = dow === 0;
-            const isSat = dow === 6;
-            const dateNum = String(d.getDate());
-            const dowLabel = WEEKDAY_KO[dow];
-            const dowColor = isSun ? "text-[#e68a45]" : isSat ? "text-[#7eb5e6]" : "text-[#9a928c]";
-            const dateColor = isSun ? "text-[#e68a45]" : isSat ? "text-[#7eb5e6]" : "text-[#3d3d3d]";
-            return (
-              <button
-                key={day.dateKey}
-                type="button"
-                onClick={() => scrollToDay(day.dateKey)}
-                className="flex-1 flex flex-col items-center justify-center gap-[3px] hover:bg-[#fcfaf8] transition-colors"
-              >
-                <span className={`text-[10px] font-bold leading-none ${dowColor}`}>{dowLabel}</span>
-                <span className={`text-[14px] font-bold leading-none ${dateColor}`}>{dateNum}</span>
-              </button>
-            );
-          })}
+      {/* 플랜 길이 · 끼니 선택 (주간 이동/캘린더 자리 대체) */}
+      <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-b border-black bg-white overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1">
+          {PLAN_DAYS_OPTIONS.map((n) => (
+            <SegButton key={n} active={n === planDays} onClick={() => onPlanDaysChange(n)}>
+              {n}일
+            </SegButton>
+          ))}
         </div>
-
-        <button
-          type="button"
-          onClick={() => shift(1)}
-          aria-label="다음 기간"
-          className="shrink-0 w-8 border-l border-black flex items-center justify-center bg-white text-[16px] leading-none hover:bg-[#fcfaf8] cursor-pointer transition-colors"
-        >
-          ›
-        </button>
+        <span className="mx-1 h-4 w-px shrink-0 bg-[rgba(26,10,5,0.15)]" />
+        <div className="flex items-center gap-1">
+          {MEALS_PER_DAY_OPTIONS.map((n) => (
+            <SegButton key={n} active={n === mealsPerDay} onClick={() => onMealsPerDayChange(n)}>
+              {n}끼
+            </SegButton>
+          ))}
+        </div>
       </div>
 
-      {/* 일정 리스트 */}
+      {/* 일정 리스트 — 1일차 ~ N일차 (카드형) */}
       <div
         ref={listScrollRef}
-        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#fcfaf8]"
+        className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto bg-[#fcfaf8] p-3"
       >
         {allDays.map((day) => (
           <DayRow
@@ -155,9 +133,9 @@ export function PlannerColumn({
             selectedSlotId={selectedSlotId}
             draggingMealId={draggingMealId}
             dragOverDayKey={dragOverDayKey}
-            onSelectStartDate={onStartDateChange}
             onSelectSlot={onSelectSlot}
             onRemoveMeal={onRemoveMeal}
+            onCopyDay={onCopyDay}
             onDragOverDay={onDragOverDay}
             onDropMeal={onDropMeal}
             onSetMeal={onSetMeal}
@@ -165,5 +143,30 @@ export function PlannerColumn({
         ))}
       </div>
     </section>
+  );
+}
+
+function SegButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`shrink-0 rounded-full px-3 py-[5px] text-[12px] leading-none transition-colors ${
+        active
+          ? "bg-black text-[#dfff4f]"
+          : "border border-[rgba(26,10,5,0.2)] bg-white text-[#3d3d3d] hover:border-black"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

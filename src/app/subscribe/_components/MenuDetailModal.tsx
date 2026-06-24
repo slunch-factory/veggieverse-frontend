@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Plus } from "lucide-react";
 import type { DisplayMenuData, ExcludeCategory, MenuNutrition } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
@@ -151,16 +152,17 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
             style={{ fontFamily: sf }}
           >
           <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:px-9 lg:pt-5 lg:pb-10 max-lg:px-[22px] max-lg:py-7">
-            {/* + / × 버튼 */}
+            {/* 담기 / 닫기 버튼 */}
             <div className="flex flex-row items-center justify-end gap-[10px] mb-3">
               <button
                 type="button"
                 onClick={() => { onAdd(meal); onClose(); }}
-                aria-label="식단에 추가하기"
-                title="식단에 추가"
-                className="w-9 h-9 max-lg:w-10 max-lg:h-10 shrink-0 border border-black rounded-full bg-[#fcfaf8] text-[#3d3d3d] flex items-center justify-center text-[18px] leading-none font-light hover:bg-black hover:text-[#dfff4f] transition-colors"
+                aria-label="식단에 담기"
+                title="식단에 담기"
+                className="inline-flex items-center gap-1 h-9 max-lg:h-10 px-4 shrink-0 border border-black rounded-full bg-[#dfff4f] text-black text-[13px] font-medium leading-none hover:bg-black hover:text-[#dfff4f] transition-colors"
               >
-                +
+                <Plus size={15} strokeWidth={2.2} />
+                담기
               </button>
               <button
                 type="button"

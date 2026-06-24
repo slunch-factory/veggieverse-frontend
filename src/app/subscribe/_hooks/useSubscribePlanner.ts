@@ -9,12 +9,14 @@ import {
   type DietType,
   type DisplayMenuData,
   type ExcludeCategory,
+  type MealsPerDay,
   type MenuData,
   type NutritionGoal,
   type PackComposition,
+  type PlanDays,
   type PurchaseType,
   type SpicyPreference,
-  generateWeekDays,
+  generatePlanDays,
   getEarliestStartDate,
   isFlexibleToday,
 } from "../_data/subscription";
@@ -29,6 +31,8 @@ export interface SubscribePlannerState {
   purchaseType: PurchaseType;
   deliveryCycle: DeliveryCycle | "";
   packComposition: PackComposition | "";
+  planDays: PlanDays;
+  mealsPerDay: MealsPerDay;
   startDate: Date;
   earliestStart: Date;
   flexible: boolean;
@@ -55,12 +59,18 @@ export interface SubscribePlannerActions {
   setSpicyPreference: (v: SpicyPreference | null) => void;
   resetAllFilters: () => void;
   selectSlot: (slotId: string) => void;
+  clearSelectedSlot: () => void;
   addMeal: (meal: DisplayMenuData) => void;
   removeMeal: (slotId: string, e: React.MouseEvent) => void;
+  fillEmptyRandom: () => void;
+  reshuffleAll: () => void;
+  copyDayToAll: (dateKey: string) => void;
   resetMealPlan: () => void;
   setPurchaseType: (t: PurchaseType) => void;
   setDeliveryCycle: (c: DeliveryCycle | "") => void;
   setPackComposition: (p: PackComposition | "") => void;
+  setPlanDays: (n: PlanDays) => void;
+  setMealsPerDay: (n: MealsPerDay) => void;
   startDragMeal: (mealId: string) => void;
   endDragMeal: () => void;
   setDragOverDay: (key: string | null) => void;
@@ -71,7 +81,7 @@ export interface SubscribePlannerActions {
 
 export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState & SubscribePlannerActions {
   // 비로그인(게스트)은 구독 메뉴 리스트를 sessionStorage에 저장/복원하지 않는다.
-  const { isLoggedIn, isLoadingSession } = useUser();
+  const { isLoadingSession } = useUser();
 
   const menusMap = useMemo(
     () => Object.fromEntries(menuList.map((m) => [m.id, m])),
@@ -90,6 +100,8 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   const [purchaseType, setPurchaseType] = useState<PurchaseType>("once");
   const [deliveryCycle, setDeliveryCycle] = useState<DeliveryCycle | "">("");
   const [packComposition, setPackComposition] = useState<PackComposition | "">("");
+  const [planDays, setPlanDaysState] = useState<PlanDays>(7);
+  const [mealsPerDay, setMealsPerDayState] = useState<MealsPerDay>(2);
   const [draggingMealId, setDraggingMealId] = useState<string | null>(null);
   const [dragOverDayKey, setDragOverDayKey] = useState<string | null>(null);
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
@@ -138,14 +150,16 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     return dates;
   }, [earliestStart]);
 
-  const allDays = useMemo(() => generateWeekDays(startDate), [startDate]);
+  const allDays = useMemo(
+    () => generatePlanDays(startDate, planDays, mealsPerDay),
+    [startDate, planDays, mealsPerDay],
+  );
 
-  // 저장된 식단 복원 — 로그인 사용자만. (게스트는 저장하지 않으므로 복원도 하지 않음)
+  // 저장된 식단 복원 — 게스트 포함(같은 탭 세션). 새로고침해도 작업이 사라지지 않게 한다.
   const restoredRef = useRef(false);
   useEffect(() => {
     if (isLoadingSession || restoredRef.current) return;
     restoredRef.current = true;
-    if (!isLoggedIn) return;
     try {
       const raw = sessionStorage.getItem("subscribe-meal-plan");
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -153,7 +167,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     } catch {
       // ignore
     }
-  }, [isLoadingSession, isLoggedIn]);
+  }, [isLoadingSession]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("spirit-auto-plan");
@@ -169,19 +183,15 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     }
   }, []);
 
-  // 식단 저장 — 로그인 사용자만. 게스트는 저장하지 않고(창 나가면 사라짐) 기존 키도 제거.
+  // 식단 저장 — 게스트 포함(같은 탭 세션). 결제 시점에 로그인은 별도로 요구된다.
   useEffect(() => {
     if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      sessionStorage.removeItem("subscribe-meal-plan");
-      return;
-    }
     if (Object.keys(mealPlan).length > 0) {
       sessionStorage.setItem("subscribe-meal-plan", JSON.stringify(mealPlan));
     } else {
       sessionStorage.removeItem("subscribe-meal-plan");
     }
-  }, [mealPlan, isLoggedIn, isLoadingSession]);
+  }, [mealPlan, isLoadingSession]);
 
   useEffect(() => {
     if (spiritAppliedRef.current) return;
@@ -247,12 +257,28 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     return items;
   }, [menuList, dietTypeExcludes, nutritionGoals, allergyFilters, spicyPreference]);
 
-  const totalPrice = useMemo(
-    () => Object.values(mealPlan).reduce((s, m) => s + m.price, 0),
-    [mealPlan],
+  // 현재 플랜 길이·끼니에 해당하는 슬롯만 유효. 플랜을 줄이면 그 슬롯의 메뉴는
+  // mealPlan에 남아 있어도(orphan) 가격·개수 계산에서 제외한다.
+  const validSlotIds = useMemo(
+    () => new Set(allDays.flatMap((d) => d.slots.map((s) => s.slotId))),
+    [allDays],
   );
-  const filledSlots = Object.keys(mealPlan).length;
-  const totalSlots = 14;
+  const totalPrice = useMemo(() => {
+    let sum = 0;
+    validSlotIds.forEach((id) => {
+      const m = mealPlan[id];
+      if (m) sum += m.price;
+    });
+    return sum;
+  }, [validSlotIds, mealPlan]);
+  const filledSlots = useMemo(() => {
+    let n = 0;
+    validSlotIds.forEach((id) => {
+      if (mealPlan[id]) n++;
+    });
+    return n;
+  }, [validSlotIds, mealPlan]);
+  const totalSlots = planDays * mealsPerDay;
 
   const isMealPlanModified = useMemo(() => {
     // 추천 스냅샷 없음 → 직접 구성 → 수정됨으로 간주
@@ -271,6 +297,17 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   );
 
   const setStartDate = useCallback((d: Date) => setStartDateState(d), []);
+
+  // 길이·끼니 변경 시 선택 슬롯은 사라질 수 있으니 해제. 담긴 메뉴는 일차 기준으로
+  // 보존(줄이면 초과분은 orphan으로 제외, 늘리면 빈칸 추가).
+  const setPlanDays = useCallback((n: PlanDays) => {
+    setPlanDaysState(n);
+    setSelectedSlotId(null);
+  }, []);
+  const setMealsPerDay = useCallback((n: MealsPerDay) => {
+    setMealsPerDayState(n);
+    setSelectedSlotId(null);
+  }, []);
 
   const setDietType = useCallback((v: DietType | null) => setDietTypeState(v), []);
 
@@ -298,13 +335,14 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     setSpicyPreferenceState(null);
   }, []);
 
+  // 슬롯을 "담을 대상"으로 지정만 한다(토글). 같은 슬롯을 다시 누르면 해제.
+  // 예전엔 탭하면 랜덤 메뉴로 즉시 채웠으나, "슬롯 선택→메뉴 카드 클릭으로 담기"
+  // 흐름과 충돌해 제거했다. (랜덤 채움이 필요하면 별도 "랜덤 채우기"로 분리)
   const selectSlot = useCallback((slotId: string) => {
-    if (filteredMeals.length > 0) {
-      const random = filteredMeals[Math.floor(Math.random() * filteredMeals.length)];
-      setMealPlan((prev) => ({ ...prev, [slotId]: random }));
-    }
     setSelectedSlotId((prev) => (prev === slotId ? null : slotId));
-  }, [filteredMeals]);
+  }, []);
+
+  const clearSelectedSlot = useCallback(() => setSelectedSlotId(null), []);
 
   const addMeal = useCallback(
     (meal: DisplayMenuData) => {
@@ -334,6 +372,57 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
       return next;
     });
   }, []);
+
+  // 빈 슬롯만 현재 필터에 맞는 메뉴 중 랜덤으로 채운다(이미 담긴 칸은 보존).
+  const fillEmptyRandom = useCallback(() => {
+    if (filteredMeals.length === 0) return;
+    setMealPlan((prev) => {
+      const next = { ...prev };
+      allDays.forEach((day) =>
+        day.slots.forEach((slot) => {
+          if (next[slot.slotId]) return;
+          next[slot.slotId] = filteredMeals[Math.floor(Math.random() * filteredMeals.length)];
+        }),
+      );
+      return next;
+    });
+  }, [allDays, filteredMeals]);
+
+  // 전체 슬롯을 랜덤으로 다시 구성(이미 가득 찬 플랜을 새로 굴릴 때).
+  const reshuffleAll = useCallback(() => {
+    if (filteredMeals.length === 0) return;
+    setMealPlan((prev) => {
+      const next = { ...prev };
+      allDays.forEach((day) =>
+        day.slots.forEach((slot) => {
+          next[slot.slotId] = filteredMeals[Math.floor(Math.random() * filteredMeals.length)];
+        }),
+      );
+      return next;
+    });
+  }, [allDays, filteredMeals]);
+
+  // 한 날의 식단을 다른 모든 날의 같은 끼니(index) 칸에 복사한다.
+  // 원본 칸이 비어 있으면 해당 끼니는 건드리지 않는다.
+  const copyDayToAll = useCallback(
+    (dateKey: string) => {
+      const source = allDays.find((d) => d.dateKey === dateKey);
+      if (!source) return;
+      setMealPlan((prev) => {
+        const next = { ...prev };
+        allDays.forEach((day) => {
+          if (day.dateKey === dateKey) return;
+          day.slots.forEach((slot) => {
+            const srcSlot = source.slots.find((s) => s.index === slot.index);
+            const srcMeal = srcSlot ? prev[srcSlot.slotId] : undefined;
+            if (srcMeal) next[slot.slotId] = srcMeal;
+          });
+        });
+        return next;
+      });
+    },
+    [allDays],
+  );
 
   const resetMealPlan = useCallback(() => {
     setMealPlan({});
@@ -379,6 +468,8 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     purchaseType,
     deliveryCycle,
     packComposition,
+    planDays,
+    mealsPerDay,
     startDate,
     earliestStart,
     flexible,
@@ -401,12 +492,18 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     setSpicyPreference,
     resetAllFilters,
     selectSlot,
+    clearSelectedSlot,
     addMeal,
     removeMeal,
+    fillEmptyRandom,
+    reshuffleAll,
+    copyDayToAll,
     resetMealPlan,
     setPurchaseType,
     setDeliveryCycle,
     setPackComposition,
+    setPlanDays,
+    setMealsPerDay,
     startDragMeal,
     endDragMeal,
     setDragOverDay,

@@ -14,7 +14,7 @@ const SPIRIT_STEPS: Step[] = [
   {
     target: "schedule",
     title: "구독이 완성되었습니다",
-    desc: "추천 식단으로 한 주 스케줄을 자동으로 채웠어요.",
+    desc: "추천 식단으로 스케줄을 자동으로 채웠어요.",
     button: "다음",
   },
   {
@@ -30,13 +30,13 @@ const DIRECT_STEPS: Step[] = [
   {
     target: "menu",
     title: "여기서 식단을 골라요",
-    desc: "왼쪽 주 14끼 식단에서 원하는 메뉴를 추가하세요.",
+    desc: "메뉴를 클릭하면 상세 정보를 보고 담을 수 있어요. 바로 담으려면 카드의 + 버튼을 누르세요.",
     button: "다음",
   },
   {
     target: "schedule",
     title: "그러면 여기에 담겨요",
-    desc: "추가한 메뉴가 오른쪽 주간 스케줄에 채워져요.",
+    desc: "추가한 메뉴가 오른쪽 구독 스케줄에 채워져요.",
     button: "시작하기",
   },
 ];

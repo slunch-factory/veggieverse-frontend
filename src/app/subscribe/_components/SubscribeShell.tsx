@@ -71,7 +71,7 @@ export function SubscribeShell({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="주 14끼 구독 식단"
+          aria-label="구독 식단"
           aria-hidden={!sheetOpen}
           className={`fixed bottom-0 left-0 right-0 z-[100] flex flex-col bg-white border-t border-black shadow-[0_-12px_32px_rgba(26,10,5,0.18)] transition-transform duration-300 ${
             sheetOpen ? "translate-y-0" : "translate-y-full"
@@ -80,7 +80,7 @@ export function SubscribeShell({
         >
           {/* 시트 헤더 */}
           <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black bg-white">
-            <span className="text-[14px] tracking-[-0.005em] text-black">주 14끼 구독 식단</span>
+            <span className="text-[14px] tracking-[-0.005em] text-black">구독 식단</span>
             <button
               type="button"
               onClick={() => setSheetOpen(false)}

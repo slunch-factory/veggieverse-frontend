@@ -44,13 +44,11 @@ export async function getAutoPlan(
   answers: SurveyAnswers,
   options?: { signal?: AbortSignal },
 ): Promise<MenuData[]> {
+  // 설문(질문2, multiSelect)에서 영양목표를 최소 1개 선택해야 다음 단계로 넘어갈 수 있으므로
+  // nutritionGoals는 항상 1개 이상 — 백엔드 @Size(min=1)을 만족한다.
+  // 예전엔 1개일 때 기본값으로 강제 2개 패딩했으나, OR 매칭 특성상 유저가 고르지 않은
+  // 목표의 메뉴까지 추천에 섞여 의도와 어긋났다. 유저가 선택한 목표만 그대로 전송한다.
   const body = buildAutoPlanBody(answers);
-  if (body.nutritionGoals.length < 2) {
-    const defaults = ["plant_based", "low_calorie"].filter(
-      (g) => !body.nutritionGoals.includes(g),
-    );
-    body.nutritionGoals = [...body.nutritionGoals, ...defaults].slice(0, 2);
-  }
   console.log("[getAutoPlan] request:", body);
   try {
     // 프록시(apiFetch) 경유 — 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.

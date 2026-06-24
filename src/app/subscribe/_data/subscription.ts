@@ -1,4 +1,11 @@
 export type DurationType = 1 | 2;
+/** 구독 플랜 길이(일). 캘린더 대신 "N일치 식단" 개념. */
+export type PlanDays = 5 | 7 | 10 | 14;
+/** 하루 끼니 수. */
+export type MealsPerDay = 1 | 2;
+
+export const PLAN_DAYS_OPTIONS: PlanDays[] = [5, 7, 10, 14];
+export const MEALS_PER_DAY_OPTIONS: MealsPerDay[] = [1, 2];
 export type ExcludeCategory = "dairy" | "shellfish" | "fish" | "nuts" | "chicken" | "egg" | "gluten" | "spicy";
 export type MenuCategory = "slim" | "protein";
 export type DietType = "vegan" | "pesco" | "pollo";
@@ -77,10 +84,13 @@ export interface DisplayMenuData extends MenuData {
 }
 
 export interface DayPlan {
+  /** 1-based 일차(UI 표시용). 캘린더 날짜 대신 사용. */
+  dayIndex: number;
+  /** 내부용 순차 날짜 — 백엔드 payload(date)·slotId 생성에만 사용, UI엔 노출 안 함. */
   date: Date;
   dateKey: string;
   dateLabel: { dayName: string; dayNum: number; isHoliday: boolean };
-  slots: { slotId: string; index: 0 | 1; mealTime: "점심" | "저녁" }[];
+  slots: { slotId: string; index: 0 | 1; mealTime: "점심" | "저녁" | "식사" }[];
 }
 
 export interface PlanType {
@@ -288,14 +298,22 @@ export function getHolidayMeta(d: Date): { labelKo?: string; noteEn?: string } {
   return {};
 }
 
-export function generateWeekDays(weekStart: Date): DayPlan[] {
-  const mealTimes: ("점심" | "저녁")[] = ["점심", "저녁"];
+/** N일치 × 끼니 슬롯을 생성한다. 캘린더는 노출하지 않지만, 백엔드 payload(date)와
+ *  slotId의 고유성을 위해 baseDate부터 순차 날짜를 내부적으로 부여한다. */
+export function generatePlanDays(
+  baseDate: Date,
+  planDays: PlanDays,
+  mealsPerDay: MealsPerDay,
+): DayPlan[] {
+  const mealTimes: ("점심" | "저녁" | "식사")[] =
+    mealsPerDay === 1 ? ["식사"] : ["점심", "저녁"];
   const days: DayPlan[] = [];
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + i);
+  for (let i = 0; i < planDays; i++) {
+    const date = new Date(baseDate);
+    date.setDate(baseDate.getDate() + i);
     const dateKey = date.toISOString().split("T")[0];
     days.push({
+      dayIndex: i + 1,
       date,
       dateKey,
       dateLabel: formatDateLabel(date),
