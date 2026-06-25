@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
 import { useSubscriptionDetail } from "@/lib/query/subscription";
+import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
 import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
 
 function formatDate(iso: string) {
@@ -118,13 +119,7 @@ export function SubscriptionDetailClient() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="t-small" style={{ color: "var(--ink-light)" }}>
-          구독 상세를 불러오는 중...
-        </p>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error || !data) {

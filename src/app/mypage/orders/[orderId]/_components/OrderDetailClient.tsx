@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/contexts/UserContext";
 import { useStoreOrderDetail } from "@/lib/query/store";
 import { queryKeys } from "@/lib/query/queryKeys";
+import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
 import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { RefundModal } from "./RefundModal";
 
@@ -60,13 +61,7 @@ export function OrderDetailClient() {
   const error = isError;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="t-small" style={{ color: "var(--ink-light)" }}>
-          주문 상세를 불러오는 중...
-        </p>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error || !data) {

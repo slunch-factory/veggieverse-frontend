@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
 import { useSubscriptionHistory } from "@/lib/query/subscription";
+import { SubscriptionsSkeleton } from "./_components/SubscriptionsSkeleton";
 
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
 
@@ -80,11 +81,7 @@ export default function MySubscriptionsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20">
-          <p className="t-small" style={{ color: "var(--ink-light)" }}>
-            구독 내역을 불러오는 중...
-          </p>
-        </div>
+        <SubscriptionsSkeleton />
       ) : error ? (
         <div className="text-center py-20">
           <CalendarRange size={40} color="var(--neutral-stone)" className="inline-block mb-3" />
