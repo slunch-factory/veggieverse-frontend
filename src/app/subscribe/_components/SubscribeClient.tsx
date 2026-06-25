@@ -111,6 +111,7 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       mealsPerDay={p.mealsPerDay}
       filledSlots={p.filledSlots}
       draggingMealId={p.draggingMealId}
+      draggingSlotId={p.draggingSlotId}
       dragOverDayKey={p.dragOverDayKey}
       listScrollRef={p.listScrollRef}
       onPlanDaysChange={p.setPlanDays}
@@ -119,6 +120,9 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       onRemoveMeal={p.removeMeal}
       onDragOverDay={p.setDragOverDay}
       onDropMeal={p.dropMealOnDay}
+      onDragStartSlot={p.startDragFromSlot}
+      onDragEndMeal={p.endDragMeal}
+      onReorderSlot={p.reorderSlot}
       onResetMealPlan={p.resetMealPlan}
       onFillRandom={p.fillEmptyRandom}
       onReshuffle={p.reshuffleAll}

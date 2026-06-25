@@ -44,6 +44,8 @@ export interface SubscribePlannerState {
   totalSlots: number;
   variationCount: number;
   draggingMealId: string | null;
+  /** 스케줄 안에서 드래그 중인 메뉴가 들어 있던 슬롯. 라이브러리 드래그면 null. */
+  draggingSlotId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
   snackbarMsg: string | null;
@@ -72,9 +74,13 @@ export interface SubscribePlannerActions {
   setPlanDays: (n: PlanDays) => void;
   setMealsPerDay: (n: MealsPerDay) => void;
   startDragMeal: (mealId: string) => void;
+  /** 스케줄 슬롯에 담긴 메뉴를 드래그하기 시작. 재배치(순서 변경)용. */
+  startDragFromSlot: (slotId: string, mealId: string) => void;
   endDragMeal: () => void;
   setDragOverDay: (key: string | null) => void;
   dropMealOnDay: (dateKey: string, mealId: string) => void;
+  /** 스케줄 안에서 두 슬롯의 메뉴를 맞바꾼다(빈 칸이면 이동). */
+  reorderSlot: (sourceSlotId: string, targetSlotId: string) => void;
   setMealToSlot: (slotId: string, meal: DisplayMenuData) => void;
   clearSnackbar: () => void;
 }
@@ -103,6 +109,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   const [planDays, setPlanDaysState] = useState<PlanDays>(7);
   const [mealsPerDay, setMealsPerDayState] = useState<MealsPerDay>(2);
   const [draggingMealId, setDraggingMealId] = useState<string | null>(null);
+  const [draggingSlotId, setDraggingSlotId] = useState<string | null>(null);
   const [dragOverDayKey, setDragOverDayKey] = useState<string | null>(null);
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
   /** 스피릿 추천 적용 직후의 슬롯→메뉴ID 스냅샷. 추천 없으면 null. */
@@ -431,27 +438,58 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   }, []);
 
   const startDragMeal = useCallback((mealId: string) => setDraggingMealId(mealId), []);
+  // 스케줄 슬롯에서 드래그 시작 — 출발 슬롯을 기억해 드롭 시 재배치한다.
+  const startDragFromSlot = useCallback((slotId: string, mealId: string) => {
+    setDraggingMealId(mealId);
+    setDraggingSlotId(slotId);
+  }, []);
   const endDragMeal = useCallback(() => {
     setDraggingMealId(null);
+    setDraggingSlotId(null);
     setDragOverDayKey(null);
   }, []);
   const setDragOverDay = useCallback((key: string | null) => setDragOverDayKey(key), []);
 
+  // 스케줄 안 재배치: 출발 슬롯과 도착 슬롯의 메뉴를 맞바꾼다.
+  // 도착 슬롯이 비어 있으면 단순 이동(출발 슬롯 비움). 날짜를 넘나드는 이동도 동작.
+  const reorderSlot = useCallback((sourceSlotId: string, targetSlotId: string) => {
+    setDraggingMealId(null);
+    setDraggingSlotId(null);
+    setDragOverDayKey(null);
+    if (sourceSlotId === targetSlotId) return;
+    setMealPlan((prev) => {
+      const src = prev[sourceSlotId];
+      if (!src) return prev;
+      const next = { ...prev };
+      const tgt = prev[targetSlotId];
+      next[targetSlotId] = src;
+      if (tgt) next[sourceSlotId] = tgt;
+      else delete next[sourceSlotId];
+      return next;
+    });
+  }, []);
+
   const dropMealOnDay = useCallback(
     (dateKey: string, mealId: string) => {
-      const menuItem = menusMap[mealId];
-      if (!menuItem) return;
       const day = allDays.find((d) => d.dateKey === dateKey);
       if (!day) return;
-      const displayMenu: DisplayMenuData = { ...menuItem, displayName: menuItem.name, isVariation: false };
       const emptySlot = day.slots.find((s) => !mealPlan[s.slotId]);
       const targetId = emptySlot ? emptySlot.slotId : day.slots[0]?.slotId;
       if (!targetId) return;
+      // 스케줄 안 슬롯에서 끌어온 드래그를 데이의 빈 영역에 떨어뜨린 경우:
+      // 복사본을 만들지 말고(중복 방지) 해당 슬롯으로 이동(맞바꾸기)한다.
+      if (draggingSlotId) {
+        reorderSlot(draggingSlotId, targetId);
+        return;
+      }
+      const menuItem = menusMap[mealId];
+      if (!menuItem) return;
+      const displayMenu: DisplayMenuData = { ...menuItem, displayName: menuItem.name, isVariation: false };
       setMealPlan((prev) => ({ ...prev, [targetId]: displayMenu }));
       setDraggingMealId(null);
       setDragOverDayKey(null);
     },
-    [allDays, mealPlan, menusMap],
+    [allDays, mealPlan, menusMap, draggingSlotId, reorderSlot],
   );
 
   const setMealToSlot = useCallback((slotId: string, meal: DisplayMenuData) => {
@@ -481,6 +519,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     totalSlots,
     variationCount,
     draggingMealId,
+    draggingSlotId,
     dragOverDayKey,
     listScrollRef,
     snackbarMsg,
@@ -505,9 +544,11 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     setPlanDays,
     setMealsPerDay,
     startDragMeal,
+    startDragFromSlot,
     endDragMeal,
     setDragOverDay,
     dropMealOnDay,
+    reorderSlot,
     setMealToSlot,
     clearSnackbar: () => setSnackbarMsg(null),
   };

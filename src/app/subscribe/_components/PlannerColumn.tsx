@@ -18,6 +18,7 @@ interface PlannerColumnProps {
   mealsPerDay: MealsPerDay;
   filledSlots: number;
   draggingMealId: string | null;
+  draggingSlotId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
   onPlanDaysChange: (n: PlanDays) => void;
@@ -27,6 +28,9 @@ interface PlannerColumnProps {
   onCopyDay: (dateKey: string) => void;
   onDragOverDay: (key: string | null) => void;
   onDropMeal: (dateKey: string, mealId: string) => void;
+  onDragStartSlot: (slotId: string, mealId: string) => void;
+  onDragEndMeal: () => void;
+  onReorderSlot: (sourceSlotId: string, targetSlotId: string) => void;
   onResetMealPlan: () => void;
   onFillRandom: () => void;
   onReshuffle: () => void;
@@ -41,6 +45,7 @@ export function PlannerColumn({
   mealsPerDay,
   filledSlots,
   draggingMealId,
+  draggingSlotId,
   dragOverDayKey,
   listScrollRef,
   onPlanDaysChange,
@@ -50,6 +55,9 @@ export function PlannerColumn({
   onCopyDay,
   onDragOverDay,
   onDropMeal,
+  onDragStartSlot,
+  onDragEndMeal,
+  onReorderSlot,
   onResetMealPlan,
   onFillRandom,
   onReshuffle,
@@ -132,12 +140,16 @@ export function PlannerColumn({
             mealPlan={mealPlan}
             selectedSlotId={selectedSlotId}
             draggingMealId={draggingMealId}
+            draggingSlotId={draggingSlotId}
             dragOverDayKey={dragOverDayKey}
             onSelectSlot={onSelectSlot}
             onRemoveMeal={onRemoveMeal}
             onCopyDay={onCopyDay}
             onDragOverDay={onDragOverDay}
             onDropMeal={onDropMeal}
+            onDragStartSlot={onDragStartSlot}
+            onDragEndMeal={onDragEndMeal}
+            onReorderSlot={onReorderSlot}
             onSetMeal={onSetMeal}
           />
         ))}

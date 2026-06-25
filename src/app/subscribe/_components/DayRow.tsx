@@ -13,12 +13,16 @@ interface DayRowProps {
   mealPlan: Record<string, DisplayMenuData>;
   selectedSlotId: string | null;
   draggingMealId: string | null;
+  draggingSlotId: string | null;
   dragOverDayKey: string | null;
   onSelectSlot: (slotId: string) => void;
   onRemoveMeal: (slotId: string, e: React.MouseEvent) => void;
   onCopyDay: (dateKey: string) => void;
   onDragOverDay: (key: string | null) => void;
   onDropMeal: (dateKey: string, mealId: string) => void;
+  onDragStartSlot: (slotId: string, mealId: string) => void;
+  onDragEndMeal: () => void;
+  onReorderSlot: (sourceSlotId: string, targetSlotId: string) => void;
   onSetMeal: (slotId: string, meal: DisplayMenuData) => void;
 }
 
@@ -67,15 +71,21 @@ export function DayRow({
   mealPlan,
   selectedSlotId,
   draggingMealId,
+  draggingSlotId,
   dragOverDayKey,
   onSelectSlot,
   onRemoveMeal,
   onCopyDay,
   onDragOverDay,
   onDropMeal,
+  onDragStartSlot,
+  onDragEndMeal,
+  onReorderSlot,
   onSetMeal,
 }: DayRowProps) {
   const [recSlot, setRecSlot] = useState<string | null>(null);
+  // 재배치 드래그 시 hover 중인 슬롯(드롭 대상) — 시각 표시용.
+  const [overSlotId, setOverSlotId] = useState<string | null>(null);
   const dayHasMeals = day.slots.some((s) => mealPlan[s.slotId]);
   const isDragOver = dragOverDayKey === day.dateKey;
 
@@ -132,9 +142,42 @@ export function DayRow({
         {day.slots.map((slot) => {
           const meal = mealPlan[slot.slotId];
           const isSelected = selectedSlotId === slot.slotId;
+          // 재배치 드래그 중이고 출발 슬롯이 아니면 드롭 대상 후보.
+          const isReorderTarget =
+            draggingSlotId !== null && draggingSlotId !== slot.slotId;
+          const isSourceSlot = draggingSlotId === slot.slotId;
 
           return (
-            <div key={slot.slotId}>
+            <div
+              key={slot.slotId}
+              // 스케줄 안 순서 변경: 슬롯에 메뉴를 드롭하면 두 칸을 맞바꾼다.
+              // 라이브러리에서 끌어온 드래그(draggingSlotId=null)는 가로채지 않고
+              // 데이(article) 레벨 드롭으로 흘려보낸다.
+              onDragOver={(e) => {
+                if (!isReorderTarget) return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "move";
+                if (overSlotId !== slot.slotId) setOverSlotId(slot.slotId);
+              }}
+              onDragLeave={(e) => {
+                if (!isReorderTarget) return;
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                if (overSlotId === slot.slotId) setOverSlotId(null);
+              }}
+              onDrop={(e) => {
+                if (!draggingSlotId) return;
+                e.preventDefault();
+                e.stopPropagation();
+                onReorderSlot(draggingSlotId, slot.slotId);
+                setOverSlotId(null);
+              }}
+              className={`rounded-[11px] transition-shadow ${
+                isReorderTarget && overSlotId === slot.slotId
+                  ? "shadow-[inset_0_0_0_2px_#1a0a05]"
+                  : ""
+              }`}
+            >
               {/* 추가/삭제 시 빈 슬롯↔메뉴가 부드럽게 크로스페이드. 고정 높이로 점프 방지.
                   initial=false → 첫 마운트(추천 채움·길이 변경)에는 애니메이션 미발동. */}
               <AnimatePresence mode="wait" initial={false}>
@@ -155,8 +198,12 @@ export function DayRow({
                         e.dataTransfer.effectAllowed = "move";
                         e.dataTransfer.setData("text/plain", meal.id);
                         setSlotDragImage(e, meal);
+                        onDragStartSlot(slot.slotId, meal.id);
                       }}
-                      className="flex h-full flex-row items-center gap-2.5 overflow-hidden rounded-[10px] bg-[#faf8f5] px-2 cursor-grab active:cursor-grabbing"
+                      onDragEnd={onDragEndMeal}
+                      className={`flex h-full flex-row items-center gap-2.5 overflow-hidden rounded-[10px] bg-[#faf8f5] px-2 cursor-grab active:cursor-grabbing transition-opacity ${
+                        isSourceSlot ? "opacity-40" : ""
+                      }`}
                     >
                       <div className="h-[42px] w-[42px] shrink-0 overflow-hidden rounded-[8px] bg-[#fcfaf8]">
                         <MealImage
