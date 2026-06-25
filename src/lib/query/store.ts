@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getStoreOrderHistory } from "@/lib/api/store";
+import { getStoreOrderHistory, getStoreOrderDetail } from "@/lib/api/store";
 import { useUser } from "@/contexts/UserContext";
 import { queryKeys } from "./queryKeys";
 
@@ -22,5 +22,24 @@ export function useStoreOrderHistory(options?: { page?: number; size?: number })
       return res;
     },
     enabled: !isLoadingSession && isLoggedIn,
+  });
+}
+
+/**
+ * 스토어 주문 상세 조회.
+ * orderId가 있고 세션 준비 + 로그인 시에만 활성화.
+ * 환불 등 변경 후엔 queryClient.setQueryData(queryKeys.store.orderDetail(orderId), ...)로 캐시 갱신.
+ */
+export function useStoreOrderDetail(orderId: number | string | undefined) {
+  const { isLoggedIn, isLoadingSession } = useUser();
+
+  return useQuery({
+    queryKey: queryKeys.store.orderDetail(orderId ?? ""),
+    queryFn: async () => {
+      const res = await getStoreOrderDetail(orderId!);
+      if (!res) throw new Error("주문 상세를 불러오지 못했습니다.");
+      return res;
+    },
+    enabled: !isLoadingSession && isLoggedIn && orderId != null && orderId !== "",
   });
 }

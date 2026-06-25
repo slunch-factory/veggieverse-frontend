@@ -6,5 +6,13 @@ export const queryKeys = {
   store: {
     orderHistory: (options?: { page?: number; size?: number }) =>
       ["store", "orderHistory", options ?? {}] as const,
+    orderDetail: (orderId: number | string) =>
+      ["store", "orderDetail", String(orderId)] as const,
+  },
+  subscription: {
+    orderHistory: (options?: { page?: number; size?: number }) =>
+      ["subscription", "orderHistory", options ?? {}] as const,
+    orderDetail: (orderId: number | string) =>
+      ["subscription", "orderDetail", String(orderId)] as const,
   },
 } as const;

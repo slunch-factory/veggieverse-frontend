@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import {
-  getStoreOrderDetail,
-  type StoreOrderDetailResponse,
-} from "@/lib/api/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/contexts/UserContext";
+import { useStoreOrderDetail } from "@/lib/query/store";
+import { queryKeys } from "@/lib/query/queryKeys";
 import { Snackbar } from "@/app/subscribe/_components/Snackbar";
 import { RefundModal } from "./RefundModal";
 
@@ -50,39 +49,15 @@ function formatDateTime(iso: string) {
 
 export function OrderDetailClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { orderId } = useParams<{ orderId: string }>();
-  const { isLoggedIn, isLoadingSession } = useUser();
-  const [data, setData] = useState<StoreOrderDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { isLoadingSession } = useUser();
+  const { data, isLoading, isError } = useStoreOrderDetail(orderId);
   const [refundOpen, setRefundOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!orderId) return;
-    if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getStoreOrderDetail(orderId).then((res) => {
-      if (cancelled) return;
-      if (!res) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-      setData(res);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, isLoggedIn, isLoadingSession]);
+  const loading = isLoadingSession || isLoading;
+  const error = isError;
 
   if (loading) {
     return (
@@ -276,7 +251,8 @@ export function OrderDetailClient() {
         isOpen={refundOpen}
         onClose={() => setRefundOpen(false)}
         onRefunded={(updated) => {
-          setData(updated);
+          // 환불 응답을 RQ 캐시에 직접 반영 — 재페칭 없이 화면 갱신.
+          queryClient.setQueryData(queryKeys.store.orderDetail(orderId), updated);
           setRefundOpen(false);
           setToast("환불 요청이 정상적으로 접수되었습니다.");
         }}

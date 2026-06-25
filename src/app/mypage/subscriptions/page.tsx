@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarRange, ChevronDown, Repeat } from "lucide-react";
 import {
-  getOrderHistory,
   type OrderHistoryItem,
   type OrderHistoryProduct,
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
+import { useSubscriptionHistory } from "@/lib/query/subscription";
 
 type SubscriptionStatus = "준비중" | "진행중" | "종료됨";
 
@@ -49,42 +49,20 @@ function deriveProgress(startDate: string, endDate: string) {
 }
 
 export default function MySubscriptionsPage() {
-  const { isLoggedIn, isLoadingSession } = useUser();
+  const { isLoadingSession } = useUser();
   const [activeTab, setActiveTab] = useState<(typeof STATUS_TABS)[number]>("전체");
-  const [items, setItems] = useState<OrderHistoryItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data, isLoading, isError } = useSubscriptionHistory();
 
-  useEffect(() => {
-    if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getOrderHistory().then((res) => {
-      if (cancelled) return;
-      if (!res) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-      setItems(res.content);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn, isLoadingSession]);
+  const loading = isLoadingSession || isLoading;
+  const error = isError;
 
+  // data?.content(RQ 캐시 참조)는 안정적. ?? []는 memo 안에서 처리.
+  const itemsContent = data?.content;
   const filtered = useMemo(() => {
-    if (!items) return [];
-    if (activeTab === "전체") return items;
-    return items.filter((o) => deriveStatus(o.startDate, o.endDate) === activeTab);
-  }, [items, activeTab]);
+    const list: OrderHistoryItem[] = itemsContent ?? [];
+    if (activeTab === "전체") return list;
+    return list.filter((o) => deriveStatus(o.startDate, o.endDate) === activeTab);
+  }, [itemsContent, activeTab]);
 
   return (
     <div className="mx-auto max-w-[800px]">

@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import {
-  getOrderDetail,
   type OrderDetailProduct,
   type OrderDetailResponse,
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
+import { useSubscriptionDetail } from "@/lib/query/subscription";
 import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
 
 function formatDate(iso: string) {
@@ -103,41 +103,18 @@ function slotLabel(slotsPerDay: number, slotIdx: number): string {
 export function SubscriptionDetailClient() {
   const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
-  const { isLoggedIn, isLoadingSession } = useUser();
-  const [data, setData] = useState<OrderDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { isLoadingSession } = useUser();
+  const { data, isLoading, isError } = useSubscriptionDetail(orderId);
 
-  useEffect(() => {
-    if (!orderId) return;
-    if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getOrderDetail(orderId).then((res) => {
-      if (cancelled) return;
-      if (!res) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-      setData(res);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, isLoggedIn, isLoadingSession]);
+  const loading = isLoadingSession || isLoading;
+  // 비로그인/실패/미존재는 모두 에러 화면으로 (기존 동작 유지)
+  const error = isError;
 
+  const detail: OrderDetailResponse | undefined = data;
   const weeks = useMemo(
     () =>
-      data ? buildSchedule(data.startDate, data.endDate, data.products) : [],
-    [data],
+      detail ? buildSchedule(detail.startDate, detail.endDate, detail.products) : [],
+    [detail],
   );
 
   if (loading) {
