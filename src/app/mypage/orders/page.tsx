@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, ChevronDown } from "lucide-react";
 import {
-  getStoreOrderHistory,
   type StoreOrderHistoryItem,
   type StoreOrderHistoryProduct,
 } from "@/lib/api/store";
 import { useUser } from "@/contexts/UserContext";
+import { useStoreOrderHistory } from "@/lib/query/store";
+import { OrdersSkeleton } from "./_components/OrdersSkeleton";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
 
@@ -33,42 +34,22 @@ function formatDate(iso: string) {
 }
 
 export default function MyOrdersPage() {
-  const { isLoggedIn, isLoadingSession } = useUser();
+  const { isLoadingSession } = useUser();
   const [activeTab, setActiveTab] = useState<(typeof STATUS_TABS)[number]>("전체");
-  const [orders, setOrders] = useState<StoreOrderHistoryItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data, isLoading, isError } = useStoreOrderHistory();
 
-  useEffect(() => {
-    if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      setOrders([]);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getStoreOrderHistory().then((res) => {
-      if (cancelled) return;
-      if (!res) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-      setOrders(res.content);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn, isLoadingSession]);
+  // 세션 로딩 중이거나(쿼리 비활성), 쿼리 페칭 중이면 스켈레톤.
+  const loading = isLoadingSession || isLoading;
+  const error = isError;
 
+  // data?.content(RQ 캐시 참조)는 안정적. ?? []는 memo 안에서 처리해
+  // 매 렌더 새 배열이 deps를 흔드는 것을 막는다.
+  const ordersContent = data?.content;
   const filtered = useMemo(() => {
-    if (!orders) return [];
-    if (activeTab === "전체") return orders;
-    return orders.filter((o) => mapStatus(o.status) === activeTab);
-  }, [orders, activeTab]);
+    const list: StoreOrderHistoryItem[] = ordersContent ?? [];
+    if (activeTab === "전체") return list;
+    return list.filter((o) => mapStatus(o.status) === activeTab);
+  }, [ordersContent, activeTab]);
 
   return (
     <div className="mx-auto max-w-[800px]">
@@ -86,11 +67,7 @@ export default function MyOrdersPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20">
-          <p className="t-small" style={{ color: "var(--ink-light)" }}>
-            주문 내역을 불러오는 중...
-          </p>
-        </div>
+        <OrdersSkeleton />
       ) : error ? (
         <div className="text-center py-20">
           <Package size={40} color="var(--neutral-stone)" className="inline-block mb-3" />
