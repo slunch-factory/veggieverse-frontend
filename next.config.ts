@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   images: {
     // next/image 자동 변환 포맷 — AVIF 우선(가장 작음), 미지원 시 WebP fallback
     formats: ['image/avif', 'image/webp'],
+    // Supabase Storage 외부 이미지(구독 재료·상품 등) 최적화 허용. qa/prod 프로젝트 모두 커버.
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+    ],
   },
 };
 

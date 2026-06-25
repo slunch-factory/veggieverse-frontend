@@ -337,3 +337,36 @@ export async function getSlotRecommend(): Promise<MenuData[]> {
     return [];
   }
 }
+
+/** 구독 재료 마스터(공개) — 메인 떠다니는 재료 이미지 등에 사용. */
+export interface SubscriptionIngredient {
+  id: number;
+  code: string;
+  nameKo: string;
+  nameEn: string;
+  imageUrl: string;
+}
+
+/**
+ * 선택 가능한 활성 구독 재료 목록 조회 (공개, code 오름차순).
+ * 공개 엔드포인트이므로 auth "none"으로 프록시 경유(브라우저 mixed-content 회피).
+ * 실패 시 빈 배열 — 소비자(메인)는 로컬 폴백을 갖는다.
+ */
+export async function getSubscriptionIngredients(): Promise<SubscriptionIngredient[]> {
+  try {
+    const res = await apiFetch("/api/v1/veggieverse/subscription/ingredients", {
+      auth: "none",
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return (data as SubscriptionIngredient[]).map((i) => ({
+      ...i,
+      imageUrl: resolveImageUrl(i.imageUrl),
+    }));
+  } catch (err) {
+    console.error("[getSubscriptionIngredients] fetch failed:", err);
+    return [];
+  }
+}

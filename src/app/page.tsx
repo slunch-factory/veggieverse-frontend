@@ -8,6 +8,13 @@ import { X } from "lucide-react";
 import { PRODUCE_ITEMS } from "@/constants";
 import type { VegetableItem } from "@/types";
 import { HomeEditorialContent } from "@/components/home/HomeEditorialContent";
+import { getSubscriptionIngredients } from "@/lib/api/subscription";
+
+// 라벨 컬러는 API에 없으므로 로컬 PRODUCE_ITEMS(영문명)에서 매칭해 재사용. 없으면 기본색.
+const LABEL_COLOR_BY_NAME: Record<string, string> = Object.fromEntries(
+  PRODUCE_ITEMS.map((p) => [p.name.toLowerCase(), p.color]),
+);
+const DEFAULT_LABEL_COLOR = "#7CB342";
 
 // ─── FloatingItem 타입 ───
 interface FloatingItem extends VegetableItem {
@@ -57,13 +64,29 @@ export default function HomePage() {
   }, [selectedItems.length]);
 
   // 초기 아이템 생성 - 그리드 기반 랜덤 배치
+  // API(구독 재료 마스터)의 imageUrl로 띄우고, 실패/빈 응답이면 로컬 PRODUCE_ITEMS로 폴백.
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+    const ingredients = await getSubscriptionIngredients();
+    if (cancelled) return;
+
+    const source: { name: string; image: string; color: string }[] =
+      ingredients.length > 0
+        ? ingredients.map((ing) => ({
+            name: ing.nameEn,
+            image: ing.imageUrl,
+            color: LABEL_COLOR_BY_NAME[ing.nameEn.toLowerCase()] ?? DEFAULT_LABEL_COLOR,
+          }))
+        : PRODUCE_ITEMS;
+
     const isMobile = window.innerWidth < 640;
     const sizeMultiplier = isMobile ? 0.78 : 1;
     const baseSize = 180;
 
     const cols = isMobile ? 6 : 8;
-    const rows = isMobile ? 10 : 8;
+    // 재료 수가 늘어도 모든 아이템에 격자 칸이 배정되도록 행 수 보장.
+    const rows = Math.max(isMobile ? 10 : 8, Math.ceil(source.length / cols));
     const xMin = 5, xMax = 95, yMin = 5, yMax = 95;
     const cellW = (xMax - xMin) / cols;
     const cellH = (yMax - yMin) / rows;
@@ -84,7 +107,7 @@ export default function HomePage() {
     }
 
     const SMALLER_ITEMS = new Set(["Peach", "Lemon", "Cucumber", "Onion", "Blueberry"]);
-    const initialItems: FloatingItem[] = PRODUCE_ITEMS.map((produce, index) => {
+    const initialItems: FloatingItem[] = source.map((produce, index) => {
       const pos = gridPositions[index];
       const sizeAdjust = SMALLER_ITEMS.has(produce.name) ? 0.8 : 1;
       const scale = (0.8 + Math.random() * 0.5) * sizeMultiplier * sizeAdjust;
@@ -125,6 +148,10 @@ export default function HomePage() {
       };
     });
     setItems(initialItems);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // CSS keyframes 동적 주입
