@@ -14,7 +14,7 @@ import {
 import { getUserProfile } from "@/lib/api/user";
 import { supabaseRenderUrl } from "@/lib/supabaseImage";
 import { CountUp } from "./_components/CountUp";
-import { Skeleton, SkeletonRow } from "./_components/Skeleton";
+import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton";
 import { listContainer, cardItem } from "./_components/motion";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";

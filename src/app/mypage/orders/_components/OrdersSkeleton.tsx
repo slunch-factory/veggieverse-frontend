@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "../../_components/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /**
  * 주문 카드 1개 모양의 스켈레톤.

@@ -3,8 +3,9 @@
 import type { CSSProperties } from "react";
 
 /**
- * shimmer 스켈레톤 박스 — 마이페이지 비동기 카드 로딩 표시.
- * globals.css의 `.mp-skeleton`(shimmer 애니메이션)을 사용한다.
+ * shimmer 스켈레톤 박스 — 비동기 로딩 표시용 공용 프리미티브.
+ * globals.css의 `.mp-skeleton`(transform 기반 GPU 합성 shimmer)을 사용한다.
+ * 여러 라우트(mypage·cart 등)에서 공유.
  */
 export function Skeleton({
   width,
