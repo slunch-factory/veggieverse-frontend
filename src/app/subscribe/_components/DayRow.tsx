@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Plus } from "lucide-react";
 import type { DayPlan, DisplayMenuData, MenuData } from "../_data/subscription";
 import { getSlotRecommend } from "@/lib/api/subscription";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { MealImage } from "./MealImage";
 import { setSlotDragImage } from "./dragGhost";
 
@@ -42,7 +43,17 @@ function SlotRecPanel({ onPick }: { onPick: (meal: MenuData) => void }) {
     <div className="mt-1.5 p-[10px] bg-[#faf8f5] border border-[rgba(26,10,5,0.12)] rounded-[10px]">
       <p className="text-[11px] font-bold tracking-[0.05em] text-[#9a928c] mb-[8px]">추천 메뉴</p>
       {loading ? (
-        <p className="text-[11px] text-[#9a928c]">로딩 중…</p>
+        <div className="grid grid-cols-3 gap-[10px]" aria-busy="true">
+          <span className="sr-only">추천 메뉴를 불러오는 중</span>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-[5px]">
+              <div className="aspect-square rounded-[8px] overflow-hidden">
+                <Skeleton width="100%" height="100%" radius={8} />
+              </div>
+              <Skeleton width="80%" height={11} />
+            </div>
+          ))}
+        </div>
       ) : menus.length === 0 ? (
         <p className="text-[11px] text-[#9a928c]">추천 메뉴를 불러올 수 없어요.</p>
       ) : (
