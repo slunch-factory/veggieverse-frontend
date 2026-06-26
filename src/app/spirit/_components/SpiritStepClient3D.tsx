@@ -19,6 +19,27 @@ const PLAN_LOADING_LOTTIE_SRC = `${_base}/Loading%20Animation.json`;
 /** Lottie를 최소 노출하는 시간 — speculative prefetch가 시작된 시점부터 측정 */
 const MIN_LOADING_MS = 1500;
 
+/** 메인 페이지에서 고른 재료(FloatingItem[])를 담아둔 localStorage 키 */
+const SELECTED_ITEMS_KEY = 'spirit-finder-selected-items';
+
+/**
+ * 메인에서 고른 재료의 구독 재료 id 목록을 추출 → autoPlan 추천 랭킹(ingredientIds)용.
+ * 로컬 폴백 재료(API 없이 띄운 것)는 id가 없어 자동 제외된다.
+ */
+function readSelectedIngredientIds(): number[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(SELECTED_ITEMS_KEY);
+    if (!raw) return [];
+    const items = JSON.parse(raw) as Array<{ ingredientId?: number }>;
+    return items
+      .map((i) => i?.ingredientId)
+      .filter((id): id is number => typeof id === 'number');
+  } catch {
+    return [];
+  }
+}
+
 interface SpeculativeCache {
   key: string;
   promise: Promise<MenuData[]>;
@@ -88,7 +109,7 @@ export function SpiritStepClient3D({ questions }: Props) {
     speculativeRef.current?.ctrl.abort();
     const ctrl = new AbortController();
     const perfStart = performance.now();
-    const promise = getAutoPlan(answers, { signal: ctrl.signal })
+    const promise = getAutoPlan(answers, { signal: ctrl.signal, ingredientIds: readSelectedIngredientIds() })
       .then((result) => {
         console.log(
           `%c[spirit] 📊 speculative API 응답 ${(performance.now() - perfStart).toFixed(0)}ms`,
@@ -279,7 +300,7 @@ export function SpiritStepClient3D({ questions }: Props) {
     }
 
     if (recommended.length === 0) {
-      recommended = await getAutoPlan(answers).catch(() => []);
+      recommended = await getAutoPlan(answers, { ingredientIds: readSelectedIngredientIds() }).catch(() => []);
     }
 
     const elapsed = Date.now() - loadingStartedAt;

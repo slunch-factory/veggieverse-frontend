@@ -18,6 +18,8 @@ const DEFAULT_LABEL_COLOR = "#7CB342";
 
 // ─── FloatingItem 타입 ───
 interface FloatingItem extends VegetableItem {
+  /** 구독 재료 마스터 id — autoPlan 추천 랭킹(ingredientIds)용. 로컬 폴백 재료는 없음. */
+  ingredientId?: number;
   size: number;
   labelColor: string;
   labelOffsetX: number;
@@ -71,12 +73,13 @@ export default function HomePage() {
     const ingredients = await getSubscriptionIngredients();
     if (cancelled) return;
 
-    const source: { name: string; image: string; color: string }[] =
+    const source: { name: string; image: string; color: string; ingredientId?: number }[] =
       ingredients.length > 0
         ? ingredients.map((ing) => ({
             name: ing.nameEn,
             image: ing.imageUrl,
             color: LABEL_COLOR_BY_NAME[ing.nameEn.toLowerCase()] ?? DEFAULT_LABEL_COLOR,
+            ingredientId: ing.id, // autoPlan 추천 랭킹용 재료 id 보존
           }))
         : PRODUCE_ITEMS;
 
@@ -113,6 +116,7 @@ export default function HomePage() {
       const scale = (0.8 + Math.random() * 0.5) * sizeMultiplier * sizeAdjust;
       return {
         id: `produce-${index}`,
+        ingredientId: produce.ingredientId,
         name: produce.name,
         x: pos.x,
         y: pos.y,
