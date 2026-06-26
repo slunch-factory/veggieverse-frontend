@@ -24,6 +24,16 @@ export interface AutoPlanBody {
   spicePreference: "spicy" | "mild";
 }
 
+/**
+ * autoPlan 응답 그룹 (#230 변경).
+ * matchCount = 사용자가 고른 조건을 제품이 충족한 개수.
+ * 그룹은 matchCount 내림차순(잘 맞는 순)으로 정렬되어 오고, 0 그룹이 마지막.
+ */
+export interface AutoPlanGroup {
+  matchCount: number;
+  products: ProductItem[];
+}
+
 function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
   return {
     dietaryType: (answers[1] as string) ?? "vegan",
@@ -62,10 +72,17 @@ export async function getAutoPlan(
       console.error("[getAutoPlan] HTTP error:", res.status, res.statusText);
       return [];
     }
-    const data: ProductItem[] = await res.json();
-    const list = Array.isArray(data) ? data : [];
-    console.log("%c[getAutoPlan] ✅ 추천 메뉴 수신", "color: #4A7F52; font-weight: bold;", list.length, "개");
-    return list.map(mapToMenuData);
+    // 응답이 matchCount 내림차순 그룹 배열 [{ matchCount, products }] 로 변경됨(#230).
+    // 그룹이 잘 맞는 순으로 정렬돼 오므로, 순서대로 펴면 추천 랭킹이 그대로 유지된다.
+    const data = await res.json();
+    const groups: AutoPlanGroup[] = Array.isArray(data) ? data : [];
+    const products = groups.flatMap((g) => g?.products ?? []);
+    console.log(
+      "%c[getAutoPlan] ✅ 추천 메뉴 수신",
+      "color: #4A7F52; font-weight: bold;",
+      products.length, "개 (그룹", groups.length, ")",
+    );
+    return products.map(mapToMenuData);
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       // 정상 취소 — 호출자가 흡수
