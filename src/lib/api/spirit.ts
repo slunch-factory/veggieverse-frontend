@@ -22,6 +22,9 @@ export interface AutoPlanBody {
   nutritionGoals: string[];
   allergens: string[];
   spicePreference: "spicy" | "mild";
+  /** 성분 기반 랭킹용 선택 재료 id (0~3). 미선택 시 [] → matchCount 전부 0(랭킹 평탄).
+   *  재료 선택 UI(백엔드 핸드오프 #1) 연결 전까지는 빈 배열. */
+  ingredientIds: number[];
 }
 
 /**
@@ -34,7 +37,10 @@ export interface AutoPlanGroup {
   products: ProductItem[];
 }
 
-function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
+function buildAutoPlanBody(
+  answers: SurveyAnswers,
+  ingredientIds: number[] = [],
+): AutoPlanBody {
   return {
     dietaryType: (answers[1] as string) ?? "vegan",
     nutritionGoals: ((answers[2] as string[]) ?? []).map((g) => NUTRITION_GOAL_MAP[g] ?? g),
@@ -42,6 +48,9 @@ function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
       .filter((a) => a !== "no-allergy")
       .map((a) => ALLERGEN_MAP[a] ?? a),
     spicePreference: (answers[4] as string) === "spicy-yes" ? "spicy" : "mild",
+    // 재료 선택 UI(핸드오프 #1) 연결 전까지 빈 배열 → matchCount 전부 0.
+    // 테스트 시 getAutoPlan(answers, { ingredientIds: [1,2,3] })로 랭킹 확인 가능.
+    ingredientIds,
   };
 }
 
@@ -52,13 +61,13 @@ function buildAutoPlanBody(answers: SurveyAnswers): AutoPlanBody {
  */
 export async function getAutoPlan(
   answers: SurveyAnswers,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; ingredientIds?: number[] },
 ): Promise<MenuData[]> {
   // 설문(질문2, multiSelect)에서 영양목표를 최소 1개 선택해야 다음 단계로 넘어갈 수 있으므로
   // nutritionGoals는 항상 1개 이상 — 백엔드 @Size(min=1)을 만족한다.
   // 예전엔 1개일 때 기본값으로 강제 2개 패딩했으나, OR 매칭 특성상 유저가 고르지 않은
   // 목표의 메뉴까지 추천에 섞여 의도와 어긋났다. 유저가 선택한 목표만 그대로 전송한다.
-  const body = buildAutoPlanBody(answers);
+  const body = buildAutoPlanBody(answers, options?.ingredientIds ?? []);
   console.log("[getAutoPlan] request:", body);
   try {
     // 프록시(apiFetch) 경유 — 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.
@@ -73,15 +82,37 @@ export async function getAutoPlan(
       return [];
     }
     // 응답이 matchCount 내림차순 그룹 배열 [{ matchCount, products }] 로 변경됨(#230).
-    // 그룹이 잘 맞는 순으로 정렬돼 오므로, 순서대로 펴면 추천 랭킹이 그대로 유지된다.
-    const data = await res.json();
-    const groups: AutoPlanGroup[] = Array.isArray(data) ? data : [];
+    // bare 배열 / { data: [...] } 봉투 둘 다 대응. 그룹이 잘 맞는 순으로 정렬돼 오므로
+    // 순서대로 펴면 추천 랭킹이 그대로 유지된다.
+    const json = await res.json();
+    const groups: AutoPlanGroup[] = Array.isArray(json)
+      ? json
+      : Array.isArray(json?.data)
+        ? json.data
+        : [];
     const products = groups.flatMap((g) => g?.products ?? []);
+
+    // ── 콘솔 확인용: matchCount 내림차순 랭킹 표 (개발자도구 콘솔에서 검증) ──
     console.log(
-      "%c[getAutoPlan] ✅ 추천 메뉴 수신",
-      "color: #4A7F52; font-weight: bold;",
-      products.length, "개 (그룹", groups.length, ")",
+      "%c[getAutoPlan] ✅ 추천 메뉴",
+      "color:#4A7F52;font-weight:bold;",
+      `상품 ${products.length}개 · 그룹 ${groups.length}개 (matchCount 내림차순)`,
     );
+    console.table(
+      groups.map((g, i) => ({
+        그룹순위: i + 1,
+        matchCount: g?.matchCount ?? 0,
+        상품수: g?.products?.length ?? 0,
+        상품명: (g?.products ?? []).map((p) => p.name).join(", "),
+      })),
+    );
+    if (groups.length > 0 && groups.every((g) => (g?.matchCount ?? 0) === 0)) {
+      console.warn(
+        "[getAutoPlan] ⚠️ matchCount 전부 0 — ingredientIds 미전송(재료 선택 UI 전)이라 랭킹이 평탄합니다. " +
+          "테스트하려면 getAutoPlan(answers, { ingredientIds: [1,2,3] }) 형태로 호출.",
+      );
+    }
+
     return products.map(mapToMenuData);
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
