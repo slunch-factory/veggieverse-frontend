@@ -107,14 +107,12 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       allDays={p.allDays}
       mealPlan={p.mealPlan}
       selectedSlotId={p.selectedSlotId}
-      planDays={p.planDays}
       mealsPerDay={p.mealsPerDay}
       filledSlots={p.filledSlots}
       draggingMealId={p.draggingMealId}
       draggingSlotId={p.draggingSlotId}
       dragOverDayKey={p.dragOverDayKey}
       listScrollRef={p.listScrollRef}
-      onPlanDaysChange={p.setPlanDays}
       onMealsPerDayChange={p.setMealsPerDay}
       onSelectSlot={p.selectSlot}
       onRemoveMeal={p.removeMeal}

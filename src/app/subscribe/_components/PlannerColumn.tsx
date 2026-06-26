@@ -5,23 +5,20 @@ import type {
   DayPlan,
   DisplayMenuData,
   MealsPerDay,
-  PlanDays,
 } from "../_data/subscription";
-import { MEALS_PER_DAY_OPTIONS, PLAN_DAYS_OPTIONS } from "../_data/subscription";
+import { MEALS_PER_DAY_OPTIONS } from "../_data/subscription";
 import { DayRow } from "./DayRow";
 
 interface PlannerColumnProps {
   allDays: DayPlan[];
   mealPlan: Record<string, DisplayMenuData>;
   selectedSlotId: string | null;
-  planDays: PlanDays;
   mealsPerDay: MealsPerDay;
   filledSlots: number;
   draggingMealId: string | null;
   draggingSlotId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
-  onPlanDaysChange: (n: PlanDays) => void;
   onMealsPerDayChange: (n: MealsPerDay) => void;
   onSelectSlot: (slotId: string) => void;
   onRemoveMeal: (slotId: string, e: React.MouseEvent) => void;
@@ -41,14 +38,12 @@ export function PlannerColumn({
   allDays,
   mealPlan,
   selectedSlotId,
-  planDays,
   mealsPerDay,
   filledSlots,
   draggingMealId,
   draggingSlotId,
   dragOverDayKey,
   listScrollRef,
-  onPlanDaysChange,
   onMealsPerDayChange,
   onSelectSlot,
   onRemoveMeal,
@@ -109,16 +104,8 @@ export function PlannerColumn({
         )}
       </div>
 
-      {/* 플랜 길이 · 끼니 선택 (주간 이동/캘린더 자리 대체) */}
+      {/* 끼니 선택 (플랜 길이는 7일 고정) */}
       <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-b border-black bg-white overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-1">
-          {PLAN_DAYS_OPTIONS.map((n) => (
-            <SegButton key={n} active={n === planDays} onClick={() => onPlanDaysChange(n)}>
-              {n}일
-            </SegButton>
-          ))}
-        </div>
-        <span className="mx-1 h-4 w-px shrink-0 bg-[rgba(26,10,5,0.15)]" />
         <div className="flex items-center gap-1">
           {MEALS_PER_DAY_OPTIONS.map((n) => (
             <SegButton key={n} active={n === mealsPerDay} onClick={() => onMealsPerDayChange(n)}>
