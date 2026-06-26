@@ -231,6 +231,10 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
       nuts: ["tree_nuts"],
       peanut: ["peanuts"],
       dairy: ["dairy"],
+      gluten: ["gluten"],
+      soy: ["soy"],
+      tomato: ["tomato"],
+      sulfites: ["sulfites"],
     };
 
     let items: DisplayMenuData[] = menuList.map((m) => ({

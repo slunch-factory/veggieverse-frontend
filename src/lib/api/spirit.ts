@@ -15,6 +15,10 @@ const ALLERGEN_MAP: Record<string, string> = {
   "tree-nuts": "tree_nuts",
   "peanuts":   "peanuts",
   "dairy":     "dairy",
+  "gluten":    "gluten",
+  "soy":       "soy",
+  "tomato":    "tomato",
+  "sulfites":  "sulfites",
 };
 
 export interface AutoPlanBody {

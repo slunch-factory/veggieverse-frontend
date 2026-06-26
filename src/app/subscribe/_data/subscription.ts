@@ -10,7 +10,7 @@ export type ExcludeCategory = "dairy" | "shellfish" | "fish" | "nuts" | "chicken
 export type MenuCategory = "slim" | "protein";
 export type DietType = "vegan" | "pesco" | "pollo";
 export type NutritionGoal = "plant-based" | "low-carb" | "low-calorie" | "high-protein" | "low-sodium";
-export type AllergyFilter = "nuts" | "peanut" | "dairy";
+export type AllergyFilter = "nuts" | "peanut" | "dairy" | "gluten" | "soy" | "tomato" | "sulfites";
 export type SpicyPreference = "include" | "exclude";
 export type PurchaseType = "once" | "subscription";
 export type DeliveryCycle = "1month" | "2month";
@@ -122,6 +122,10 @@ export const ALLERGY_FILTER_OPTIONS: { value: AllergyFilter; label: string }[] =
   { value: "nuts", label: "견과류" },
   { value: "peanut", label: "땅콩" },
   { value: "dairy", label: "유제품" },
+  { value: "gluten", label: "밀" },
+  { value: "soy", label: "대두" },
+  { value: "tomato", label: "토마토" },
+  { value: "sulfites", label: "아황산류" },
 ];
 
 export const SPICY_PREFERENCE_OPTIONS: { value: SpicyPreference; label: string }[] = [

@@ -109,6 +109,31 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
         tarot: { number: "XI", title: "The Milkyway.", image: "/images/tarot/diet-option/milkyway.png" },
       },
       {
+        label: "밀",
+        description: "밀(글루텐)이 포함되지 않은 식단을 선호합니다",
+        value: "gluten",
+        // TODO: 전용 타로 이미지 교체 전까지 placeholder
+        tarot: { number: "XVI", title: "The Wheat.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
+        label: "대두",
+        description: "대두(콩)가 포함되지 않은 식단을 선호합니다",
+        value: "soy",
+        tarot: { number: "XVII", title: "The Bean.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
+        label: "토마토",
+        description: "토마토가 포함되지 않은 식단을 선호합니다",
+        value: "tomato",
+        tarot: { number: "XVIII", title: "The Vine.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
+        label: "아황산류",
+        description: "아황산류가 포함되지 않은 식단을 선호합니다",
+        value: "sulfites",
+        tarot: { number: "XIX", title: "The Mist.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
         label: "해당 없음",
         description: "위 항목에 해당하는 알레르기가 없어요",
         value: "no-allergy",
