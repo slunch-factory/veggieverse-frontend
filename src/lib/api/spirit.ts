@@ -54,6 +54,9 @@ function buildAutoPlanBody(
   };
 }
 
+// 콘솔 디버그용 — 직전 호출에서 통과한 메뉴 집합. 필터를 추가했을 때 무엇이 빠졌는지 diff로 보여준다.
+let __prevAutoPlanMenus: Set<string> | null = null;
+
 /** POST /api/v1/veggieverse/subscription/autoPlan — 설문 기반 추천 메뉴 조회
  *
  * `options.signal`로 AbortController를 받아 in-flight 요청 취소 가능.
@@ -92,26 +95,58 @@ export async function getAutoPlan(
         : [];
     const products = groups.flatMap((g) => g?.products ?? []);
 
-    // ── 콘솔 확인용: matchCount 내림차순 랭킹 표 (개발자도구 콘솔에서 검증) ──
-    console.log(
-      "%c[getAutoPlan] ✅ 추천 메뉴",
+    // ── 콘솔: 필터 결과 상세 (개발자도구에서 무엇이 통과/제외됐는지·최고 매칭 확인) ──
+    // 백엔드가 필터로 제외한 상품은 응답에 없으므로, "걸러진 것"은 직전 호출과의 diff로 보여준다.
+    const surviving = products.map((p) => p.name);
+    const survivingSet = new Set(surviving);
+    const dropped = __prevAutoPlanMenus
+      ? [...__prevAutoPlanMenus].filter((n) => !survivingSet.has(n))
+      : [];
+    const added = __prevAutoPlanMenus
+      ? surviving.filter((n) => !__prevAutoPlanMenus!.has(n))
+      : [];
+
+    console.groupCollapsed(
+      `%c[autoPlan] 필터 결과 — 통과 ${products.length}개` +
+        (dropped.length ? ` · 직전 대비 −${dropped.length}` : "") +
+        (added.length ? ` +${added.length}` : ""),
       "color:#4A7F52;font-weight:bold;",
-      `상품 ${products.length}개 · 그룹 ${groups.length}개 (matchCount 내림차순)`,
     );
+    console.log("🧪 요청 필터:", {
+      dietaryType: body.dietaryType,
+      nutritionGoals: body.nutritionGoals,
+      allergens: body.allergens,
+      spicePreference: body.spicePreference,
+      ingredientIds: body.ingredientIds,
+    });
     console.table(
-      groups.map((g, i) => ({
-        그룹순위: i + 1,
-        matchCount: g?.matchCount ?? 0,
-        상품수: g?.products?.length ?? 0,
-        상품명: (g?.products ?? []).map((p) => p.name).join(", "),
-      })),
+      groups.flatMap((g) =>
+        (g?.products ?? []).map((p) => ({
+          메뉴: p.name,
+          matchCount: g?.matchCount ?? 0,
+          식단: p.dietaryType ?? "-",
+          건강목표: (p.spirit?.healthGoals ?? []).join(", "),
+          매움: p.spirit?.isSpicy ?? p.spirit?.spicy ? "🌶️" : "",
+          알레르기: (p.spirit?.allergens ?? []).join(", "),
+        })),
+      ),
     );
-    if (groups.length > 0 && groups.every((g) => (g?.matchCount ?? 0) === 0)) {
-      console.warn(
-        "[getAutoPlan] ⚠️ matchCount 전부 0 — ingredientIds 미전송(재료 선택 UI 전)이라 랭킹이 평탄합니다. " +
-          "테스트하려면 getAutoPlan(answers, { ingredientIds: [1,2,3] }) 형태로 호출.",
+    const top = groups[0];
+    if (top?.products?.length) {
+      console.log(
+        `%c🏆 최고 매칭 (matchCount ${top.matchCount}):`,
+        "color:#1d76db;font-weight:bold;",
+        top.products.map((p) => p.name).join(", "),
       );
     }
+    if (dropped.length) console.log("%c❌ 직전 필터로 빠진 메뉴:", "color:#d4513b;", dropped.join(", "));
+    if (groups.length > 0 && groups.every((g) => (g?.matchCount ?? 0) === 0)) {
+      console.warn(
+        "⚠️ matchCount 전부 0 — ingredientIds 미전송(메인 재료 선택 미연결)이라 랭킹이 평탄합니다.",
+      );
+    }
+    console.groupEnd();
+    __prevAutoPlanMenus = survivingSet;
 
     return products.map(mapToMenuData);
   } catch (err) {
