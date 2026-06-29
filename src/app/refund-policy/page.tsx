@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RefundPolicyPage() {
   return (
-    <LegalPage title="환불·취소 정책" lastUpdated="2026-05-19">
+    <LegalPage title="환불·취소 정책" lastUpdated="2026-06-29">
       <section>
         <p>
           본 정책은 슬런치 팩토리에서 구매하신 상품의 결제 취소·환불에 관한 기준을 안내합니다.

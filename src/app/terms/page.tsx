@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="이용약관" lastUpdated="2026-05-19">
+    <LegalPage title="이용약관" lastUpdated="2026-06-29">
       <section>
         <h2>제1조 (목적)</h2>
         <p>

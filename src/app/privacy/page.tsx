@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="개인정보 처리방침" lastUpdated="2026-05-19">
+    <LegalPage title="개인정보 처리방침" lastUpdated="2026-06-29">
       <section>
         <p>
           (주)슬런치팩토리(이하 &ldquo;회사&rdquo;)는 「개인정보 보호법」, 「정보통신망 이용촉진 및
