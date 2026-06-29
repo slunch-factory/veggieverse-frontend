@@ -27,7 +27,7 @@ export interface AutoPlanBody {
   allergens: string[];
   spicePreference: "spicy" | "mild";
   /** 성분 기반 랭킹용 선택 재료 id (0~3). 미선택 시 [] → matchCount 전부 0(랭킹 평탄).
-   *  재료 선택 UI(백엔드 핸드오프 #1) 연결 전까지는 빈 배열. */
+   *  메인 페이지에서 고른 재료가 readSelectedIngredientIds()로 전달된다(ba5e513). */
   ingredientIds: number[];
 }
 
@@ -52,8 +52,7 @@ function buildAutoPlanBody(
       .filter((a) => a !== "no-allergy")
       .map((a) => ALLERGEN_MAP[a] ?? a),
     spicePreference: (answers[4] as string) === "spicy-yes" ? "spicy" : "mild",
-    // 재료 선택 UI(핸드오프 #1) 연결 전까지 빈 배열 → matchCount 전부 0.
-    // 테스트 시 getAutoPlan(answers, { ingredientIds: [1,2,3] })로 랭킹 확인 가능.
+    // 메인에서 고른 재료의 id(readSelectedIngredientIds 결과). 미선택 시 [] → matchCount 전부 0.
     ingredientIds,
   };
 }
