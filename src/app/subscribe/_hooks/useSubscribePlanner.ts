@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useToast } from "@/components/ui/Toast";
 import {
   type AllergyFilter,
   type DayPlan,
@@ -48,7 +49,6 @@ export interface SubscribePlannerState {
   draggingSlotId: string | null;
   dragOverDayKey: string | null;
   listScrollRef: React.RefObject<HTMLDivElement | null>;
-  snackbarMsg: string | null;
   /** 스피릿 추천 식단에서 1개 이상 변경됐으면 true. 추천 없이 직접 구성한 경우도 true. */
   isMealPlanModified: boolean;
 }
@@ -82,7 +82,6 @@ export interface SubscribePlannerActions {
   /** 스케줄 안에서 두 슬롯의 메뉴를 맞바꾼다(빈 칸이면 이동). */
   reorderSlot: (sourceSlotId: string, targetSlotId: string) => void;
   setMealToSlot: (slotId: string, meal: DisplayMenuData) => void;
-  clearSnackbar: () => void;
 }
 
 export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState & SubscribePlannerActions {
@@ -111,7 +110,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
   const [draggingMealId, setDraggingMealId] = useState<string | null>(null);
   const [draggingSlotId, setDraggingSlotId] = useState<string | null>(null);
   const [dragOverDayKey, setDragOverDayKey] = useState<string | null>(null);
-  const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
+  const toast = useToast();
   /** 스피릿 추천 적용 직후의 슬롯→메뉴ID 스냅샷. 추천 없으면 null. */
   const [recommendedSnapshot, setRecommendedSnapshot] = useState<Record<string, string> | null>(null);
 
@@ -368,7 +367,7 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
         if (first) {
           setMealPlan((prev) => ({ ...prev, [first.slotId]: meal }));
         } else {
-          setSnackbarMsg("식단이 가득 찼어요. 기존 식단을 삭제하고 다시 추가해 보세요.");
+          toast.info("식단이 가득 찼어요. 기존 식단을 삭제하고 다시 추가해 보세요.");
         }
       }
     },
@@ -526,7 +525,6 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     draggingSlotId,
     dragOverDayKey,
     listScrollRef,
-    snackbarMsg,
     isMealPlanModified,
     setStartDate,
     setDietType,
@@ -554,6 +552,5 @@ export function useSubscribePlanner(menuList: MenuData[]): SubscribePlannerState
     dropMealOnDay,
     reorderSlot,
     setMealToSlot,
-    clearSnackbar: () => setSnackbarMsg(null),
   };
 }

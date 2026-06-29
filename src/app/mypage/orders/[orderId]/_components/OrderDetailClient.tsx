@@ -10,7 +10,7 @@ import { useUser } from "@/contexts/UserContext";
 import { useStoreOrderDetail } from "@/lib/query/store";
 import { queryKeys } from "@/lib/query/queryKeys";
 import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
-import { Snackbar } from "@/app/subscribe/_components/Snackbar";
+import { useToast } from "@/components/ui/Toast";
 import { RefundModal } from "./RefundModal";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "환불됨" | "취소됨" | "기타";
@@ -56,7 +56,7 @@ export function OrderDetailClient() {
   const { isLoadingSession } = useUser();
   const { data, isLoading, isError } = useStoreOrderDetail(orderId);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToast();
 
   const loading = isLoadingSession || isLoading;
   const error = isError;
@@ -251,11 +251,9 @@ export function OrderDetailClient() {
           // 환불 응답을 RQ 캐시에 직접 반영 — 재페칭 없이 화면 갱신.
           queryClient.setQueryData(queryKeys.store.orderDetail(orderId), updated);
           setRefundOpen(false);
-          setToast("환불 요청이 정상적으로 접수되었습니다.");
+          toast.success("환불 요청이 정상적으로 접수되었습니다.");
         }}
       />
-
-      <Snackbar message={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
