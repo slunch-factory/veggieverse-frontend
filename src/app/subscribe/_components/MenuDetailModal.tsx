@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { DisplayMenuData, ExcludeCategory, MenuNutrition } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
 import { ImageCarousel } from "@/components/ImageCarousel";
+import { Modal } from "@/components/ui/Modal";
 
 interface MenuDetailModalProps {
   meal: DisplayMenuData | null;
@@ -36,22 +37,44 @@ const DIVIDER = <div style={{ margin: "24px 0", height: 1, background: "#c9bcbe"
  * 모바일에서는 사진이 위로, 상세 설명이 그 아래로 노출된다. +/× 버튼·담기·ESC 등 모달 상호작용은 유지.
  */
 export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) {
-  useEffect(() => {
-    if (!meal) return;
-    const sw = window.innerWidth - document.documentElement.clientWidth;
-    document.documentElement.style.setProperty("--scrollbar-w", `${sw}px`);
-    document.documentElement.classList.add("mm-open");
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.documentElement.classList.remove("mm-open");
-      document.documentElement.style.removeProperty("--scrollbar-w");
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [meal, onClose]);
+  // 닫힘 애니메이션 동안에도 마지막 식단을 렌더하기 위해 보존한다
+  // (부모가 meal=null로 닫아도 종료 트랜지션이 끝날 때까지 내용 유지).
+  // 렌더 중 파생 상태 조정 — React 공식 패턴(이전 prop 기억), effect 불필요.
+  const [displayMeal, setDisplayMeal] = useState<DisplayMenuData | null>(meal);
+  if (meal && meal !== displayMeal) {
+    setDisplayMeal(meal);
+  }
 
-  if (!meal) return null;
+  const renderMeal = meal ?? displayMeal;
 
+  return (
+    <Modal
+      isOpen={meal != null}
+      onClose={onClose}
+      labelledBy="mm-name"
+      wrapperClassName="max-lg:items-end max-lg:p-0"
+      className={[
+        "w-full overflow-hidden bg-[#fcfaf8] flex",
+        "lg:flex-row lg:max-w-[900px] lg:max-h-[90dvh] lg:rounded-[20px]",
+        "lg:border lg:border-black lg:shadow-[0_24px_64px_rgba(0,0,0,0.18)]",
+        "max-lg:flex-col max-lg:h-[88dvh] max-lg:rounded-t-[16px]",
+        "max-lg:border-t max-lg:border-black max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
+      ].join(" ")}
+    >
+      {renderMeal && <MenuDetailContent meal={renderMeal} onClose={onClose} onAdd={onAdd} />}
+    </Modal>
+  );
+}
+
+function MenuDetailContent({
+  meal,
+  onClose,
+  onAdd,
+}: {
+  meal: DisplayMenuData;
+  onClose: () => void;
+  onAdd: (meal: DisplayMenuData) => void;
+}) {
   const allergyTags = meal.excludable
     .filter((e) => e !== "spicy")
     .map((e) => EXCLUDE_CATEGORIES[e as ExcludeCategory]?.label)
@@ -107,29 +130,6 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
 
   return (
     <>
-      {/* 딤 */}
-      <div className="fixed inset-0 z-[200] bg-black/50" aria-hidden="true" onClick={onClose} />
-
-      {/* 포지셔닝 래퍼 — 데스크톱: 중앙 / 모바일: 하단 */}
-      <div
-        className="fixed inset-0 z-[201] flex items-center justify-center p-6 max-lg:p-0 max-lg:items-end"
-        onClick={onClose}
-      >
-        {/* 다이얼로그 = admin 카드 */}
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mm-name"
-          data-menu-modal="true"
-          className={[
-            "w-full overflow-hidden bg-[#fcfaf8] flex",
-            "lg:flex-row lg:max-w-[900px] lg:max-h-[90dvh] lg:rounded-[20px]",
-            "lg:border lg:border-black lg:shadow-[0_24px_64px_rgba(0,0,0,0.18)]",
-            "max-lg:flex-col max-lg:h-[88dvh] max-lg:rounded-t-[16px]",
-            "max-lg:border-t max-lg:border-black max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
-          ].join(" ")}
-          onClick={(e) => e.stopPropagation()}
-        >
           {/* LEFT: 이미지 (어두운 배경, 여러 장이면 슬라이드)
               ※ 로고는 이미지 자체에 워터마크로 포함되어 있어 별도 오버레이를 그리지 않는다(중복 방지). */}
           <div className="relative overflow-hidden bg-[#250a00] lg:w-[44%] lg:shrink-0 max-lg:w-full max-lg:shrink-0 max-lg:h-[30vh] max-lg:max-h-[280px]">
@@ -351,18 +351,6 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
             )}
           </div>
           </div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes mmSlideUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
-        }
-        @media (max-width: 1023px) {
-          [data-menu-modal="true"] { animation: mmSlideUp 0.28s ease; }
-        }
-      `}</style>
     </>
   );
 }

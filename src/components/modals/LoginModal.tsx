@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { signInAction, signInWithKakaoAction } from "@/app/auth/actions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Modal } from "@/components/ui/Modal";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -22,8 +23,6 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   const [rememberMe, setRememberMe] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const canSubmit = Boolean(email.trim() && password.trim()) && !submitting;
 
@@ -68,13 +67,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   };
 
   return (
-    <div className="sl-modal-overlay login-modal-overlay" onClick={onClose}>
-      <div
-        className="login-modal"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
+    <Modal isOpen={isOpen} onClose={onClose} labelledBy="login-modal-title" className="login-modal">
         <button
           type="button"
           onClick={onClose}
@@ -84,7 +77,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           <X size={20} strokeWidth={1.5} color="var(--ink)" />
         </button>
 
-        <h2 className="t-h2 text-center mb-6" style={{ color: "var(--ink)" }}>
+        <h2 id="login-modal-title" className="t-h2 text-center mb-6" style={{ color: "var(--ink)" }}>
           로그인
         </h2>
 
@@ -167,13 +160,8 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           </span>
           카카오로 계속하기
         </button>
-      </div>
 
       <style>{`
-        .login-modal-overlay {
-          z-index: 100;
-          padding: 16px;
-        }
         .login-modal {
           width: 100%;
           max-width: 400px;
@@ -242,6 +230,6 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           font-size: 13px;
         }
       `}</style>
-    </div>
+    </Modal>
   );
 }

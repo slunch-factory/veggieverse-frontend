@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Modal } from "@/components/ui/Modal";
 
 const KAKAO_YELLOW = "#FEE500";
 const KAKAO_LABEL = "rgba(0, 0, 0, 0.85)";
@@ -106,16 +106,6 @@ export function AlreadyRegisteredModal({
   onEmailAction,
   hasKakaoLink = true,
 }: AlreadyRegisteredModalProps) {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const copy = COPY[mode];
   // "existing-email-login"은 이메일 로그인이 주 동작 — 이메일 버튼을 dark primary로 위에 두고
   //  카카오 버튼은 연동된 경우(hasKakaoLink)에만 노출한다. 나머지 모드는 카카오 우선(기존 레이아웃).
@@ -177,45 +167,41 @@ export function AlreadyRegisteredModal({
     : [kakaoButton, emailButton];
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
-      onClick={onClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      labelledBy="already-registered-title"
+      zIndex={200}
+      className="w-full max-w-[360px] mx-[16px] bg-white border border-black rounded-[16px] px-[24px] py-[28px] text-center"
     >
-      <div
-        className="w-full max-w-[360px] mx-[16px] bg-white border border-black rounded-[16px] px-[24px] py-[28px] text-center"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
+      <h2 id="already-registered-title" className="t-h3 mb-[12px]" style={{ color: "var(--ink)" }}>
+        이미 가입된 이메일입니다
+      </h2>
+      <p
+        className="t-small mb-[16px] break-all"
+        style={{ color: "var(--ink)", fontWeight: 600 }}
       >
-        <h2 className="t-h3 mb-[12px]" style={{ color: "var(--ink)" }}>
-          이미 가입된 이메일입니다
-        </h2>
-        <p
-          className="t-small mb-[16px] break-all"
-          style={{ color: "var(--ink)", fontWeight: 600 }}
-        >
-          {email}
-        </p>
-        <p
-          className="t-small mb-[24px] leading-[1.6]"
-          style={{ color: "var(--ink-light)" }}
-        >
-          {copy.description}
-        </p>
+        {email}
+      </p>
+      <p
+        className="t-small mb-[24px] leading-[1.6]"
+        style={{ color: "var(--ink-light)" }}
+      >
+        {copy.description}
+      </p>
 
-        <div className="flex flex-col gap-[8px]">
-          {actionButtons}
+      <div className="flex flex-col gap-[8px]">
+        {actionButtons}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-transparent border-none cursor-pointer mt-[4px] t-small"
-            style={{ color: "var(--ink-light)", textDecoration: "underline" }}
-          >
-            취소
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-transparent border-none cursor-pointer mt-[4px] t-small"
+          style={{ color: "var(--ink-light)", textDecoration: "underline" }}
+        >
+          취소
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

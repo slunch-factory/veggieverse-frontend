@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Plus, Minus, X } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
 interface SubItem {
   name: string;
@@ -61,38 +62,6 @@ export function NavigationDrawer({
   const pathname = usePathname();
   const router = useRouter();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
-  // 슬라이드-인 트리거: 마운트 직후 한 프레임 뒤에 true로 바꿔 transition이 실제로 발화하도록.
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setShow(false);
-      return;
-    }
-    const id = requestAnimationFrame(() => setShow(true));
-    return () => cancelAnimationFrame(id);
-  }, [isOpen]);
-
-  // Body scroll lock
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
-
-  // ESC 키로 닫기
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
 
   const handleMenuClick = (item: MenuItem) => {
     if (item.subItems) {
@@ -115,21 +84,17 @@ export function NavigationDrawer({
     return pathname === path || pathname.startsWith(path + "/");
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100]">
-      {/* Backdrop */}
-      <div className="absolute inset-0" onClick={onClose} />
-
-      {/* Drawer Panel */}
-      <div
-        className={`absolute left-0 bottom-0 w-[80vw] max-w-[400px] bg-white flex flex-col overflow-y-auto border-r border-black transition-transform duration-300 ease-in-out ${
-          show ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{ top: showTopBanner ? "var(--promo-h)" : 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      position="drawer-left"
+      ariaLabel="메뉴"
+      overlayClassName="!bg-transparent"
+      zIndex={100}
+      className="w-[80vw] max-w-[400px] bg-white flex flex-col overflow-y-auto border-r border-black"
+      style={{ marginTop: showTopBanner ? "var(--promo-h)" : 0 }}
+    >
         {/* 헤더 영역 */}
         <div className="h-[var(--header-h)] flex items-center justify-end px-4 border-b border-black shrink-0">
           <button
@@ -226,7 +191,6 @@ export function NavigationDrawer({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
