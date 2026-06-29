@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import type { StoreOrderDetailResponse } from "@/lib/api/store";
@@ -69,10 +70,11 @@ export function OrderCompletion({ order }: Props) {
                   }}
                 >
                   {item.imageUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
+                    <Image
                       src={item.imageUrl}
                       alt={item.name}
+                      width={52}
+                      height={52}
                       className="w-full h-full object-cover"
                     />
                   )}

@@ -9,6 +9,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import Image from "next/image";
 import {
   AtSign,
   CalendarDays,
@@ -270,10 +271,11 @@ export default function EditProfilePage() {
                   }}
                 >
                   {displayImage ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
+                    <Image
                       src={supabaseRenderUrl(displayImage, { width: 200 })}
                       alt="프로필 미리보기"
+                      width={88}
+                      height={88}
                       className="w-full h-full object-cover"
                       decoding="async"
                     />

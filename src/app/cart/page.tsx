@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Minus, Plus, ShoppingCart, Check, Trash2 } from "lucide-react";
@@ -223,12 +224,11 @@ export default function CartPage() {
                     {/* 이미지 */}
                     <Link href={`/store/${item.slug}`} className="flex-shrink-0">
                       <div
-                        className="overflow-hidden"
+                        className="relative overflow-hidden"
                         style={{ width: 72, height: 72, borderRadius: "var(--r-btn)", background: "var(--bg-off)", border: "1px solid var(--neutral-stone)" }}
                       >
                         {item.imageUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="96px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <ShoppingCart size={18} style={{ color: "var(--neutral-stone)" }} />

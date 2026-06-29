@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Package, ChevronDown } from "lucide-react";
 import {
@@ -174,10 +175,11 @@ function ProductList({ products }: { products: StoreOrderHistoryProduct[] }) {
               }}
             >
               {item.imageUrl && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
+                <Image
                   src={item.imageUrl}
                   alt={item.name}
+                  width={44}
+                  height={44}
                   className="w-full h-full object-cover"
                 />
               )}

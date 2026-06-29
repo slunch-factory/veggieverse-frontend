@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { categoryLabel, isStockSoldOut, type StoreProduct } from "@/lib/api/store";
 
-export function ProductCard({ product }: { product: StoreProduct }) {
+/** 그리드 상단(첫 행) 카드의 대표 이미지는 LCP 대상 → priority로 preload. */
+const PRODUCT_CARD_SIZES = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
+
+export function ProductCard({ product, priority = false }: { product: StoreProduct; priority?: boolean }) {
   const router = useRouter();
   // 품절 = 실제 재고 SOLD_OUT. SOLD OUT 디자인(디밍 + 배지)으로 표시.
   const soldOut = isStockSoldOut(product.stock);
@@ -83,12 +87,13 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                     style={{ flex: "0 0 auto", width: `${100 / images.length}%`, height: "100%" }}
                   >
                     {Math.abs(idx - currentImageIndex) <= 1 && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
+                      <Image
                         src={img}
                         alt={product.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading="lazy"
+                        fill
+                        sizes={PRODUCT_CARD_SIZES}
+                        className="object-cover"
+                        priority={priority && idx === 0}
                         onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
                       />
                     )}
@@ -96,12 +101,13 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                 ))}
               </div>
             ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
+              <Image
                 src={images[0]}
                 alt={product.name}
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
+                fill
+                sizes={PRODUCT_CARD_SIZES}
+                className="object-cover"
+                priority={priority}
                 onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
               />
             )}

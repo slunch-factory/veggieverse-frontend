@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import type { CartItem } from "@/contexts/CartContext";
 import Link from "next/link";
@@ -346,7 +347,7 @@ export function OrderClient() {
                       style={{ borderTop: idx === 0 ? undefined : "1px solid var(--neutral-stone)" }}
                     >
                       <div
-                        className="flex-shrink-0 overflow-hidden"
+                        className="relative flex-shrink-0 overflow-hidden"
                         style={{
                           width: 56,
                           height: 56,
@@ -356,8 +357,7 @@ export function OrderClient() {
                         }}
                       >
                         {item.imageUrl && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="64px" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">

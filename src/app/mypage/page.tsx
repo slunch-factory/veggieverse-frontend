@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -171,8 +172,7 @@ export default function MyPageHome() {
             }}
           >
             {profileImage ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={supabaseRenderUrl(profileImage, { width: 160 })} alt="프로필" className="h-full w-full object-cover" decoding="async" />
+              <Image src={supabaseRenderUrl(profileImage, { width: 160 })} alt="프로필" fill className="object-cover" sizes="160px" decoding="async" />
             ) : (
               <User size={32} color="var(--neutral-stone)" />
             )}

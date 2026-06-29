@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -198,12 +199,14 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
             showThumbnails
             frameClassName="relative aspect-square w-full overflow-hidden"
             frameStyle={{ borderRadius: "var(--r-btn)", border: "1px solid var(--ink)", background: "var(--bg-off)" }}
-            renderImage={(img) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+            renderImage={(img, index) => (
+              <Image
                 src={img.url}
-                alt={img.altText}
-                className="absolute inset-0 h-full w-full object-cover"
+                alt={img.altText ?? ""}
+                fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+                priority={index === 0}
               />
             )}
           />

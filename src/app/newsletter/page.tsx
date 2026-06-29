@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { PreparingBanner } from "@/components/common/PreparingBanner";
 import { ARTICLES } from "./_data/articles";
@@ -25,11 +26,13 @@ export default function NewsletterPage() {
       {featured && (
         <Link href={`/newsletter/${featured.id}`} className="block group">
           <div className="relative w-full aspect-[21/9] bg-[#E5E5E0] overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={featured.thumbnail}
               alt={featured.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">

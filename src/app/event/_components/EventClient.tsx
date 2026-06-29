@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import TopControlBar, { type TabItem } from "@/components/store/TopControlBar";
 import type { Event } from "../_data/events";
@@ -24,13 +25,13 @@ function EventCard({ event }: { event: Event }) {
     >
       {/* 이미지 */}
       <div className="relative w-full aspect-[16/9] bg-[#E5E5E0] overflow-hidden rounded-[4px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={event.thumbnail}
           alt={event.title}
-          className="w-full h-full object-cover"
+          fill
+          sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
+          className="object-cover"
           style={{ filter: isEnded ? "grayscale(100%)" : "none" }}
-          loading="lazy"
         />
 
         {event.badge && (

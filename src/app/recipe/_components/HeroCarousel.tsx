@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Recipe } from "../_data/recipes";
 
@@ -26,11 +27,13 @@ export function HeroCarousel({ recipes }: { recipes: Recipe[] }) {
     <section className="relative w-full bg-[var(--cream)]" style={{ height: "min(60vh, 500px)" }}>
       {/* 좌측: 큰 이미지 (약 50%) */}
       <Link href={`/recipe/${recipe.id}`} className="absolute inset-y-0 left-0 w-full md:w-[55%] block overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={recipe.image}
           alt={recipe.title}
-          className="w-full h-full object-cover transition-opacity duration-500"
+          fill
+          priority
+          sizes="(min-width:768px) 55vw, 100vw"
+          className="object-cover transition-opacity duration-500"
           key={recipe.id}
         />
       </Link>
