@@ -11,6 +11,7 @@ import TarotCarousel3DSurvey, { type CarouselOption } from './TarotCarousel3DSur
 import { getAutoPlan } from '@/lib/api/spirit';
 import { SelectRipple, type Ripple } from './SelectRipple';
 import { QuestionHeadline } from './QuestionHeadline';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const ALLERGY_QUESTION_ID = 3;
 const _base = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
@@ -75,6 +76,7 @@ interface Props {
 
 export function SpiritStepClient3D({ questions }: Props) {
   const router = useRouter();
+  const reducedMotion = useReducedMotion();
   const [answers, setAnswers] = useState<SurveyAnswers>({});
   const [currentStep, setCurrentStep] = useState(0);
   const [interactedQuestions, setInteractedQuestions] = useState<Set<number>>(new Set());
@@ -929,7 +931,7 @@ export function SpiritStepClient3D({ questions }: Props) {
                 {planLoadingAnim && (
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: 140, height: 140 }}>
-                      <Lottie animationData={planLoadingAnim} loop style={{ width: '100%', height: '100%' }} />
+                      <Lottie animationData={planLoadingAnim} loop={!reducedMotion} autoplay={!reducedMotion} style={{ width: '100%', height: '100%' }} />
                     </div>
                   </div>
                 )}
