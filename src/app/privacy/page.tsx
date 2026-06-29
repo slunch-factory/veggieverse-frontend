@@ -100,8 +100,7 @@ export default function PrivacyPage() {
           <li>Supabase, Inc. — 회원 인증·세션 관리·데이터베이스 호스팅</li>
           <li>Vercel, Inc. — 웹 애플리케이션 호스팅·CDN</li>
           <li>(주)카카오 — 소셜 로그인 인증</li>
-          <li className="legal-todo">TBD: 실제 이용 중인 배송 대행사명(예: CJ대한통운, 한진택배 등) 기입</li>
-          <li className="legal-todo">TBD: 이메일·SMS 발송 대행사가 있다면 추가</li>
+          <li>쿠팡(쿠팡풀필먼트서비스) — 상품 보관·배송·반품 등 물류 처리</li>
         </ul>
         <p>
           회사는 위탁계약 체결 시 「개인정보 보호법」 제26조에 따라 처리 목적·금지 사항·기술적·관리적
@@ -206,7 +205,7 @@ export default function PrivacyPage() {
           처리 및 피해 구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
         </p>
         <ul>
-          <li>책임자 성명·직책: <span className="legal-todo">TBD — 실명 및 직책 기입 필요</span></li>
+          <li>책임자 성명·직책: {COMPANY.ceo} / 대표이사</li>
           <li>연락처: {COMPANY.tel}</li>
           <li>전자우편: {COMPANY.email}</li>
         </ul>
@@ -234,10 +233,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <p className="legal-todo">
-        TBD: 본 처리방침 초안은 표준 양식 기반의 골격이며, 실제 서비스 운영 항목·위탁사·보호책임자에
-        맞춰 추가 보강 및 개인정보보호법 준수 여부 법무 검토가 필요합니다.
-      </p>
+      {/* 내부 메모(비노출): 본 처리방침은 표준 양식 기반 초안 — 서비스 운영 항목·위탁사 변경 시 갱신,
+          개인정보보호법 준수 여부는 출시 전 법무 검토 필요(#59). */}
     </LegalPage>
   );
 }

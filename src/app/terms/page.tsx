@@ -195,9 +195,7 @@ export default function TermsPage() {
         </ol>
       </section>
 
-      <p className="legal-todo">
-        TBD: 본 약관은 표준 전자상거래 약관을 기반으로 한 초안이며, 실제 서비스 출시 전 법무 검토가 권장됩니다.
-      </p>
+      {/* 내부 메모(비노출): 표준 전자상거래 약관 기반 초안 — 출시 전 법무 검토 권장(#59). */}
     </LegalPage>
   );
 }
