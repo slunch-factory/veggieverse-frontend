@@ -11,7 +11,6 @@ import { MenuLibrary } from "./MenuLibrary";
 import { PlannerColumn } from "./PlannerColumn";
 import { CheckoutBar } from "./CheckoutBar";
 import { MobileCheckoutBar } from "./MobileCheckoutBar";
-import { Snackbar } from "./Snackbar";
 import { AllergyWarningModal } from "./AllergyWarningModal";
 import { SubscribeTutorial } from "./SubscribeTutorial";
 
@@ -154,7 +153,6 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
           />
         )}
       />
-      <Snackbar message={p.snackbarMsg} onClose={p.clearSnackbar} />
       <AllergyWarningModal
         open={showAllergyModal}
         onClose={() => setShowAllergyModal(false)}

@@ -22,7 +22,7 @@ import {
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 import { WithdrawConfirmModal } from "@/components/modals/WithdrawConfirmModal";
 import { AvatarCropModal } from "../_components/AvatarCropModal";
-import { Snackbar } from "@/app/subscribe/_components/Snackbar";
+import { useToast } from "@/components/ui/Toast";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
 import { deleteAccount, getUserProfile, updateUserProfile } from "@/lib/api/user";
@@ -90,7 +90,7 @@ export default function EditProfilePage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -126,12 +126,12 @@ export default function EditProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      alert("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
+      toast.error("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("파일 크기는 5MB 이하로 업로드해 주세요.");
+      toast.error("파일 크기는 5MB 이하로 업로드해 주세요.");
       e.target.value = "";
       return;
     }
@@ -216,7 +216,7 @@ export default function EditProfilePage() {
 
     // profileVersion bump → 구독 중인 헤더·마이페이지가 자동으로 fresh 데이터 재조회.
     refetchProfile();
-    setToast("회원정보가 수정되었습니다.");
+    toast.success("회원정보가 수정되었습니다.");
   };
 
   const displayImage = profileImagePreview || profileImageUrl;
@@ -532,15 +532,13 @@ export default function EditProfilePage() {
           if (!ok) {
             setWithdrawing(false);
             setWithdrawOpen(false);
-            setToast("탈퇴 처리에 실패했어요. 잠시 후 다시 시도해주세요.");
+            toast.error("탈퇴 처리에 실패했어요. 잠시 후 다시 시도해주세요.");
             return;
           }
           // 성공 — Supabase 세션 종료 + 로컬 정리 후 홈으로 redirect
           await signOut();
         }}
       />
-
-      <Snackbar message={toast} onClose={() => setToast(null)} />
 
       <style>{`
         .edit-profile-form .ds-input {

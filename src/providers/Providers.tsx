@@ -6,15 +6,18 @@ import { CartProvider } from "@/contexts/CartContext";
 import { ProfileGate } from "@/components/ProfileGate";
 import { WithdrawalPendingGate } from "@/components/WithdrawalPendingGate";
 import { QueryProvider } from "@/lib/query/QueryProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
       <UserProvider>
         <CartProvider>
-          <ProfileGate />
-          <WithdrawalPendingGate />
-          {children}
+          <ToastProvider>
+            <ProfileGate />
+            <WithdrawalPendingGate />
+            {children}
+          </ToastProvider>
         </CartProvider>
       </UserProvider>
     </QueryProvider>

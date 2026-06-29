@@ -11,6 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import {
   AtSign,
   Check,
@@ -110,6 +111,7 @@ function stripPhoneDashes(v: string) {
 
 export function SignupClient() {
   const router = useRouter();
+  const toast = useToast();
   const searchParams = useSearchParams();
   const isLinkMode = searchParams.get("link") === "1";
   /** case1-1-II: 자사몰 화면에서 카카오 버튼 클릭 → 자사몰 동일 이메일 발견 → 모달로 선택권 제공 진입. */
@@ -293,17 +295,17 @@ export function SignupClient() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("이미지 파일만 업로드할 수 있습니다.");
+      toast.error("이미지 파일만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      alert("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
+      toast.error("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("파일 크기는 5MB 이하로 업로드해 주세요.");
+      toast.error("파일 크기는 5MB 이하로 업로드해 주세요.");
       e.target.value = "";
       return;
     }
