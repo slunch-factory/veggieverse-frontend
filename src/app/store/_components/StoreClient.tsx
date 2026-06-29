@@ -132,8 +132,9 @@ export function StoreClient({ initialProducts, currentSort, searchQuery = "" }: 
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {ordered.map((product) => (
-              <ProductCard key={product.productId} product={product} />
+            {ordered.map((product, index) => (
+              // 첫 행(최대 4~5열) 대표 이미지는 LCP 후보 → 앞 4개만 priority preload
+              <ProductCard key={product.productId} product={product} priority={index < 4} />
             ))}
           </div>
         )}

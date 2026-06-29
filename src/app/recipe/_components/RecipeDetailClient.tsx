@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Share2, Clock, ChefHat, Users, ChevronUp, ChevronDown, ChevronRight, Camera } from "lucide-react";
 import { getIngredientIcon } from "@/utils/ingredientIcon";
 import type { DetailedRecipe } from "../_data/recipeDetails";
@@ -26,11 +27,13 @@ export function RecipeDetailClient({ recipe }: { recipe: DetailedRecipe }) {
     <div className="min-h-screen bg-white">
       {/* 커버 이미지 — 컴팩트 사이즈 */}
       <div className="relative h-[40vh] min-h-[320px] max-h-[480px] bg-[#F5F5F5]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={recipe.heroImage || recipe.image}
           alt={`${recipe.title} - 커버 이미지`}
-          className="absolute inset-0 w-full h-full object-cover"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
 
@@ -138,8 +141,7 @@ export function RecipeDetailClient({ recipe }: { recipe: DetailedRecipe }) {
                   {recipe.ingredients.map((ing, idx) => (
                     <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-stone-200">
                       <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center overflow-hidden shrink-0 border border-stone-200">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={getIngredientIcon(ing.name)} alt={ing.name} className="w-6 h-6 object-contain" loading="lazy" />
+                        <Image src={getIngredientIcon(ing.name)} alt={ing.name} width={24} height={24} className="w-6 h-6 object-contain" />
                       </div>
                       <div className="flex-1 min-w-0 flex items-baseline gap-2">
                         <span className="text-sm text-stone-900 truncate">{ing.name}</span>
@@ -194,8 +196,7 @@ export function RecipeDetailClient({ recipe }: { recipe: DetailedRecipe }) {
 
                   {step.image && (
                     <div className="mb-4 bg-stone-100 overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={step.image} alt={`${step.title} 이미지`} className="w-full h-auto object-cover" loading="lazy" />
+                      <Image src={step.image} alt={`${step.title} 이미지`} width={1200} height={800} className="w-full h-auto object-cover" />
                     </div>
                   )}
 
@@ -251,9 +252,8 @@ export function RecipeDetailClient({ recipe }: { recipe: DetailedRecipe }) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-[13px]">
                   {recipe.relatedRecipes.map((rel) => (
                     <Link key={rel.id} href={`/recipe/${rel.id}`} className="group">
-                      <div className="aspect-square overflow-hidden mb-3 bg-stone-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/menus/example.png`} alt={rel.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" loading="lazy" />
+                      <div className="relative aspect-square overflow-hidden mb-3 bg-stone-100">
+                        <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/menus/example.png`} alt={rel.title} fill sizes="(min-width:640px) 25vw, 50vw" className="object-cover group-hover:scale-110 transition-transform duration-300" />
                       </div>
                       <h3 className="font-medium text-stone-900 text-sm mb-1">{rel.title}</h3>
                       <p className="text-xs text-stone-500">{rel.description}</p>

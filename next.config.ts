@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
     // Supabase Storage 외부 이미지(구독 재료·상품 등) 최적화 허용. qa/prod 프로젝트 모두 커버.
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
+      // 뉴스레터·이벤트·레시피 히어로 썸네일(에디토리얼 콘텐츠)
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      // 백엔드 상품 CDN — prod에서 imageUrl이 cdn 호스트로 내려오는 경우 대비(안전망)
+      { protocol: 'https', hostname: 'cdn.slunch.com' },
     ],
   },
 };

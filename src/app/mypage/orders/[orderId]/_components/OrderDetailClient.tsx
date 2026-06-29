@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -138,10 +139,11 @@ export function OrderDetailClient() {
                 }}
               >
                 {p.imageUrl && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
+                  <Image
                     src={p.imageUrl}
                     alt={p.name}
+                    width={56}
+                    height={56}
                     className="w-full h-full object-cover"
                   />
                 )}

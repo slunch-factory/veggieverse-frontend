@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, Menu, ShoppingCart } from "lucide-react";
@@ -83,11 +84,13 @@ export function Header({ showTopBanner = false }: HeaderProps) {
             href="/"
             className="absolute left-1/2 -translate-x-1/2 z-[51]"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/common/logo.png`}
               alt="SLUNCH FACTORY"
-              className="h-9 block object-contain"
+              width={411}
+              height={96}
+              priority
+              className="h-9 w-auto object-contain"
             />
           </Link>
 
@@ -127,13 +130,13 @@ export function Header({ showTopBanner = false }: HeaderProps) {
               aria-label="마이페이지"
             >
               {isAuthenticated && avatarUrl ? (
-                <div className="w-7 h-7 rounded-full overflow-hidden border border-black">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <div className="relative w-7 h-7 rounded-full overflow-hidden border border-black">
+                  <Image
                     src={avatarUrl}
                     alt="프로필"
-                    className="w-full h-full object-cover"
-                    decoding="async"
+                    fill
+                    sizes="28px"
+                    className="object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}

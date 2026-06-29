@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { PAYMENT_RESULT_KEY, type PaymentResponse } from "@/lib/api/payment";
@@ -199,10 +200,11 @@ export function CompleteClient() {
                   }}
                 >
                   {p.imageUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
+                    <Image
                       src={p.imageUrl}
                       alt={p.name}
+                      width={48}
+                      height={48}
                       className="object-cover shrink-0"
                       style={{
                         width: 48,

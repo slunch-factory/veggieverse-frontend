@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Star, MessageSquare } from "lucide-react";
 
 interface Review {
@@ -104,10 +105,11 @@ export default function MyReviewsPage() {
                       borderRadius: "var(--r-btn)",
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={review.productImage}
                       alt={review.productName}
+                      width={60}
+                      height={60}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";
@@ -169,10 +171,11 @@ export default function MyReviewsPage() {
                       borderRadius: "var(--r-btn)",
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={item.productImage}
                       alt={item.productName}
+                      width={60}
+                      height={60}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";

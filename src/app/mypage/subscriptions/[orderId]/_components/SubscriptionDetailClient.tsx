@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -465,11 +466,12 @@ function MealCell({ meal }: { meal: OrderDetailProduct | null }) {
       }}
     >
       {meal.imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={meal.imageUrl}
           alt={meal.name}
-          className="absolute inset-0 w-full h-full object-cover"
+          fill
+          className="object-cover"
+          sizes="(min-width:640px) 25vw, 50vw"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
