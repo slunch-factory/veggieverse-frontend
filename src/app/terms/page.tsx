@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "이용약관 - 슬런치 팩토리",
@@ -45,13 +46,13 @@ export default function TermsPage() {
         <h2>제4조 (공급자 정보)</h2>
         <p>회사의 정보는 다음과 같으며, 변동 시 즉시 갱신합니다.</p>
         <ul>
-          <li>상호: (주)슬런치팩토리</li>
-          <li>대표자: 이현아</li>
-          <li>사업자등록번호: 288-86-02863</li>
-          <li>통신판매업 신고번호: 제2023-경기부천-0868호</li>
-          <li>사업장 주소: 경기 부천시 소사로160번길 23-8</li>
-          <li>대표전화: 032-224-6525</li>
-          <li>전자우편: slunch@slunch.co.kr</li>
+          <li>상호: {COMPANY.name}</li>
+          <li>대표자: {COMPANY.ceo}</li>
+          <li>사업자등록번호: {COMPANY.bizRegNo}</li>
+          <li>통신판매업 신고번호: {COMPANY.mailOrderNo}</li>
+          <li>사업장 주소: {COMPANY.address}</li>
+          <li>대표전화: {COMPANY.tel}</li>
+          <li>전자우편: {COMPANY.email}</li>
         </ul>
       </section>
 

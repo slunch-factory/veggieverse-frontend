@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "환불·취소 정책 - 슬런치 팩토리",
@@ -80,9 +81,9 @@ export default function RefundPolicyPage() {
           안내받은 운송장 정보로 발송해 주세요.
         </p>
         <ul>
-          <li>받는 사람: (주)슬런치팩토리 반품 담당자</li>
-          <li>주소: 경기 부천시 소사로160번길 23-8</li>
-          <li>연락처: 032-224-6525</li>
+          <li>받는 사람: {COMPANY.name} 반품 담당자</li>
+          <li>주소: <span className="legal-todo">TBD — 반품지(물류센터/품고) 주소 확정 필요</span></li>
+          <li>연락처: {COMPANY.tel}</li>
           <li className="legal-todo">
             TBD: 반품 전용 창고/물류센터가 별도라면 해당 주소로 변경 필요.
           </li>
@@ -137,8 +138,8 @@ export default function RefundPolicyPage() {
       <section>
         <h2>10. 문의</h2>
         <p>
-          환불 관련 문의는 <a href="mailto:slunch@slunch.co.kr">slunch@slunch.co.kr</a> 또는
-          고객센터(032-224-6525)로 연락 주시기 바랍니다. 운영시간 외 접수된 문의는 다음 영업일에
+          환불 관련 문의는 <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> 또는
+          고객센터({COMPANY.tel})로 연락 주시기 바랍니다. 운영시간 외 접수된 문의는 다음 영업일에
           순차적으로 답변드립니다.
         </p>
       </section>

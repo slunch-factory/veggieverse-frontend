@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "개인정보 처리방침 - 슬런치 팩토리",
@@ -206,8 +207,8 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>책임자 성명·직책: <span className="legal-todo">TBD — 실명 및 직책 기입 필요</span></li>
-          <li>연락처: 032-224-6525</li>
-          <li>전자우편: slunch@slunch.co.kr</li>
+          <li>연락처: {COMPANY.tel}</li>
+          <li>전자우편: {COMPANY.email}</li>
         </ul>
       </section>
 
