@@ -13,19 +13,13 @@ import { useUser } from "@/contexts/UserContext";
 import { useSubscriptionDetail } from "@/lib/query/subscription";
 import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
 import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd}`;
-}
-
-function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+import {
+  formatDate,
+  formatDateTime,
+  PriceRow,
+  SectionCard,
+  SummaryRow,
+} from "@/app/mypage/_components/order-ui";
 
 const CYCLE_LABEL: Record<string, string> = {
   WEEKLY: "주 1회",
@@ -230,76 +224,6 @@ export function SubscriptionDetailClient() {
           </div>
         </div>
       </SectionCard>
-    </div>
-  );
-}
-
-/* ─── 보조 컴포넌트 ─── */
-
-function SectionCard({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={className}
-      style={{
-        background: "var(--bg-white)",
-        border: "1px solid var(--ink)",
-        borderRadius: "var(--r-btn)",
-        overflow: "hidden",
-      }}
-    >
-      <header
-        className="px-5 py-3"
-        style={{
-          borderBottom: "1px solid var(--ink)",
-          background: "var(--bg-pale)",
-        }}
-      >
-        <p
-          className="t-caption"
-          style={{
-            color: "var(--ink-light)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          {label}
-        </p>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="t-caption" style={{ color: "var(--ink-light)" }}>{label}</span>
-      <span className="t-small text-right" style={{ color: "var(--ink)" }}>{value}</span>
-    </div>
-  );
-}
-
-function PriceRow({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span style={{ color: "var(--ink-light)" }}>{label}</span>
-      <span style={{ color: valueColor ?? "var(--ink)" }}>{value}</span>
     </div>
   );
 }
