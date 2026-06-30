@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MapPin, Phone, Clock, ExternalLink, Mail, Award } from "lucide-react";
 import { AboutSectionNav } from "./_components/AboutSectionNav";
 import { Reveal } from "./_components/Reveal";
+import { AboutPlaceholder } from "./_components/AboutPlaceholder";
 
 export const metadata: Metadata = {
   title: "브랜드 스토리 - 슬런치 팩토리",
@@ -17,7 +18,6 @@ export const metadata: Metadata = {
 /** 섹션이 sticky 내비/헤더에 가리지 않도록 하는 스크롤 오프셋 */
 const SECTION_OFFSET = { scrollMarginTop: "calc(var(--header-area-h) + 52px)" } as const;
 const LABEL = "text-[11px] text-[var(--warm-gray)] uppercase tracking-[0.1em] mb-3";
-const IMG_BOX = "bg-[#E8E4DF] flex items-center justify-center text-[var(--muted)] text-sm";
 
 /**
  * /about — 브랜드 싱글 롱스크롤.
@@ -32,8 +32,10 @@ export default function AboutPage() {
 
       {/* 1. HERO */}
       <section className="border-b border-black">
-        <div className="relative h-[58vh] min-h-[360px] max-h-[620px] bg-[#D4CFC7] flex items-center justify-center text-[var(--muted)] text-sm overflow-hidden">
-          [히어로 비주얼 — 매장/대표 음식]
+        <div
+          className="relative h-[58vh] min-h-[360px] max-h-[620px] flex items-center justify-center overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #ECE8E2 0%, #D4CFC7 55%, #BCB5A9 100%)" }}
+        >
           <Reveal className="absolute inset-0 flex flex-col items-center justify-center text-center px-6" y={32}>
             <p className="text-[11px] text-[var(--warm-gray)] uppercase tracking-[0.2em] mb-4">
               Since 2019
@@ -49,7 +51,7 @@ export default function AboutPage() {
 
       {/* 2. ORIGIN */}
       <section id="story" style={SECTION_OFFSET} className="grid grid-cols-1 md:grid-cols-2 border-b border-black">
-        <div className={`aspect-[4/3] md:border-r border-black ${IMG_BOX}`}>[브랜드 이미지]</div>
+        <AboutPlaceholder label="브랜드 이미지" className="aspect-[4/3] md:border-r border-black" />
         <div className="p-10 md:p-16 flex flex-col justify-center">
           <Reveal>
             <p className={LABEL}>Origin</p>
@@ -96,9 +98,10 @@ export default function AboutPage() {
             >
               <Link href="/store" className="group block h-full">
                 <div className="aspect-square overflow-hidden">
-                  <div className={`w-full h-full transition-transform duration-500 group-hover:scale-105 ${IMG_BOX}`}>
-                    [{cat.name} 제품컷]
-                  </div>
+                  <AboutPlaceholder
+                    label={`${cat.name} 제품컷`}
+                    className="h-full w-full transition-transform duration-500 group-hover:scale-105"
+                  />
                 </div>
                 <div className="px-6 py-5">
                   <p className="text-[15px] mb-1 text-[var(--charcoal)] group-hover:underline">{cat.name}</p>
@@ -126,7 +129,7 @@ export default function AboutPage() {
               </p>
             </Reveal>
           </div>
-          <div className={`aspect-[4/3] md:aspect-auto ${IMG_BOX}`}>[공장 이미지]</div>
+          <AboutPlaceholder label="공장 이미지" className="aspect-[4/3] md:aspect-auto" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2">
           <Reveal className="p-10 md:p-12 border-b md:border-b-0 md:border-r border-black">
@@ -155,7 +158,7 @@ export default function AboutPage() {
       <section id="stores" style={SECTION_OFFSET} className="border-b border-black">
         {/* 홍대점 */}
         <div className="grid grid-cols-1 md:grid-cols-2 border-b border-black">
-          <div className={`aspect-[4/3] md:border-r border-black ${IMG_BOX}`}>[홍대점 이미지]</div>
+          <AboutPlaceholder label="홍대점 이미지" className="aspect-[4/3] md:border-r border-black" />
           <div className="p-10 md:p-11 flex flex-col justify-center">
             <Reveal>
               <p className={LABEL}>Flagship Store</p>
@@ -204,7 +207,7 @@ export default function AboutPage() {
               </p>
             </Reveal>
           </div>
-          <div className={`aspect-[4/3] ${IMG_BOX} order-1 md:order-2`}>[더현대점 이미지]</div>
+          <AboutPlaceholder label="더현대점 이미지" className="aspect-[4/3] order-1 md:order-2" />
         </div>
         {/* 온라인 스토어 */}
         <Reveal className="p-12 md:p-16 text-center">
