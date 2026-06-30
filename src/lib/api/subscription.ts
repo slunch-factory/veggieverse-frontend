@@ -1,5 +1,6 @@
 import type { ExcludeCategory, MenuCategory, MenuData, MenuNutrition } from "@/app/subscribe/_data/subscription";
 import { apiFetch } from "@/lib/api/client";
+import { type OrderStatusCode, isAwaitingPayment } from "@/lib/api/order-status";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
@@ -156,6 +157,8 @@ export interface OrderHistoryItem {
   deliveryCycle: string;
   orderDate: string;
   finalAmount: number;
+  /** 결제 상태 (PENDING/PAID/...). 백엔드가 내려주며 결제대기/완료 구분에 사용. */
+  status: OrderStatusCode;
 }
 
 export interface OrderHistoryResponse {
@@ -184,6 +187,9 @@ export async function getOrderHistory(
       return null;
     }
     const data: OrderHistoryResponse = await res.json();
+    // PENDING(결제대기)은 결제 미완료 주문 — 1차 런칭에서는 노출하지 않는다.
+    // 재결제 플로우 없이 DB TTL로 정리되며, 결제완료된 주문만 마이페이지에 표시한다.
+    data.content = data.content.filter((item) => !isAwaitingPayment(item.status));
     console.log(
       "%c[getOrderHistory] ✅ 주문 내역 조회 성공",
       "color: #4A7F52; font-weight: bold;",
@@ -226,6 +232,8 @@ export interface OrderDetailResponse {
   };
   finalAmount: number;
   products: OrderDetailProduct[];
+  /** 결제 상태 (PENDING/PAID/...). */
+  status: OrderStatusCode;
 }
 
 export async function getOrderDetail(

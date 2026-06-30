@@ -132,7 +132,11 @@ function defaultMessageFor(code: SubscriptionPaymentErrorCode): string {
 export async function postPayment(req: PaymentRequest): Promise<PaymentResponse> {
   let res: Response;
   try {
-    res = await apiFetch("/api/v1/veggieverse/subscription/payments", {
+    // 스테이징 배포본 기준 경로. 백엔드 최신 코드는 이 엔드포인트를
+    // `/subscription/payments`로 변경(커밋 b334b2b)했으나 스테이징에는 아직
+    // 미배포 상태(현재 staging에는 `/orders`만 존재). 스테이징이 재배포되면
+    // `/api/v1/veggieverse/subscription/payments`로 되돌릴 것.
+    res = await apiFetch("/api/v1/veggieverse/subscription/orders", {
       method: "POST",
       body: req,
       auth: "required",
