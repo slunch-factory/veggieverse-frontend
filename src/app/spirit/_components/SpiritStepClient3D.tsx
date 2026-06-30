@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Lottie from 'lottie-react';
 import { useRouter } from 'next/navigation';
 import type { SurveyQuestion, SurveyOption } from '@/app/spirit/_data/surveyQuestions';
 import type { SurveyAnswers } from '@/app/spirit/_types';
 import type { MenuData } from '@/app/subscribe/_data/subscription';
-import TarotCarousel3DSurvey, { type CarouselOption } from './TarotCarousel3DSurvey';
+import TarotFanDraw, { type CarouselOption } from './TarotFanDraw';
 import { getAutoPlan } from '@/lib/api/spirit';
 import { SelectRipple, type Ripple } from './SelectRipple';
 import { QuestionHeadline } from './QuestionHeadline';
@@ -59,20 +59,16 @@ function buildAnswerKey(answers: SurveyAnswers): string {
   return JSON.stringify(normalized);
 }
 
-interface FlyCard {
-  id: number;
-  image: string;
-  fromX: number;
-  fromY: number;
-  spin: number;        // random rotation during flight
-  flying: boolean;     // false = at source (no transition), true = flying to deck
-  targetX: number;     // 측정된 deck 새 카드 슬롯 X (flying:true 시점에 채워짐)
-  targetY: number;     // 측정된 deck 새 카드 슬롯 Y
-}
-
 interface Props {
   questions: SurveyQuestion[];
 }
+
+/** 우측 스텝 패널에 쓰는 짧은 라벨(질문은 너무 길어 별도). id별, 없으면 STEP N. */
+const STEP_TITLES: Record<number, string> = {
+  1: '식이유형',
+  2: '영양 목표',
+  3: '제외 항목',
+};
 
 export function SpiritStepClient3D({ questions }: Props) {
   const router = useRouter();
@@ -82,16 +78,11 @@ export function SpiritStepClient3D({ questions }: Props) {
   const [interactedQuestions, setInteractedQuestions] = useState<Set<number>>(new Set());
   const [isPreparingPlan, setIsPreparingPlan] = useState(false);
   const [planLoadingAnim, setPlanLoadingAnim] = useState<object | null>(null);
-  const [flyCards, setFlyCards] = useState<FlyCard[]>([]);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
   const [, setCenterOpt] = useState<CarouselOption | null>(null);
-  const [nextBtnState, setNextBtnState] = useState<'idle' | 'hover' | 'active' | 'focus'>('idle');
-  const [backBtnState, setBackBtnState] = useState<'idle' | 'hover' | 'active' | 'focus'>('idle');
   const [ripples, setRipples] = useState<Ripple[]>([]);
-
-  const deckRef = useRef<HTMLDivElement>(null);
 
   /** Speculative prefetching: 마지막 단계 진입 시점에 부분 답변으로 추천 API를 미리 호출.
    *  사용자가 마지막 질문에 답하는 시간(평균 수 초)을 네트워크 왕복 시간으로 흡수한다. */
@@ -148,62 +139,12 @@ export function SpiritStepClient3D({ questions }: Props) {
     }
   }, [answers]);
 
-  // ── Derive deck groups from current answers ────────────────────────
-  // Each group = one question's selected cards; multi-select groups render as a row
-  const deckGroups = useMemo(() => {
-    return questions.flatMap((q) => {
-      const ans = answers[q.id];
-      if (!ans) return [];
-      const vals = Array.isArray(ans) ? ans : [ans];
-      const cards = vals
-        .map((v) => q.options.find((o) => o.value === v))
-        .filter((o): o is SurveyOption => o !== undefined);
-      if (cards.length === 0) return [];
-      return [{ questionId: q.id, isMulti: !!q.multiSelect, cards }];
-    });
-  }, [answers, questions]);
-
-  // ── Fly animation trigger ─────────────────────────────────────────
-  const triggerFly = useCallback((option: SurveyOption, screenX: number, screenY: number) => {
-    // ripple은 카드 이미지 유무와 관계없이 발생 (선택 피드백)
+  // ── 선택 피드백 ripple (덱으로 날아가는 카드 연출은 제거 — 카드가 중앙에 직접 공개됨) ──
+  const flashRipple = useCallback((screenX: number, screenY: number) => {
     const rippleId = Date.now() + Math.random();
     setRipples((prev) => [...prev, { id: rippleId, x: screenX, y: screenY }]);
     setTimeout(() => {
       setRipples((prev) => prev.filter((r) => r.id !== rippleId));
-    }, 900);
-
-    if (!option.tarot?.image) return;
-    const id = Date.now() + Math.random();
-    const spin = (Math.random() - 0.5) * 40; // random tilt during flight
-
-    // Step 1: render at source (no transition)
-    setFlyCards((prev) => [
-      ...prev,
-      { id, image: option.tarot!.image, fromX: screenX, fromY: screenY, spin, flying: false, targetX: 0, targetY: 0 },
-    ]);
-
-    // Step 2: 다음 페인트 이후 → deck rect 측정(이 시점엔 새 카드가 이미 추가됨) → 비행 시작
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const rect = deckRef.current?.getBoundingClientRect();
-        let targetX = (typeof window !== 'undefined' ? window.innerWidth : 800) - 50;
-        let targetY = 60;
-        if (rect) {
-          if (window.innerWidth < 768) {
-            targetX = rect.right - 30;
-            targetY = rect.top + rect.height / 2;
-          } else {
-            targetX = rect.left + rect.width / 2;
-            targetY = rect.bottom - 30;
-          }
-        }
-        setFlyCards((prev) => prev.map((c) => c.id === id ? { ...c, flying: true, targetX, targetY } : c));
-      });
-    });
-
-    // Step 3: remove after animation completes
-    setTimeout(() => {
-      setFlyCards((prev) => prev.filter((c) => c.id !== id));
     }, 900);
   }, []);
 
@@ -211,7 +152,6 @@ export function SpiritStepClient3D({ questions }: Props) {
   const handleOptionSelect = useCallback((questionId: number, value: string, screenX?: number, screenY?: number) => {
     const hasInteracted = interactedQuestions.has(questionId);
     const question = questions.find((q) => q.id === questionId);
-    const option = question?.options.find((o) => o.value === value);
 
     if (question?.multiSelect) {
       // 클로저의 answers 기준으로 "추가/제거"를 미리 판정 — setAnswers updater 내부에서는
@@ -247,32 +187,37 @@ export function SpiritStepClient3D({ questions }: Props) {
         return { ...prev, [questionId]: nextVals };
       });
 
-      if (isAdding && option && screenX !== undefined && screenY !== undefined) {
-        triggerFly(option, screenX, screenY);
+      if (isAdding && screenX !== undefined && screenY !== undefined) {
+        flashRipple(screenX, screenY);
       }
     } else {
       const currentVal = answers[questionId] as string | undefined;
       if (currentVal === value && interactedQuestions.has(questionId)) {
+        // 같은 카드 다시 = 선택 취소
         setAnswers((prev) => { const next = { ...prev }; delete next[questionId]; return next; });
       } else {
         setAnswers((prev) => ({ ...prev, [questionId]: value }));
-        if (option && screenX !== undefined && screenY !== undefined) {
-          triggerFly(option, screenX, screenY);
-        }
+        if (screenX !== undefined && screenY !== undefined) flashRipple(screenX, screenY);
+        // 단일선택 새로 고름 → 중앙 공개 카드를 잠깐 보여준 뒤 다음 스텝으로 자동 이동.
+        setTimeout(() => {
+          setCenterOpt(null);
+          setCurrentStep((s) => (s < questions.length - 1 ? s + 1 : s));
+        }, 700);
       }
     }
 
     setInteractedQuestions((prev) => new Set(prev).add(questionId));
-  }, [answers, interactedQuestions, questions, triggerFly]);
+  }, [answers, interactedQuestions, questions, flashRipple]);
 
-  const handleNext = async () => {
-    if (currentStep < questions.length - 1) {
-      setCenterOpt(null);
-      setCurrentStep((s) => s + 1);
-      return;
-    }
+  /** 우측 패널에서 스텝 이동 */
+  const goToStep = (idx: number) => {
+    setCenterOpt(null);
+    setCurrentStep(idx);
+  };
 
-    /** 📊 측정: 사용자가 "다음" 클릭한 시점 (= 체감 로딩 시작) */
+  /** 전부 선택되면 자동 실행되는 autoPlan + /subscribe 이동 (다음 버튼 대체) */
+  const runAutoPlan = useCallback(async () => {
+    /** 📊 측정: 트리거 시점 (= 체감 로딩 시작) */
     const clickedAt = performance.now();
     setIsPreparingPlan(true);
 
@@ -333,13 +278,15 @@ export function SpiritStepClient3D({ questions }: Props) {
     );
 
     router.push('/subscribe');
-  };
+  }, [answers, router]);
 
-  const handleBack = () => {
-    setCenterOpt(null);
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
-    else router.push('/');
-  };
+  /** 필수 질문이 다 채워졌는지 — 제외 스텝(알레르기·매운맛)은 선택 안 해도 됨(optional).
+   *  채워지면 "나의 구독 스케줄 확인하기" 버튼이 떠 runAutoPlan을 트리거한다. */
+  const canFinish = questions.every((qq) => {
+    if (qq.id === ALLERGY_QUESTION_ID) return true; // 제외 스텝은 선택 없이도 통과
+    const a = answers[qq.id];
+    return Array.isArray(a) ? a.length > 0 : a != null && a !== '';
+  });
 
   useEffect(() => {
     if (!isPreparingPlan) { setPlanLoadingAnim(null); return; }
@@ -362,7 +309,6 @@ export function SpiritStepClient3D({ questions }: Props) {
   const q = questions[currentStep];
   const totalSteps = questions.length;
   const stepNum = currentStep + 1;
-  const isLastStep = stepNum === totalSteps;
   const isMulti = !!q.multiSelect;
 
   const selectedValues = (() => {
@@ -372,10 +318,6 @@ export function SpiritStepClient3D({ questions }: Props) {
     if (typeof ans === 'string') return [ans];
     return [];
   })();
-
-  const hasSelection = selectedValues.length > 0;
-  const showNext = isMulti || stepNum === 1 || isLastStep;
-  const nextDisabled = showNext && !hasSelection;
 
   const progressPct = (stepNum / totalSteps) * 100;
 
@@ -393,289 +335,76 @@ export function SpiritStepClient3D({ questions }: Props) {
           initial={{ y: 64, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -30, opacity: 0 }}
-          transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         >
-          <TarotCarousel3DSurvey
+          <TarotFanDraw
             options={q.options}
             selectedValues={selectedValues}
             onSelect={(value, sx, sy) => handleOptionSelect(q.id, value, sx, sy)}
             onCenterChange={setCenterOpt}
             isMobile={isMobile}
+            isMulti={isMulti}
             isExclusion={q.id === ALLERGY_QUESTION_ID}
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* ── Deck ─────────────────────────────────────────────────── */}
-      <div
-        ref={deckRef}
-        style={isMobile ? {
-          position: 'absolute',
-          top: '20%',
-          left: 0,
-          right: 0,
-          zIndex: 30,
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'nowrap',
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 8,
-          padding: '4px 16px',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch',
-        } : {
-          position: 'fixed',
-          right: 14,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          zIndex: 30,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: 14,
-          maxHeight: 'calc(100dvh - 260px)',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch',
-          padding: '2px 2px 2px 0',
-        }}
-      >
-        {deckGroups.length === 0 ? (
-          <motion.div
+      {/* ── 우측 스텝 패널 (덱 대체): 스텝별 선택 카드+라벨, 클릭해 이동 ── */}
+      <StepPanel
+        questions={questions}
+        answers={answers}
+        currentStep={currentStep}
+        onSelectStep={goToStep}
+        isMobile={isMobile}
+      />
+
+      {/* ── 완료 버튼 — 필수 선택이 끝나면 등장. autoPlan 트리거(다음 버튼 대체) ── */}
+      <AnimatePresence>
+        {canFinish && !isPreparingPlan && (
+          <motion.button
+            key="finish-btn"
+            type="button"
+            onClick={() => { void runAutoPlan(); }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{
+              opacity: 1,
+              y: 0,
               boxShadow: [
-                '0 0 0 rgba(136,100,255,0.0)',
-                '0 0 14px rgba(136,100,255,0.45)',
-                '0 0 0 rgba(136,100,255,0.0)',
+                '0 0 0 rgba(213,254,0,0.0)',
+                '0 0 24px rgba(213,254,0,0.7)',
+                '0 0 0 rgba(213,254,0,0.0)',
               ],
-              scale: [1, 1.04, 1],
             }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ opacity: { duration: 0.3 }, y: { duration: 0.3 }, boxShadow: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             style={{
-              width: isMobile ? 45 : 44,
-              height: isMobile ? 72 : 72,
-              borderRadius: 8,
-              border: '1.5px dashed rgba(136,100,255,0.3)',
-              background: 'rgba(33,33,33,0.5)',
-              display: 'flex',
+              position: 'absolute',
+              bottom: isMobile ? '1.5rem' : '2rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 46,
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(6px)',
+              gap: 8,
+              padding: isMobile ? '13px 24px' : '15px 32px',
+              borderRadius: 999,
+              border: '1px solid #250a00',
+              background: '#dcfd4a',
+              color: '#250a00',
+              fontSize: isMobile ? 14 : 16,
+              fontWeight: 700,
+              letterSpacing: '0.01em',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              outline: 'none',
             }}
           >
-            <motion.span
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-              style={{ fontSize: 16, color: 'rgba(136,100,255,0.7)', display: 'inline-block' }}
-            >
-              ✦
-            </motion.span>
-          </motion.div>
-        ) : (
-          deckGroups.map((group) => {
-            const n = group.cards.length;
-            const CARD_W = isMobile ? 45 : 34;
-            const CARD_H = isMobile ? 72 : 56;
-            const STACK_X = 5; // px offset per card (right)
-            const STACK_Y = 3; // px offset per card (down)
-
-            if (group.isMulti && n > 1) {
-              const ROW_H = isMobile ? 104 : 88;  // pad(10) + image + gap(5) + label(~13) + buffer
-              const ROW_W = isMobile ? 60 : 60;
-              const OVERLAP = isMobile ? 8 : 10; // visible strip per stacked card
-              return (
-                <motion.div
-                  key={group.questionId}
-                  layout
-                  initial={{ opacity: 0, scale: 0.6, y: -8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 360, damping: 22 }}
-                  style={{
-                    position: 'relative',
-                    width: ROW_W + (n - 1) * OVERLAP,
-                    height: ROW_H,
-                    flexShrink: 0,
-                  }}
-                >
-                  {group.cards.map((card, cardIdx) => {
-                    const offset = n - 1 - cardIdx; // 0 = right (oldest), n-1 = left (newest)
-                    return (
-                      <motion.div
-                        key={card.value}
-                        layout
-                        initial={{ opacity: 0, scale: 0.5, rotate: -8 }}
-                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: offset * OVERLAP,
-                          width: ROW_W,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 5,
-                          background: 'rgba(28,28,28,0.92)',
-                          borderRadius: isMobile ? 8 : 10,
-                          padding: isMobile ? '5px 5px' : '5px 6px',
-                          border: '1px solid rgba(213,254,0,0.2)',
-                          boxShadow: '0 2px 14px rgba(0,0,0,0.5), 0 0 8px rgba(136,100,255,0.12)',
-                          backdropFilter: 'blur(8px)',
-                          WebkitBackdropFilter: 'blur(8px)',
-                          zIndex: cardIdx + 1,
-                        }}
-                      >
-                        <div style={{ width: CARD_W, height: CARD_H, borderRadius: isMobile ? 7 : 6, overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>
-                          {card.tarot?.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={card.tarot.image} alt={card.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
-                          ) : (
-                            <div style={{ width: '100%', height: '100%', background: 'rgba(136,100,255,0.18)' }} />
-                          )}
-                        </div>
-                        <span style={{
-                          fontSize: 10,
-                          color: 'rgba(255,255,255,0.82)',
-                          letterSpacing: '0.03em',
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '100%',
-                          textAlign: 'center',
-                        }}>
-                          {card.label}
-                        </span>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              );
-            }
-
-            // Single card (or single-select group): original style
-            return (
-              <motion.div
-                key={group.questionId}
-                layout
-                initial={{ opacity: 0, scale: 0.55, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-                style={{
-                  display: 'flex',
-                  flexDirection: isMobile ? 'row' : 'column',
-                  justifyContent: 'flex-end',
-                  gap: isMobile ? 4 : 6,
-                  flexShrink: 0,
-                }}
-              >
-                {group.cards.map((card) => (
-                  isMobile ? (
-                    <div
-                      key={card.value}
-                      style={{
-                        background: 'rgba(28,28,28,0.88)',
-                        borderRadius: 8,
-                        padding: 3,
-                        border: '1px solid rgba(213,254,0,0.2)',
-                        boxShadow: '0 2px 14px rgba(0,0,0,0.5), 0 0 8px rgba(136,100,255,0.12)',
-                        backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div style={{ width: 45, height: 72, borderRadius: 7, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>
-                        {card.tarot?.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={card.tarot.image} alt={card.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', background: 'rgba(136,100,255,0.18)' }} />
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      key={card.value}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 5,
-                        background: 'rgba(28,28,28,0.88)',
-                        borderRadius: 10,
-                        padding: '5px 6px',
-                        border: '1px solid rgba(213,254,0,0.2)',
-                        boxShadow: '0 2px 14px rgba(0,0,0,0.5), 0 0 8px rgba(136,100,255,0.12)',
-                        backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
-                        width: 60,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div style={{ width: 34, height: 56, borderRadius: 6, overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>
-                        {card.tarot?.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={card.tarot.image} alt={card.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', background: 'rgba(136,100,255,0.18)' }} />
-                        )}
-                      </div>
-                      <span style={{
-                        fontSize: 10,
-                        color: 'rgba(255,255,255,0.82)',
-                        letterSpacing: '0.03em',
-                        fontWeight: 500,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '100%',
-                        textAlign: 'center',
-                      }}>
-                        {card.label}
-                      </span>
-                    </div>
-                  )
-                ))}
-              </motion.div>
-            );
-          })
+            나의 구독 스케줄 확인하기 →
+          </motion.button>
         )}
-      </div>
-
-      {/* ── Flying cards ─────────────────────────────────────────── */}
-      {flyCards.map((fc) => (
-        <div
-          key={fc.id}
-          style={{
-            position: 'fixed',
-            left: 0,
-            top: 0,
-            width: 64,
-            height: 106,
-            pointerEvents: 'none',
-            zIndex: 200,
-            borderRadius: 8,
-            overflow: 'hidden',
-            transformOrigin: '50% 50%',
-            willChange: 'transform, opacity',
-            transform: fc.flying
-              ? `translate(${fc.targetX - 32}px, ${fc.targetY - 53}px) scale(0.22) rotate(${fc.spin}deg)`
-              : `translate(${fc.fromX - 32}px, ${fc.fromY - 53}px) scale(1) rotate(0deg)`,
-            opacity: fc.flying ? 0 : 1,
-            transition: fc.flying
-              ? 'transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.45s 0.3s ease-in'
-              : 'none',
-            boxShadow: '0 8px 32px rgba(136,100,255,0.45)',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={fc.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
-        </div>
-      ))}
+      </AnimatePresence>
 
       {/* ── Top overlay: step + question (dark, left-aligned) ──── */}
       <div style={{
@@ -692,7 +421,7 @@ export function SpiritStepClient3D({ questions }: Props) {
             initial={{ y: 32, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -22, opacity: 0 }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
             {/* Step counter + progress bar (게임 HUD) */}
             <div style={{
@@ -779,118 +508,6 @@ export function SpiritStepClient3D({ questions }: Props) {
       {/* ── Bottom gradient overlay ───────────────────────────────── */}
       {/* 하단 다크 그라데이션 + 중앙 description 패널 — 사용자 요청으로 제거됨.
           각 카드 하단에 자체 description이 보이도록 TarotCarousel3DSurvey가 표시함. */}
-
-      {/* ── Navigation ───────────────────────────────────────────── */}
-      <div style={{
-        position: 'absolute',
-        bottom: '1.75rem',
-        left: '50%', transform: 'translateX(-50%)',
-        zIndex: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        userSelect: 'none',
-      }}>
-        <motion.button
-          type="button"
-          onClick={handleBack}
-          onMouseEnter={() => setBackBtnState('hover')}
-          onMouseLeave={() => setBackBtnState('idle')}
-          onMouseDown={() => setBackBtnState('active')}
-          onMouseUp={() => setBackBtnState('hover')}
-          onFocus={() => setBackBtnState('focus')}
-          onBlur={() => setBackBtnState('idle')}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.94 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 18 }}
-          style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '11px 22px',
-            borderRadius: 6,
-            border: '1px solid #250a00',
-            cursor: 'pointer',
-            fontSize: 14, fontWeight: 500,
-            letterSpacing: '0.01em',
-            whiteSpace: 'nowrap',
-            outline: 'none',
-            textDecoration: 'none',
-            background: backBtnState === 'active'
-              ? '#dcfd4a'
-              : (backBtnState === 'hover' || backBtnState === 'focus')
-                ? '#6e5035'
-                : '#250a00',
-            color: backBtnState === 'active'
-              ? '#250a00'
-              : (backBtnState === 'hover' || backBtnState === 'focus')
-                ? '#ffffff'
-                : '#dcfd4a',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-        >
-          ← 이전
-        </motion.button>
-
-        {showNext && (
-          <motion.button
-            type="button"
-            onClick={handleNext}
-            disabled={nextDisabled}
-            onMouseEnter={() => { if (!nextDisabled) setNextBtnState('hover'); }}
-            onMouseLeave={() => setNextBtnState('idle')}
-            onMouseDown={() => { if (!nextDisabled) setNextBtnState('active'); }}
-            onMouseUp={() => { if (!nextDisabled) setNextBtnState('hover'); }}
-            onFocus={() => { if (!nextDisabled) setNextBtnState('focus'); }}
-            onBlur={() => setNextBtnState('idle')}
-            whileHover={!nextDisabled ? { scale: 1.06 } : undefined}
-            whileTap={!nextDisabled ? { scale: 0.93 } : undefined}
-            // 마지막 단계에서 활성화되면 펄스 글로우로 시선 유도
-            animate={
-              isLastStep && !nextDisabled
-                ? { boxShadow: [
-                    '0 0 0 rgba(213,254,0,0.0)',
-                    '0 0 22px rgba(213,254,0,0.85)',
-                    '0 0 0 rgba(213,254,0,0.0)',
-                  ] }
-                : { boxShadow: '0 0 0 rgba(213,254,0,0.0)' }
-            }
-            transition={
-              isLastStep && !nextDisabled
-                ? { boxShadow: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } }
-                : { type: 'spring', stiffness: 400, damping: 18 }
-            }
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              padding: '11px 22px',
-              borderRadius: 6,
-              border: '1px solid #250a00',
-              cursor: nextDisabled ? 'not-allowed' : 'pointer',
-              pointerEvents: nextDisabled ? 'none' : 'auto',
-              opacity: nextDisabled ? 0.32 : 1,
-              fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.01em',
-              whiteSpace: 'nowrap',
-              outline: 'none',
-              textDecoration: 'none',
-              background: nextDisabled
-                ? '#dcfd4a'
-                : nextBtnState === 'active'
-                  ? '#250a00'
-                  : nextBtnState === 'focus'
-                    ? '#cbed7f'
-                    : nextBtnState === 'hover'
-                      ? '#e8e2e2'
-                      : '#dcfd4a',
-              color: nextDisabled
-                ? '#250a00'
-                : nextBtnState === 'active'
-                  ? '#dcfd4a'
-                  : '#250a00',
-            }}
-          >
-            {isLastStep ? '✦ 완료' : '다음'} →
-          </motion.button>
-        )}
-      </div>
 
       {/* ── Plan loading overlay ─────────────────────────────────── */}
       <AnimatePresence>
@@ -985,6 +602,170 @@ export function SpiritStepClient3D({ questions }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * 우측 스텝 패널 — 스텝별로 어떤 카드를 골랐는지 카드+텍스트로 보여주고,
+ * 클릭하면 해당 섹션으로 이동한다. (다음/이전 버튼 대체)
+ * 데스크톱: 우측 세로 / 모바일: 상단 가로.
+ * ───────────────────────────────────────────────────────────────────── */
+function StepPanel({
+  questions,
+  answers,
+  currentStep,
+  onSelectStep,
+  isMobile,
+}: {
+  questions: SurveyQuestion[];
+  answers: SurveyAnswers;
+  currentStep: number;
+  onSelectStep: (idx: number) => void;
+  isMobile: boolean;
+}) {
+  const rows = questions.map((q, idx) => {
+    const ans = answers[q.id];
+    const vals = Array.isArray(ans) ? ans : ans != null && ans !== '' ? [ans] : [];
+    const cards = vals
+      .map((v) => q.options.find((o) => o.value === v))
+      .filter((o): o is SurveyOption => o !== undefined);
+    return {
+      key: q.id,
+      idx,
+      cards,
+      title: STEP_TITLES[q.id] ?? `STEP ${idx + 1}`,
+      answered: cards.length > 0,
+      active: idx === currentStep,
+    };
+  });
+
+  const Thumb = ({ src }: { src?: string }) => (
+    <div
+      style={{
+        width: isMobile ? 26 : 34,
+        height: isMobile ? 38 : 50,
+        borderRadius: 5,
+        overflow: 'hidden',
+        flexShrink: 0,
+        background: 'rgba(37,10,0,0.5)',
+        border: '1px solid rgba(220,253,74,0.25)',
+      }}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : null}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 0,
+          right: 0,
+          zIndex: 40,
+          display: 'flex',
+          gap: 6,
+          padding: '0 10px',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {rows.map(({ key, idx, cards, title, answered, active }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelectStep(idx)}
+            style={{
+              flex: '1 0 auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 8px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              background: active ? 'rgba(220,253,74,0.16)' : 'rgba(28,16,8,0.55)',
+              border: `1px solid ${active ? 'rgba(220,253,74,0.8)' : 'rgba(255,255,255,0.12)'}`,
+              backdropFilter: 'blur(6px)',
+            }}
+          >
+            <Thumb src={answered ? cards[0]?.tarot?.image : undefined} />
+            <div style={{ textAlign: 'left', minWidth: 0 }}>
+              <div style={{ fontSize: 9, color: 'rgba(213,254,0,0.7)', whiteSpace: 'nowrap' }}>{idx + 1} · {title}</div>
+              <div style={{ fontSize: 11, color: '#fff', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 90 }}>
+                {answered ? cards.map((c) => c.label).join(', ') : '선택 전'}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 296,
+        zIndex: 40,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: 10,
+        padding: '0 20px',
+        background: 'linear-gradient(to left, rgba(20,10,4,0.62) 35%, transparent)',
+      }}
+    >
+      <p style={{ margin: '0 0 4px', fontSize: 11, letterSpacing: '0.14em', color: 'rgba(213,254,0,0.6)', textTransform: 'uppercase' }}>
+        My Selection
+      </p>
+      {rows.map(({ key, idx, cards, title, answered, active }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onSelectStep(idx)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '10px 12px',
+            borderRadius: 10,
+            cursor: 'pointer',
+            textAlign: 'left',
+            background: active ? 'rgba(220,253,74,0.14)' : 'rgba(28,16,8,0.5)',
+            border: `1px solid ${active ? 'rgba(220,253,74,0.85)' : 'rgba(255,255,255,0.12)'}`,
+            boxShadow: active ? '0 0 18px rgba(220,253,74,0.25)' : 'none',
+            backdropFilter: 'blur(6px)',
+            transition: 'background 0.2s, border-color 0.2s',
+          }}
+        >
+          <Thumb src={answered ? cards[0]?.tarot?.image : undefined} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.04em', color: 'rgba(213,254,0,0.7)', marginBottom: 3 }}>
+              STEP {idx + 1} · {title}
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: answered ? '#fff' : 'rgba(255,255,255,0.4)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {answered ? cards.map((c) => c.label).join(', ') : '선택 전'}
+            </div>
+          </div>
+        </button>
+      ))}
     </div>
   );
 }

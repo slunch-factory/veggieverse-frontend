@@ -45,13 +45,17 @@ function buildAutoPlanBody(
   answers: SurveyAnswers,
   ingredientIds: number[] = [],
 ): AutoPlanBody {
+  // 제외 스텝(질문3)에 알레르기 + "매운맛 제외(no-spicy)"가 함께 들어온다.
+  // no-spicy는 allergens가 아니라 spicePreference로 분리해 보낸다.
+  const exclusions = (answers[3] as string[]) ?? [];
   return {
     dietaryType: (answers[1] as string) ?? "vegan",
     nutritionGoals: ((answers[2] as string[]) ?? []).map((g) => NUTRITION_GOAL_MAP[g] ?? g),
-    allergens: ((answers[3] as string[]) ?? [])
-      .filter((a) => a !== "no-allergy")
+    allergens: exclusions
+      .filter((a) => a !== "no-allergy" && a !== "no-spicy")
       .map((a) => ALLERGEN_MAP[a] ?? a),
-    spicePreference: (answers[4] as string) === "spicy-yes" ? "spicy" : "mild",
+    // 매운맛 제외 카드를 고르면 mild(매운맛 제외), 안 골랐으면 제한 없음(spicy 포함).
+    spicePreference: exclusions.includes("no-spicy") ? "mild" : "spicy",
     // 메인에서 고른 재료의 id(readSelectedIngredientIds 결과). 미선택 시 [] → matchCount 전부 0.
     ingredientIds,
   };
