@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 import { categoryLabel, isStockSoldOut, type StoreProduct } from "@/lib/api/store";
 
 /** 그리드 상단(첫 행) 카드의 대표 이미지는 LCP 대상 → priority로 preload. */
@@ -184,6 +185,24 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
             ))}
           </div>
         )}
+
+        {/* 찜(위시리스트) — 우하단 */}
+        <div className="absolute bottom-2.5 right-2.5 z-10">
+          <WishlistButton
+            size={16}
+            item={{
+              key: `store:${product.slug}`,
+              kind: "store",
+              name: product.name,
+              imageUrl: product.imageUrl,
+              href: detailHref,
+              price: product.price,
+              discountedPrice: product.discountedPrice,
+              discountRate: product.discountRate,
+              tagline: product.tagline,
+            }}
+          />
+        </div>
       </div>
 
       {/* 상품 정보 */}

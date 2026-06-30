@@ -7,6 +7,7 @@ import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { Modal } from "@/components/ui/Modal";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 
 interface MenuDetailModalProps {
   meal: DisplayMenuData | null;
@@ -152,8 +153,20 @@ function MenuDetailContent({
             style={{ fontFamily: sf }}
           >
           <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:px-9 lg:pt-5 lg:pb-10 max-lg:px-[22px] max-lg:py-7">
-            {/* 담기 / 닫기 버튼 */}
+            {/* 찜 / 담기 / 닫기 버튼 */}
             <div className="flex flex-row items-center justify-end gap-[10px] mb-3">
+              <WishlistButton
+                size={16}
+                style={{ width: 36, height: 36, border: "1px solid #111", background: "#fcfaf8" }}
+                item={{
+                  key: `subscribe:${meal.id}`,
+                  kind: "subscribe",
+                  name: meal.displayName,
+                  imageUrl: meal.image,
+                  href: "/subscribe",
+                  price: meal.price,
+                }}
+              />
               <button
                 type="button"
                 onClick={() => { onAdd(meal); onClose(); }}

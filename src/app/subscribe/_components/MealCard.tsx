@@ -5,6 +5,7 @@ import type { DisplayMenuData, ExcludeCategory } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
 import { setSlotDragImage } from "./dragGhost";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 
 interface MealCardProps {
   meal: DisplayMenuData;
@@ -66,6 +67,21 @@ export function MealCard({ meal, draggingMealId, onAdd, onDetail, onDragStart, o
         >
           <ShoppingCart size={15} strokeWidth={2} />
         </button>
+
+        {/* 찜(위시리스트) — 우하단 (담기 버튼·알레르기 라벨과 분리) */}
+        <div className="absolute right-1.5 bottom-1.5">
+          <WishlistButton
+            size={14}
+            item={{
+              key: `subscribe:${meal.id}`,
+              kind: "subscribe",
+              name: meal.displayName,
+              imageUrl: meal.image,
+              href: "/subscribe",
+              price: meal.price,
+            }}
+          />
+        </div>
 
         {allergyLabel && (
           <div className="absolute left-0 bottom-0 bg-[#1a0a05] text-white px-[5px] py-[3px] text-[10px] tracking-[0.02em] leading-snug rounded-tr-[4px] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
