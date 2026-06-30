@@ -40,13 +40,20 @@ const CDN_PATTERN = /^https?:\/\/cdn\.slunch\.com(\/.*)/;
 function resolveImageUrl(imageUrl: string, width?: number): string {
   if (!imageUrl) return "";
 
+  // 백엔드 미입력 placeholder("string" 등)·잘못된 값 방어.
+  // http(s) 절대 URL도, /로 시작하는 경로도 아니면 유효한 이미지가 아니므로 빈 값 처리.
+  // (그대로 두면 `${API_BASE}string` → 포트가 깨진 URL이 되어 next/image가
+  //  "Failed to construct 'URL'"로 터지고, .map 한 건이 스토어 전체 렌더를 다운시킨다.)
+  const isHttp = imageUrl.startsWith("http");
+  if (!isHttp && !imageUrl.startsWith("/")) return "";
+
   let resolved: string;
   if (process.env.NODE_ENV === "development") {
     const match = imageUrl.match(CDN_PATTERN);
     if (match) resolved = `${API_BASE}${match[1]}`;
-    else resolved = imageUrl.startsWith("http") ? imageUrl : `${API_BASE}${imageUrl}`;
+    else resolved = isHttp ? imageUrl : `${API_BASE}${imageUrl}`;
   } else {
-    resolved = imageUrl.startsWith("http") ? imageUrl : `${API_BASE}${imageUrl}`;
+    resolved = isHttp ? imageUrl : `${API_BASE}${imageUrl}`;
   }
 
   return supabaseRenderUrl(resolved, { width });
