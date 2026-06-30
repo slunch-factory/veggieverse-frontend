@@ -3,6 +3,8 @@
 import { type ReactNode } from "react";
 import { UserProvider } from "@/contexts/UserContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { WishlistProvider } from "@/contexts/WishlistContext";
+import { CouponProvider } from "@/contexts/CouponContext";
 import { ProfileGate } from "@/components/ProfileGate";
 import { WithdrawalPendingGate } from "@/components/WithdrawalPendingGate";
 import { QueryProvider } from "@/lib/query/QueryProvider";
@@ -13,11 +15,15 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryProvider>
       <UserProvider>
         <CartProvider>
-          <ToastProvider>
-            <ProfileGate />
-            <WithdrawalPendingGate />
-            {children}
-          </ToastProvider>
+          <WishlistProvider>
+            <CouponProvider>
+              <ToastProvider>
+                <ProfileGate />
+                <WithdrawalPendingGate />
+                {children}
+              </ToastProvider>
+            </CouponProvider>
+          </WishlistProvider>
         </CartProvider>
       </UserProvider>
     </QueryProvider>
