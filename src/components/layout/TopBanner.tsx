@@ -1,6 +1,7 @@
 "use client";
 
-// 이벤트 기능 임시 숨김 — 배너 클릭 시 /event 이동 차단(Link → span). 복구 시 Link 재도입.
+import Link from "next/link";
+
 interface TopBannerProps {
   onClose: () => void;
 }
@@ -45,10 +46,17 @@ export function TopBanner({ onClose }: TopBannerProps) {
         ))}
       </div>
 
+      {/* 배너 클릭 → 이벤트 페이지(쿠폰 받기). 닫기 버튼은 위에 둔다. */}
+      <Link
+        href="/event"
+        aria-label="이벤트 보러가기"
+        className="absolute inset-0 z-[1]"
+      />
+
       {/* Close button — sits on top with matching bg to mask scrolling text */}
       <button
         onClick={onClose}
-        className="absolute right-0 top-0 bottom-0 flex items-center justify-center text-[#DCFD4A] text-[14px] leading-none hover:opacity-80 px-3"
+        className="absolute right-0 top-0 bottom-0 z-[2] flex items-center justify-center text-[#DCFD4A] text-[14px] leading-none hover:opacity-80 px-3"
         style={{ backgroundColor: "#250a00" }}
         aria-label="배너 닫기"
       >

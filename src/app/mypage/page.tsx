@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat, Truck, MapPin } from "lucide-react";
+import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat, Truck, MapPin, Ticket } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
 import {
@@ -71,6 +71,7 @@ const QUICK_MENU = [
   { label: "배송 조회", path: "/mypage/delivery", icon: Truck },
   { label: "배송지 관리", path: "/mypage/info/addresses", icon: MapPin },
   { label: "관심상품", path: "/mypage/wishlist", icon: Heart },
+  { label: "쿠폰", path: "/mypage/coupons", icon: Ticket },
   { label: "레시피 북마크", path: "/mypage/bookmarks", icon: ShoppingBag },
   { label: "상품 리뷰", path: "/mypage/reviews", icon: MessageSquare },
   { label: "회원정보", path: "/mypage/info", icon: User },

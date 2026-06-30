@@ -1,11 +1,3 @@
-import { redirect } from "next/navigation";
-
-// 이벤트 기능 임시 숨김 — 직접 URL 접근도 홈으로 차단. 재오픈 시 아래 원본 복원.
-export default function EventPage() {
-  redirect("/");
-}
-
-/* 원본 (이벤트 재오픈 시 복원)
 import type { Metadata } from "next";
 import { EVENTS } from "./_data/events";
 import { EventClient } from "./_components/EventClient";
@@ -23,4 +15,3 @@ export const metadata: Metadata = {
 export default function EventPage() {
   return <EventClient events={EVENTS} />;
 }
-*/
