@@ -21,12 +21,31 @@ import { getCustomedPlan, type CustomPlanResponse } from "@/lib/api/subscription
 import { getUserProfile } from "@/lib/api/user";
 import {
   postPayment,
-  PAYMENT_RESULT_KEY,
   SubscriptionPaymentError,
   type SubscriptionPaymentErrorCode,
 } from "@/lib/api/payment";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { OrderSummaryCard } from "./OrderSummaryCard";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+
+const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
+
+// 구독 정기결제(빌링)용 customerKey — 빌링키는 고객 단위로 유지돼야 하므로
+// 브라우저에 저장해 재사용한다(없으면 생성). Toss가 successUrl 쿼리로 되돌려주므로
+// 콜백 단계에서는 Toss가 준 값을 그대로 사용한다.
+const BILLING_CUSTOMER_KEY_STORAGE = "veggieverse-billing-customer-key";
+function getOrCreateCustomerKey(): string {
+  const gen = () => `vv_${crypto.randomUUID().replace(/-/g, "")}`;
+  try {
+    const existing = localStorage.getItem(BILLING_CUSTOMER_KEY_STORAGE);
+    if (existing) return existing;
+    const key = gen();
+    localStorage.setItem(BILLING_CUSTOMER_KEY_STORAGE, key);
+    return key;
+  } catch {
+    return gen();
+  }
+}
 
 interface FormState {
   customerName: string;
@@ -70,9 +89,11 @@ const INITIAL_FORM: FormState = {
   agreeMarketing: false,
 };
 
+// 토스페이(간편결제) 자동결제는 토스 상점관리자에서 "토스페이 자동결제" 설정이 켜져 있어야만
+// 동작한다(미설정 시 "토스페이 자동결제 결제수단 설정이 없습니다" 오류). 현재 계정 미설정이라
+// 카드 등록만 노출한다. 설정 완료되면 { value: "toss", label: "토스페이(간편결제)" } 다시 추가.
 const PAYMENT_METHODS: { value: FormState["paymentMethod"]; label: string }[] = [
   { value: "card", label: "신용/체크카드" },
-  { value: "toss", label: "토스 페이먼츠" },
 ];
 
 const DELIVERY_NOTE_PRESETS = [
@@ -231,16 +252,41 @@ export function OrderClient() {
     };
 
     try {
-      const result = await postPayment({
+      // [1단계] PENDING 구독 주문 생성 → orderId 확보
+      const created = await postPayment({
         planId,
         subscriptionStartDate: toDateStr(startD),
         subscriptionEndDate: toDateStr(endD),
         deliveryCycle: "WEEKLY",
         deliveryAddress: addr,
       });
-      sessionStorage.setItem(PAYMENT_RESULT_KEY, JSON.stringify(result));
-      router.push("/subscribe/order/complete");
+
+      // [2단계] Toss 빌링(자동결제) 등록 — 성공 시 successUrl로 리다이렉트되며
+      // Toss가 쿼리에 authKey·customerKey를 붙여준다. 콜백 페이지에서 빌링키 발급 → charge.
+      const customerKey = getOrCreateCustomerKey();
+      const toss = await loadTossPayments(TOSS_CLIENT_KEY);
+      const payment = toss.payment({ customerKey });
+      // 신용/체크카드 등록으로 빌링키 발급(카드번호 입력 창). 토스페이 간편결제 자동결제는
+      // 토스 상점관리자 설정이 필요해 현재는 카드 등록만 사용한다.
+      await payment.requestBillingAuth({
+        method: "CARD",
+        successUrl: `${window.location.origin}/subscribe/order/billing?orderId=${encodeURIComponent(String(created.orderId))}`,
+        failUrl: `${window.location.origin}/subscribe/order/fail`,
+        customerName: form.customerName || undefined,
+        customerEmail: form.customerEmail || undefined,
+      });
+      // 정상 흐름: Toss가 successUrl 또는 failUrl로 리다이렉트한다.
     } catch (err) {
+      // Toss 결제창 사용자 취소는 에러 배너 없이 폼으로 복귀
+      if (
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        (err as { code?: string }).code === "USER_CANCEL"
+      ) {
+        setSubmitting(false);
+        return;
+      }
       const code: SubscriptionPaymentErrorCode =
         err instanceof SubscriptionPaymentError ? err.code : "Unknown";
       const message =
@@ -256,7 +302,7 @@ export function OrderClient() {
       });
       setSubmitting(false);
     }
-  }, [order, canSubmit, submitting, form, router]);
+  }, [order, canSubmit, submitting, form]);
 
   if (!order) {
     return (

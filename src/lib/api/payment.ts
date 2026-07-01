@@ -126,19 +126,15 @@ function defaultMessageFor(code: SubscriptionPaymentErrorCode): string {
 }
 
 /**
- * 구독 결제 요청. 실패 시 분류된 `SubscriptionPaymentError`를 던진다.
+ * 구독 결제 관련 POST 공통 래퍼. 실패 시 분류된 `SubscriptionPaymentError`를 던진다.
  * (과거엔 모든 실패를 null로 뭉갰으나, 호출 측이 원인별 안내를 못 하므로 변경)
  */
-export async function postPayment(req: PaymentRequest): Promise<PaymentResponse> {
+async function postSubscription<T>(path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
-    // 스테이징 배포본 기준 경로. 백엔드 최신 코드는 이 엔드포인트를
-    // `/subscription/payments`로 변경(커밋 b334b2b)했으나 스테이징에는 아직
-    // 미배포 상태(현재 staging에는 `/orders`만 존재). 스테이징이 재배포되면
-    // `/api/v1/veggieverse/subscription/payments`로 되돌릴 것.
-    res = await apiFetch("/api/v1/veggieverse/subscription/orders", {
+    res = await apiFetch(path, {
       method: "POST",
-      body: req,
+      ...(body !== undefined ? { body } : {}),
       auth: "required",
     });
   } catch (err) {
@@ -155,7 +151,7 @@ export async function postPayment(req: PaymentRequest): Promise<PaymentResponse>
     const errBody = await res.text().catch(() => "");
     if (res.status !== 401) {
       console.error(
-        "[postPayment] HTTP error:",
+        `[postSubscription ${path}] HTTP error:`,
         res.status,
         res.statusText,
         "\n응답 body:",
@@ -165,5 +161,60 @@ export async function postPayment(req: PaymentRequest): Promise<PaymentResponse>
     throw mapPaymentError(res.status, errBody);
   }
 
-  return (await res.json()) as PaymentResponse;
+  return (await res.json()) as T;
+}
+
+// ─── 구독 정기결제(빌링) 3단계 흐름 ───────────────────────────────────
+// 스테이징 백엔드가 단건 결제 → Toss 빌링(정기결제)로 전환됨. 순서:
+//   1) postPayment            : PENDING 구독 주문 생성 → orderId 확보
+//   2) Toss requestBillingAuth: 카드 등록(리다이렉트) → authKey·customerKey 획득
+//   3) issueSubscriptionBillingKey : authKey로 빌링키 발급
+//   4) chargeSubscriptionOrder     : 해당 주문 1회차 결제(charge)
+
+/**
+ * [1단계] PENDING 구독 주문 생성. 성공 시 `orderId`가 담긴 주문 정보를 반환한다.
+ * 이후 Toss 빌링 등록 → 빌링키 발급 → charge 순으로 결제를 완료한다.
+ */
+export async function postPayment(req: PaymentRequest): Promise<PaymentResponse> {
+  return postSubscription<PaymentResponse>(
+    "/api/v1/veggieverse/subscription/orders",
+    req,
+  );
+}
+
+export interface SubscriptionBillingKeyIssueRequest {
+  /** Toss 빌링 등록 성공 리다이렉트 쿼리로 전달되는 authKey */
+  authKey: string;
+  /** requestBillingAuth 시 사용한 것과 동일한 customerKey */
+  customerKey: string;
+}
+
+export interface SubscriptionBillingKeyIssueResponse {
+  billingKeyId: number;
+  cardCompany?: string;
+  cardLast4?: string;
+  status: string;
+}
+
+/**
+ * [3단계] Toss가 돌려준 authKey·customerKey로 빌링키를 발급한다.
+ */
+export async function issueSubscriptionBillingKey(
+  req: SubscriptionBillingKeyIssueRequest,
+): Promise<SubscriptionBillingKeyIssueResponse> {
+  return postSubscription<SubscriptionBillingKeyIssueResponse>(
+    "/api/v1/veggieverse/subscription/billing/issue",
+    req,
+  );
+}
+
+/**
+ * [4단계] 발급된 빌링키로 해당 주문의 1회차 결제를 진행한다. 결제 완료된 주문 정보를 반환한다.
+ */
+export async function chargeSubscriptionOrder(
+  orderId: number | string,
+): Promise<PaymentResponse> {
+  return postSubscription<PaymentResponse>(
+    `/api/v1/veggieverse/subscription/orders/${encodeURIComponent(String(orderId))}/charge`,
+  );
 }
