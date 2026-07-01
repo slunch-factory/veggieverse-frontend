@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type MenuData } from "../_data/subscription";
 import { postPlan } from "@/lib/api/subscription";
@@ -11,8 +11,8 @@ import { MenuLibrary } from "./MenuLibrary";
 import { PlannerColumn } from "./PlannerColumn";
 import { CheckoutBar } from "./CheckoutBar";
 import { MobileCheckoutBar } from "./MobileCheckoutBar";
-import { Snackbar } from "./Snackbar";
 import { AllergyWarningModal } from "./AllergyWarningModal";
+import { SubscribeTutorial } from "./SubscribeTutorial";
 
 interface SubscribeClientProps {
   menus: MenuData[];
@@ -22,6 +22,18 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
   const router = useRouter();
   const p = useSubscribePlanner(menus);
   const [showAllergyModal, setShowAllergyModal] = useState(false);
+
+  // 선택된 슬롯의 사람용 라벨(예: "3일차 점심") — 메뉴 영역 안내 배너에 사용
+  const selectedSlotLabel = useMemo(() => {
+    if (!p.selectedSlotId) return null;
+    for (const day of p.allDays) {
+      const slot = day.slots.find((s) => s.slotId === p.selectedSlotId);
+      if (slot) {
+        return `${day.dayIndex}일차 ${slot.mealTime}`;
+      }
+    }
+    return null;
+  }, [p.selectedSlotId, p.allDays]);
 
   // 실제 주문 제출 (팝업 확인 후 또는 수정 없을 때 바로 호출)
   const proceedToOrder = useCallback(async () => {
@@ -76,6 +88,8 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
       spicyPreference={p.spicyPreference}
       filteredMeals={p.filteredMeals}
       draggingMealId={p.draggingMealId}
+      selectedSlotLabel={selectedSlotLabel}
+      onCancelSelectedSlot={p.clearSelectedSlot}
       onDietTypeChange={p.setDietType}
       onNutritionGoalToggle={p.toggleNutritionGoal}
       onAllergyFilterToggle={p.toggleAllergyFilter}
@@ -89,23 +103,27 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
 
   const plannerTopColumn = (
     <PlannerColumn
-      startDate={p.startDate}
-      earliestStart={p.earliestStart}
       allDays={p.allDays}
       mealPlan={p.mealPlan}
       selectedSlotId={p.selectedSlotId}
-      selectedPlan={null}
-      selectedPlanType={null}
+      mealsPerDay={p.mealsPerDay}
       filledSlots={p.filledSlots}
       draggingMealId={p.draggingMealId}
+      draggingSlotId={p.draggingSlotId}
       dragOverDayKey={p.dragOverDayKey}
       listScrollRef={p.listScrollRef}
-      onStartDateChange={p.setStartDate}
+      onMealsPerDayChange={p.setMealsPerDay}
       onSelectSlot={p.selectSlot}
       onRemoveMeal={p.removeMeal}
       onDragOverDay={p.setDragOverDay}
       onDropMeal={p.dropMealOnDay}
+      onDragStartSlot={p.startDragFromSlot}
+      onDragEndMeal={p.endDragMeal}
+      onReorderSlot={p.reorderSlot}
       onResetMealPlan={p.resetMealPlan}
+      onFillRandom={p.fillEmptyRandom}
+      onReshuffle={p.reshuffleAll}
+      onCopyDay={p.copyDayToAll}
       onSetMeal={p.setMealToSlot}
     />
   );
@@ -114,6 +132,7 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
     <CheckoutBar
       totalPrice={p.totalPrice}
       filledSlots={p.filledSlots}
+      totalSlots={p.totalSlots}
       onSubmit={handleOrderSubmit}
     />
   );
@@ -128,17 +147,18 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
           <MobileCheckoutBar
             totalPrice={p.totalPrice}
             filledSlots={p.filledSlots}
+            totalSlots={p.totalSlots}
             onSubmit={handleOrderSubmit}
             onOpenMenu={onOpenMenu}
           />
         )}
       />
-      <Snackbar message={p.snackbarMsg} onClose={p.clearSnackbar} />
       <AllergyWarningModal
         open={showAllergyModal}
         onClose={() => setShowAllergyModal(false)}
         onConfirm={proceedToOrder}
       />
+      <SubscribeTutorial />
     </>
   );
 }

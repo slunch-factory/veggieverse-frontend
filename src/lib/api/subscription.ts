@@ -1,5 +1,6 @@
 import type { ExcludeCategory, MenuCategory, MenuData, MenuNutrition } from "@/app/subscribe/_data/subscription";
 import { apiFetch } from "@/lib/api/client";
+import { type OrderStatusCode, isAwaitingPayment } from "@/lib/api/order-status";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH;
 
@@ -156,6 +157,8 @@ export interface OrderHistoryItem {
   deliveryCycle: string;
   orderDate: string;
   finalAmount: number;
+  /** 결제 상태 (PENDING/PAID/...). 백엔드가 내려주며 결제대기/완료 구분에 사용. */
+  status: OrderStatusCode;
 }
 
 export interface OrderHistoryResponse {
@@ -184,6 +187,9 @@ export async function getOrderHistory(
       return null;
     }
     const data: OrderHistoryResponse = await res.json();
+    // PENDING(결제대기)은 결제 미완료 주문 — 1차 런칭에서는 노출하지 않는다.
+    // 재결제 플로우 없이 DB TTL로 정리되며, 결제완료된 주문만 마이페이지에 표시한다.
+    data.content = data.content.filter((item) => !isAwaitingPayment(item.status));
     console.log(
       "%c[getOrderHistory] ✅ 주문 내역 조회 성공",
       "color: #4A7F52; font-weight: bold;",
@@ -226,6 +232,8 @@ export interface OrderDetailResponse {
   };
   finalAmount: number;
   products: OrderDetailProduct[];
+  /** 결제 상태 (PENDING/PAID/...). */
+  status: OrderStatusCode;
 }
 
 export async function getOrderDetail(
@@ -255,12 +263,12 @@ export async function getOrderDetail(
 }
 
 export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/plan`;
+  // 브라우저 호출 — 프록시(apiFetch) 경유. 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.
   try {
-    const res = await fetch(url, {
+    const res = await apiFetch("/api/v1/veggieverse/subscription/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ items }),
+      body: { items },
+      auth: "auto",
     });
     if (!res.ok) {
       console.error("[postPlan] HTTP error:", res.status, res.statusText);
@@ -274,11 +282,9 @@ export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | 
 }
 
 export async function getCustomedPlan(planId: string): Promise<CustomPlanResponse | null> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/customedPlan?planId=${encodeURIComponent(planId)}`;
+  const path = `/api/v1/veggieverse/subscription/customedPlan?planId=${encodeURIComponent(planId)}`;
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-    });
+    const res = await apiFetch(path, { auth: "auto" });
     if (!res.ok) {
       console.error("[getCustomedPlan] HTTP error:", res.status, res.statusText);
       return null;
@@ -312,7 +318,11 @@ export async function getMenus(): Promise<MenuData[]> {
     }
     const data: ProductItem[] = await res.json();
     const list = Array.isArray(data) ? data : [];
-    return list.map(mapToMenuData);
+    const menus = list.map(mapToMenuData);
+    // admin 상세 내용(태그라인/설명/소구포인트/영양/원재료/조리팁/식품정보)을 이름으로 병합.
+    // 동적 import로 admin JSON을 서버 청크에만 두어 클라이언트 번들을 가볍게 유지.
+    const { enrichMenusWithDetail } = await import("@/app/subscribe/_data/productDetails");
+    return enrichMenusWithDetail(menus);
   } catch (err) {
     console.error("[getMenus] fetch failed:", err);
     return [];
@@ -320,10 +330,10 @@ export async function getMenus(): Promise<MenuData[]> {
 }
 
 export async function getSlotRecommend(): Promise<MenuData[]> {
-  const url = `${API_BASE}/api/v1/veggieverse/subscription/products`;
+  // 브라우저 호출(DayRow) — 프록시 경유.
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
+    const res = await apiFetch("/api/v1/veggieverse/subscription/products", {
+      auth: "auto",
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -332,6 +342,39 @@ export async function getSlotRecommend(): Promise<MenuData[]> {
     const shuffled = [...list].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 3).map(mapToMenuData);
   } catch {
+    return [];
+  }
+}
+
+/** 구독 재료 마스터(공개) — 메인 떠다니는 재료 이미지 등에 사용. */
+export interface SubscriptionIngredient {
+  id: number;
+  code: string;
+  nameKo: string;
+  nameEn: string;
+  imageUrl: string;
+}
+
+/**
+ * 선택 가능한 활성 구독 재료 목록 조회 (공개, code 오름차순).
+ * 공개 엔드포인트이므로 auth "none"으로 프록시 경유(브라우저 mixed-content 회피).
+ * 실패 시 빈 배열 — 소비자(메인)는 로컬 폴백을 갖는다.
+ */
+export async function getSubscriptionIngredients(): Promise<SubscriptionIngredient[]> {
+  try {
+    const res = await apiFetch("/api/v1/veggieverse/subscription/ingredients", {
+      auth: "none",
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return (data as SubscriptionIngredient[]).map((i) => ({
+      ...i,
+      imageUrl: resolveImageUrl(i.imageUrl),
+    }));
+  } catch (err) {
+    console.error("[getSubscriptionIngredients] fetch failed:", err);
     return [];
   }
 }

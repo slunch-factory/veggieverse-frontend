@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
 export interface FilterState {
   diet: string;
@@ -29,14 +30,6 @@ export function FilterDrawer({
   useEffect(() => {
     if (open) setLocal(filters);
   }, [open, filters]);
-
-  useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  if (!open) return null;
 
   const toggleArray = (arr: string[], item: string) =>
     arr.includes(item) ? arr.filter((v) => v !== item) : [...arr, item];
@@ -81,50 +74,53 @@ export function FilterDrawer({
   );
 
   return (
-    <div className="fixed inset-0 z-[100]">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div
-        className="absolute right-0 bottom-0 flex w-[320px] max-w-full flex-col bg-white border-l border-black animate-slideInRight"
-        style={{ top: "calc(var(--header-area-h, var(--header-h)) + 48px)" }}
-      >
-        <div className="flex items-center justify-between border-b border-black px-5 py-4">
-          <span className="text-[16px]">Filter</span>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center">
-            <X size={20} strokeWidth={1} />
-          </button>
-        </div>
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      position="drawer-right"
+      labelledBy="filter-drawer-title"
+      overlayClassName="!bg-transparent"
+      zIndex={100}
+      className="flex w-[320px] max-w-full flex-col bg-white border-l border-black"
+      style={{ marginTop: "calc(var(--header-area-h, var(--header-h)) + 48px)" }}
+    >
+      <div className="flex items-center justify-between border-b border-black px-5 py-4">
+        <span id="filter-drawer-title" className="text-[16px]">Filter</span>
+        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center">
+          <X size={20} strokeWidth={1} />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="border-b border-black py-5 px-5">
-            {renderRadio(DIET_OPTIONS, local.diet, (v) => setLocal((p) => ({ ...p, diet: v })))}
-          </div>
-          <div className="border-b border-black py-5 px-5">
-            {renderCheckbox(RESTRICTION_OPTIONS, local.restrictions, (v) =>
-              setLocal((p) => ({ ...p, restrictions: toggleArray(p.restrictions, v) }))
-            )}
-          </div>
-          <div className="py-5 px-5">
-            {renderCheckbox(FOOD_TYPE_OPTIONS, local.foodTypes, (v) =>
-              setLocal((p) => ({ ...p, foodTypes: toggleArray(p.foodTypes, v) }))
-            )}
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="border-b border-black py-5 px-5">
+          {renderRadio(DIET_OPTIONS, local.diet, (v) => setLocal((p) => ({ ...p, diet: v })))}
         </div>
-
-        <div className="flex gap-3 border-t border-black px-5 py-4">
-          <button
-            className="flex-1 border border-black py-3 text-[14px] cursor-pointer"
-            onClick={() => setLocal({ diet: "전체", restrictions: [], foodTypes: [] })}
-          >
-            초기화
-          </button>
-          <button
-            className="flex-1 bg-black text-white py-3 text-[14px] cursor-pointer border-none"
-            onClick={() => { onApply(local); onClose(); }}
-          >
-            적용하기
-          </button>
+        <div className="border-b border-black py-5 px-5">
+          {renderCheckbox(RESTRICTION_OPTIONS, local.restrictions, (v) =>
+            setLocal((p) => ({ ...p, restrictions: toggleArray(p.restrictions, v) }))
+          )}
+        </div>
+        <div className="py-5 px-5">
+          {renderCheckbox(FOOD_TYPE_OPTIONS, local.foodTypes, (v) =>
+            setLocal((p) => ({ ...p, foodTypes: toggleArray(p.foodTypes, v) }))
+          )}
         </div>
       </div>
-    </div>
+
+      <div className="flex gap-3 border-t border-black px-5 py-4">
+        <button
+          className="flex-1 border border-black py-3 text-[14px] cursor-pointer"
+          onClick={() => setLocal({ diet: "전체", restrictions: [], foodTypes: [] })}
+        >
+          초기화
+        </button>
+        <button
+          className="flex-1 bg-black text-white py-3 text-[14px] cursor-pointer border-none"
+          onClick={() => { onApply(local); onClose(); }}
+        >
+          적용하기
+        </button>
+      </div>
+    </Modal>
   );
 }

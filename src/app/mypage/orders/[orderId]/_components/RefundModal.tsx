@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, AlertCircle } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { refundStoreOrder, StorePaymentError } from "@/lib/api/store-payment";
 import type { StoreOrderDetailResponse } from "@/lib/api/store";
 
@@ -45,18 +46,6 @@ export function RefundModal({ orderDbId, amount, isOpen, onClose, onRefunded }: 
     }
   }, [isOpen]);
 
-  // ESC로 닫기
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !submitting) onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, submitting, onClose]);
-
-  if (!isOpen) return null;
-
   const trimmed = reason.trim();
   const canSubmit = trimmed.length >= MIN_REASON && trimmed.length <= MAX_REASON && !submitting;
 
@@ -75,26 +64,22 @@ export function RefundModal({ orderDbId, amount, isOpen, onClose, onRefunded }: 
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(0, 0, 0, 0.5)" }}
-      onClick={() => {
-        if (!submitting) onClose();
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      labelledBy="refund-modal-title"
+      position="center"
+      closeOnEsc={!submitting}
+      closeOnBackdropClick={!submitting}
+      zIndex={50}
+      className="w-full max-w-[440px] flex flex-col"
+      style={{
+        background: "var(--bg-white)",
+        border: "1px solid var(--ink)",
+        borderRadius: "var(--r-btn)",
+        maxHeight: "calc(100vh - 32px)",
       }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="refund-modal-title"
     >
-      <div
-        className="w-full max-w-[440px] flex flex-col"
-        style={{
-          background: "var(--bg-white)",
-          border: "1px solid var(--ink)",
-          borderRadius: "var(--r-btn)",
-          maxHeight: "calc(100vh - 32px)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
         {/* 헤더 */}
         <header
           className="flex items-center justify-between px-5 py-4"
@@ -210,7 +195,6 @@ export function RefundModal({ orderDbId, amount, isOpen, onClose, onRefunded }: 
             {submitting ? "처리 중..." : "환불 요청"}
           </button>
         </footer>
-      </div>
-    </div>
+    </Modal>
   );
 }

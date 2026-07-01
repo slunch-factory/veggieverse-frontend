@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Article } from "../_data/articles";
 
@@ -42,12 +43,15 @@ export function ArticleGrid({ articles }: { articles: Article[] }) {
           {filtered.map((article) => (
             <Link key={article.id} href={`/newsletter/${article.id}`} className="group">
               <div className="relative w-full overflow-hidden aspect-[4/3] bg-[#E5E5E0] rounded-[4px] mb-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={article.thumbnail}
                   alt={article.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  loading="lazy"
+                  fill
+                  sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.opacity = "0";
+                  }}
                 />
               </div>
               <p className="text-[11px] tracking-[0.05em] text-[#6B6B6B] mb-2 uppercase">

@@ -399,23 +399,54 @@ html.mm-open .scroll-lock-compensate {
   animation: slideInUp 0.3s ease-out;
 }
 
-/* 스켈레톤 로딩용 shimmer — 마이페이지 등 비동기 카드 로딩에 사용 */
+/* 스켈레톤 로딩용 shimmer — 마이페이지 등 비동기 카드 로딩에 사용.
+   GPU 합성 가능한 transform 애니메이션(translateX)으로 구현해 메인스레드 리페인트를 피한다.
+   (background-position 애니메이션은 비합성이라 Speed Index를 악화시킴) */
 @keyframes mp-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  100% { transform: translateX(100%); }
 }
 .mp-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-off);
+}
+.mp-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
   background-image: linear-gradient(
     90deg,
-    var(--bg-off) 0%,
+    transparent 0%,
     var(--bg-pale) 50%,
-    var(--bg-off) 100%
+    transparent 100%
   );
-  background-size: 200% 100%;
   animation: mp-shimmer 1.4s ease-in-out infinite;
 }
+/* ============================================
+   동작 줄이기(prefers-reduced-motion) — 전역 전략
+   OS "동작 줄이기" ON이면 CSS 애니메이션/전환을 사실상 즉시 종료하고,
+   부드러운 스크롤·무한 반복 모션을 끈다. (JS 모션은 useReducedMotion 훅으로 별도 처리)
+   ============================================ */
 @media (prefers-reduced-motion: reduce) {
-  .mp-skeleton { animation: none; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+  /* 무한 반복 장식 모션은 완전히 정지 */
+  .mp-skeleton::after,
+  .animate-fadeIn,
+  .animate-slideInRight,
+  .animate-slideInUp {
+    animation: none !important;
+  }
 }
 
 /* ============================================

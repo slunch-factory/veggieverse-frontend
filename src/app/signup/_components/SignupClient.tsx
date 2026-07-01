@@ -11,6 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import {
   AtSign,
   Check,
@@ -22,12 +23,17 @@ import {
   User,
 } from "lucide-react";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
-import { AlreadyRegisteredModal } from "@/components/modals/AlreadyRegisteredModal";
+import {
+  AlreadyRegisteredModal,
+  type AlreadyRegisteredModalMode,
+} from "@/components/modals/AlreadyRegisteredModal";
 import { apiFetch } from "@/lib/api/client";
 import { checkEmailExists } from "@/lib/api/user";
 import { useUser } from "@/contexts/UserContext";
 import {
   linkPasswordAction,
+  resendSignupConfirmationAction,
+  signInAction,
   signInWithKakaoAction,
   signUpAction,
 } from "@/app/auth/actions";
@@ -105,10 +111,13 @@ function stripPhoneDashes(v: string) {
 
 export function SignupClient() {
   const router = useRouter();
+  const toast = useToast();
   const searchParams = useSearchParams();
   const isLinkMode = searchParams.get("link") === "1";
   /** case1-1-II: 자사몰 화면에서 카카오 버튼 클릭 → 자사몰 동일 이메일 발견 → 모달로 선택권 제공 진입. */
   const isExistingEmailPrompt = searchParams.get("prompt") === "existing-email";
+  /** 이메일 인증 완료 후 /auth/confirm이 ?confirmed=1로 돌려보낸 진입 — "인증 완료" 화면 표시. */
+  const isEmailConfirmed = searchParams.get("confirmed") === "1";
   /** URL의 ?step=2 파라미터로 현재 단계를 표현. 새로고침/뒤로가기 시에도 단계 유지. */
   const urlStep: 1 | 2 = searchParams.get("step") === "2" ? 2 : 1;
   const { isLoggedIn, isLoadingSession, user: currentUser, refetchProfile } = useUser();
@@ -128,30 +137,79 @@ export function SignupClient() {
   useEffect(() => {
     setStep(urlStep);
   }, [urlStep]);
-  const [authToken, setAuthToken] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  /** 이메일 인증 메일 발송 후 "메일을 확인하세요" 안내 화면 표시 여부. */
+  const [awaitingEmailConfirm, setAwaitingEmailConfirm] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  /** "인증 완료" 화면에서 버튼을 눌러 세부정보(step2)로 넘어갔는지. */
+  const [confirmAcknowledged, setConfirmAcknowledged] = useState(false);
+  /** 인증 완료 직후 + 아직 버튼을 누르기 전 — 완료 화면을 띄우고 step2 자동 점프를 막는다. */
+  const showConfirmDone = isEmailConfirmed && !confirmAcknowledged;
   const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [step1Error, setStep1Error] = useState<string | null>(null);
+  const [step2Error, setStep2Error] = useState<string | null>(null);
   const [existingEmailModalOpen, setExistingEmailModalOpen] = useState(false);
+  /** 중복 이메일 모달 분기용 — 기존 계정의 가입 수단(소문자: "email" | "kakao"). */
+  const [existingProviders, setExistingProviders] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Kakao 플로우: 카카오 세션이 있으면 1단계(이메일/비번) 패스하고 2단계(프로필)부터 시작.
-  // 단, isLinkMode(자사몰 동일 이메일 연동) / isExistingEmailPrompt(case1-1-II 모달) 케이스는 점프 금지.
+  // 단, isLinkMode(자사몰 동일 이메일 연동) / isExistingEmailPrompt(case1-1-II 모달) /
+  //     showConfirmDone(이메일 인증 완료 화면 표시 중) 케이스는 자동 점프 금지.
   useEffect(() => {
     if (
       !isLoadingSession &&
       isLoggedIn &&
       step === 1 &&
       !isLinkMode &&
-      !isExistingEmailPrompt
+      !isExistingEmailPrompt &&
+      !showConfirmDone
     ) {
       goToStep(2);
     }
-  }, [isLoadingSession, isLoggedIn, step, isLinkMode, isExistingEmailPrompt, goToStep]);
+  }, [
+    isLoadingSession,
+    isLoggedIn,
+    step,
+    isLinkMode,
+    isExistingEmailPrompt,
+    showConfirmDone,
+    goToStep,
+  ]);
+
+  // "메일 보냈어요" 대기 화면에서 다른 탭(메일 링크)의 인증 완료를 폴링으로 감지한다.
+  // 클라이언트 getSession()은 로드 후 외부에서 바뀐 쿠키를 다시 못 읽으므로, 서버 라우트를
+  // 폴링한다(브라우저가 공유 쿠키를 매 요청에 보내 서버가 최신 세션을 읽는다). 인증이 감지되면
+  // 풀 리로드로 step2에 진입해 클라이언트도 새 쿠키를 읽게 한다(step2의 인증 호출 정상화).
+  // (다른 기기에서 인증한 경우엔 쿠키가 공유되지 않으므로 그 기기에서 이어서 진행한다.)
+  useEffect(() => {
+    if (!awaitingEmailConfirm) return;
+    const targetEmail = form.email.trim().toLowerCase();
+    let stopped = false;
+    const check = async () => {
+      try {
+        const res = await fetch("/auth/session-check", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { email?: string | null };
+        if (!stopped && data.email && data.email.toLowerCase() === targetEmail) {
+          stopped = true;
+          clearInterval(timer);
+          window.location.href = "/signup?step=2";
+        }
+      } catch {
+        /* 일시 네트워크 오류 — 다음 틱에 재시도 */
+      }
+    };
+    const timer = setInterval(check, 3000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [awaitingEmailConfirm, form.email]);
 
   // case2-1-II "카카오로 로그인" 의도 flag — 진입 URL과 무관하게 메인 페이지로 직행.
   // callback이 어떤 분기로 보내든(/signup?prompt=existing-email, /signup 등) SignupClient
@@ -237,17 +295,17 @@ export function SignupClient() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("이미지 파일만 업로드할 수 있습니다.");
+      toast.error("이미지 파일만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      alert("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
+      toast.error("JPG, PNG, WebP 형식만 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("파일 크기는 5MB 이하로 업로드해 주세요.");
+      toast.error("파일 크기는 5MB 이하로 업로드해 주세요.");
       e.target.value = "";
       return;
     }
@@ -345,29 +403,56 @@ export function SignupClient() {
     setSubmitting(true);
     setStep1Error(null);
 
-    // 0) 이메일 가입 여부 사전 확인 — 카카오로 이미 가입된 이메일이면 안내 모달로 분기
+    // 0) 이메일 가입 여부 사전 확인 — 카카오로 이미 가입된 이메일이면 안내 모달로 분기.
+    //    이건 더 나은 안내를 위한 "편의용" 사전 검사일 뿐이다. rate-limit(429, 이메일당 시간당
+    //    5회/IP당 분당 30회) 시 가입 전체를 막지 않고 건너뛴다 — 기존 계정 처리는 아래
+    //    signIn-first/signUp 흐름이 담당하므로 동작에 문제 없다.
     const emailCheck = await checkEmailExists(form.email.trim());
-    if (emailCheck.rateLimited) {
+    if (!emailCheck.rateLimited && emailCheck.exists) {
       setSubmitting(false);
-      setStep1Error("요청이 많아 잠시 후 다시 시도해 주세요.");
-      return;
-    }
-    if (emailCheck.exists) {
-      setSubmitting(false);
+      setExistingProviders(emailCheck.providers);
       setExistingEmailModalOpen(true);
       return;
     }
 
-    // 1) Supabase 계정 생성 (Server Action — 쿠키에 세션 자동 저장)
+    // 1) signUp 전에 먼저 로그인을 시도 — 이미 Supabase에 있는 "가입 미완료" 계정 처리.
+    //    이메일 인증을 마쳤으나 step2 전에 이탈(예: '홈으로'로 signOut)한 뒤 같은 이메일로 재가입
+    //    하는 경우, 인증 메일을 또 보내지 않고 바로 로그인시켜 step2(세부정보)로 이어간다.
+    const signInResult = await signInAction({
+      email: form.email.trim(),
+      password: form.password,
+    });
+    if (signInResult.ok) {
+      if (signInResult.session) {
+        const supabase = getSupabaseBrowserClient();
+        await supabase.auth.setSession(signInResult.session);
+      }
+      setSubmitting(false);
+      goToStep(2);
+      return;
+    }
+    if (signInResult.emailNotConfirmed) {
+      // 가입은 됐으나 미인증 계정 — 인증 메일 재발송 후 대기 화면으로.
+      await resendSignupConfirmationAction(form.email.trim());
+      setSubmitting(false);
+      setResendState("idle");
+      setAwaitingEmailConfirm(true);
+      return;
+    }
+
+    // 2) 로그인 실패(계정 미존재 또는 비번 불일치) → signUp으로 신규 가입/비번 불일치를 판별.
+    //    신규면 인증 메일 발송, 이미 있으면(비번 불일치) 이메일 로그인/비번찾기로 안내.
     const signUpResult = await signUpAction({
       email: form.email.trim(),
       password: form.password,
     });
 
+    setSubmitting(false);
+
     if (!signUpResult.ok) {
-      setSubmitting(false);
-      // email-check를 우회한 케이스(백엔드/Supabase 동기화 지연 등) — 동일 모달로 안내
       if (signUpResult.alreadyRegistered) {
+        // 존재하지만 방금 로그인 실패 = 비번 불일치 → 이메일 로그인/비번찾기로 안내.
+        setExistingProviders(["email"]);
         setExistingEmailModalOpen(true);
         return;
       }
@@ -376,31 +461,22 @@ export function SignupClient() {
       return;
     }
 
-    // 2) 백엔드 JWT 발급
-    const res = await apiFetch("/api/v1/veggieverse/auth/token", {
-      method: "POST",
-      body: { email: form.email.trim(), password: form.password },
-      auth: "none",
-    });
+    // 신규 가입 → 인증 메일 발송 완료 → "메일을 확인하세요" 안내 화면으로 전환.
+    setAwaitingEmailConfirm(true);
+  };
 
-    setSubmitting(false);
-
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      console.error("[signup/token]", res.status, errBody);
-      setStep1Error("계정 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+  // "메일 확인" 화면의 인증 메일 재발송.
+  const handleResendConfirmation = async () => {
+    if (resendState === "sending") return;
+    setResendState("sending");
+    const result = await resendSignupConfirmationAction(form.email.trim());
+    if (!result.ok) {
+      console.warn("[signup/resend]", result.error);
+      setResendState("idle");
+      setStep1Error(result.error);
       return;
     }
-
-    const data = await res.json().catch(() => null) as Record<string, unknown> | null;
-    const token =
-      typeof data?.accessToken === "string"
-        ? data.accessToken
-        : typeof data?.token === "string"
-          ? data.token
-          : null;
-    setAuthToken(token);
-    goToStep(2);
+    setResendState("sent");
   };
 
   // ── 2단계: 프로필 정보 → /api/v1/veggieverse/users/profile ────────────
@@ -408,6 +484,7 @@ export function SignupClient() {
     e.preventDefault();
     if (!canStep2 || submitting) return;
     setSubmitting(true);
+    setStep2Error(null);
 
     const fd = new FormData();
     fd.append("name", form.name.trim());
@@ -421,38 +498,17 @@ export function SignupClient() {
     fd.append("address.detail", form.addressDetail);
     if (profileImageFile) fd.append("image", profileImageFile);
 
-    // 자사몰 가입 흐름 (authToken 있음): Supabase 메타데이터에 이름 추가 후
-    // name 클레임이 포함된 백엔드 JWT 재발급.
-    // 카카오 가입 흐름 (authToken 없음): Supabase 메타데이터 갱신 + refreshSession 으로
-    // 쿠키 access_token도 갱신 → proxy가 갱신된 토큰을 백엔드로 forward.
-    let effectiveToken = authToken;
+    // 이메일/카카오 가입 모두 이 시점엔 Supabase 세션(쿠키)만 보유한다.
+    // 메타데이터에 이름을 추가하고 refreshSession으로 갱신된 user_metadata가
+    // 새 access_token에 반영되게 한 뒤, proxy가 그 토큰을 백엔드로 forward한다.
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.updateUser({ data: { full_name: form.name.trim() } });
-    if (authToken) {
-      const tokenRes = await apiFetch("/api/v1/veggieverse/auth/token", {
-        method: "POST",
-        body: { email: form.email.trim(), password: form.password },
-        auth: "none",
-      });
-      if (tokenRes.ok) {
-        const tokenData = await tokenRes.json().catch(() => null) as Record<string, unknown> | null;
-        effectiveToken =
-          typeof tokenData?.accessToken === "string"
-            ? tokenData.accessToken
-            : typeof tokenData?.token === "string"
-              ? tokenData.token
-              : authToken;
-      }
-    } else {
-      // 카카오 가입: 갱신된 user_metadata가 새 access_token에 반영되도록 강제 refresh.
-      await supabase.auth.refreshSession();
-    }
+    await supabase.auth.refreshSession();
 
     const res = await apiFetch("/api/v1/veggieverse/users/profile", {
       method: "POST",
       body: fd,
-      auth: effectiveToken ? "none" : "required",
-      ...(effectiveToken ? { headers: { Authorization: `Bearer ${effectiveToken}` } } : {}),
+      auth: "required",
     });
 
     setSubmitting(false);
@@ -460,6 +516,12 @@ export function SignupClient() {
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       console.error("[signup/profile]", res.status, errBody);
+      // 인증 만료(401)와 그 외 오류를 구분해 안내 — 무반응으로 멈추지 않게 한다.
+      setStep2Error(
+        res.status === 401
+          ? "로그인이 만료되었어요. 다시 로그인 후 진행해 주세요."
+          : "프로필 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
+      );
       return;
     }
 
@@ -569,6 +631,105 @@ export function SignupClient() {
     );
   }
 
+  // 이메일 인증 완료 화면 — 메일 링크를 누른 탭에서 표시(/signup?confirmed=1).
+  // 원래 가입 탭은 세션 폴링으로 자동 step2 진입하므로, 여기선 "원래 탭으로 돌아가라"고 안내한다.
+  // 원래 탭을 닫았거나 다른 기기에서 인증한 경우를 위해 "이 창에서 계속하기" 버튼도 제공한다.
+  if (showConfirmDone) {
+    return (
+      <div
+        className="min-h-[80vh] flex items-center justify-center px-4 py-12"
+        style={{ background: "var(--bg-pale)" }}
+      >
+        <div className="w-full max-w-[400px] bg-white border border-black rounded-[16px] px-[28px] py-[40px] text-center animate-fadeIn">
+          <div
+            className="mx-auto mb-[20px] flex items-center justify-center"
+            style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--ink)" }}
+            aria-hidden
+          >
+            <Check size={32} strokeWidth={2.5} color="var(--bg-white)" />
+          </div>
+          <h1 className="t-h2 mb-[8px]" style={{ color: "var(--ink)" }}>
+            이메일 인증이 완료됐어요
+          </h1>
+          <p className="t-body mb-[8px] leading-[1.6]" style={{ color: "var(--ink-light)" }}>
+            처음 가입을 시작한 화면으로 돌아가면
+            <br />
+            자동으로 다음 단계가 이어집니다.
+          </p>
+          <p className="t-caption mb-[28px] leading-[1.6]" style={{ color: "var(--ink-light)" }}>
+            그 화면을 닫았다면 아래 버튼으로 계속 진행해 주세요.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmAcknowledged(true);
+              goToStep(2);
+            }}
+            className="btn btn-ghost btn-lg w-full"
+            style={{ borderColor: "var(--ink)" }}
+          >
+            이 창에서 계속하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 이메일 인증 대기 화면 — signUp 직후, 사용자가 메일 링크를 누르기 전까지 표시.
+  // 링크를 누르면 /auth/confirm → /signup?confirmed=1 로 돌아와 "인증 완료" 화면을 거친다.
+  if (awaitingEmailConfirm) {
+    return (
+      <div
+        className="min-h-[80vh] flex items-center justify-center px-4 py-12"
+        style={{ background: "var(--bg-pale)" }}
+      >
+        <div className="w-full max-w-[400px] bg-white border border-black rounded-[16px] px-[28px] py-[40px] text-center animate-fadeIn">
+          <div
+            className="mx-auto mb-[20px] flex items-center justify-center"
+            style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--ink)" }}
+            aria-hidden
+          >
+            <AtSign size={30} strokeWidth={2.5} color="var(--bg-white)" />
+          </div>
+          <h1 className="t-h2 mb-[8px]" style={{ color: "var(--ink)" }}>
+            인증 메일을 보냈어요
+          </h1>
+          <p className="t-body mb-[8px] leading-[1.6]" style={{ color: "var(--ink-light)" }}>
+            <strong style={{ color: "var(--ink)" }}>{form.email.trim()}</strong>
+            <br />
+            위 주소로 보낸 메일의 링크를 눌러
+            <br />
+            인증을 완료해 주세요.
+          </p>
+          <p className="t-caption mb-[4px] leading-[1.6]" style={{ color: "var(--ink-light)" }}>
+            인증이 끝나면 <strong style={{ color: "var(--ink)" }}>이 화면에서 자동으로</strong> 다음 단계로 넘어갑니다.
+          </p>
+          <p className="t-caption mb-[28px] leading-[1.6]" style={{ color: "var(--ink-light)" }}>
+            메일이 보이지 않으면 스팸함도 확인해 주세요.
+          </p>
+          <div className="flex flex-col gap-[8px]">
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resendState === "sending"}
+              className="btn btn-dark btn-lg w-full"
+            >
+              {resendState === "sending"
+                ? "보내는 중..."
+                : resendState === "sent"
+                  ? "다시 보냈어요"
+                  : "인증 메일 다시 보내기"}
+            </button>
+            <Link href="/login" className="btn btn-ghost btn-lg w-full" style={{ borderColor: "var(--ink)" }}>
+              로그인으로 이동
+            </Link>
+          </div>
+          {step1Error && <p className="ds-input-msg is-error mt-[12px]">{step1Error}</p>}
+        </div>
+      </div>
+    );
+  }
+
   // 계정 연동 모드: 카카오 계정에 자사몰 비밀번호 추가 (case1-1-II / case2-1-II 공통).
   if (isLinkMode && isLoggedIn) {
     return (
@@ -645,6 +806,17 @@ export function SignupClient() {
     );
   }
 
+  // 중복 이메일 모달 모드 — 기존 계정의 가입 수단(providers)으로 분기.
+  //  - prompt=existing-email(카카오 OAuth 후 자사몰 이메일 발견) → from-kakao-flow
+  //  - 이메일/비번 가입 계정 → existing-email-login (이메일 로그인 유도)
+  //  - 카카오 전용 가입 계정 → from-email-flow (비번 연동 유도)
+  const hasKakaoProvider = existingProviders.includes("kakao");
+  const existingEmailModalMode: AlreadyRegisteredModalMode = isExistingEmailPrompt
+    ? "from-kakao-flow"
+    : existingProviders.includes("email")
+      ? "existing-email-login"
+      : "from-email-flow";
+
   return (
     <>
       <KakaoPostcodeModal
@@ -658,7 +830,8 @@ export function SignupClient() {
 
       <AlreadyRegisteredModal
         isOpen={existingEmailModalOpen}
-        mode={isExistingEmailPrompt ? "from-kakao-flow" : "from-email-flow"}
+        mode={existingEmailModalMode}
+        hasKakaoLink={hasKakaoProvider}
         email={form.email.trim()}
         onClose={() => {
           setExistingEmailModalOpen(false);
@@ -698,6 +871,9 @@ export function SignupClient() {
               await supabase.auth.signOut();
               router.push("/login");
             })();
+          } else if (existingEmailModalMode === "existing-email-login") {
+            // 이미 이메일/비번으로 가입한 계정 — 이메일 로그인 페이지로 (email prefill).
+            router.push(`/login?email=${encodeURIComponent(form.email.trim())}`);
           } else {
             // case2-1-II "이메일 연동하기": step 1 비번을 sessionStorage에 임시 보관 후 카카오 OAuth 시작.
             // next=/signup?link=1 으로 넘겨 callback이 분기와 무관하게 link 화면으로 보낸다.
@@ -1016,7 +1192,11 @@ export function SignupClient() {
                 </button>
               </div>
 
-              {!canStep2 && !submitting && (
+              {step2Error && (
+                <p className="ds-input-msg is-error text-center">{step2Error}</p>
+              )}
+
+              {!canStep2 && !submitting && !step2Error && (
                 <p className="t-caption text-center" style={{ color: "var(--ink-light)" }}>
                   모든 필수 항목을 정확히 입력해주세요
                 </p>

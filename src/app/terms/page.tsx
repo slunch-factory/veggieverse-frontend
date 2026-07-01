@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "이용약관 - 슬런치 팩토리",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="이용약관" lastUpdated="2026-05-19">
+    <LegalPage title="이용약관" lastUpdated="2026-06-29">
       <section>
         <h2>제1조 (목적)</h2>
         <p>
@@ -45,13 +46,13 @@ export default function TermsPage() {
         <h2>제4조 (공급자 정보)</h2>
         <p>회사의 정보는 다음과 같으며, 변동 시 즉시 갱신합니다.</p>
         <ul>
-          <li>상호: (주)슬런치팩토리</li>
-          <li>대표자: 이현아</li>
-          <li>사업자등록번호: 288-86-02863</li>
-          <li>통신판매업 신고번호: 제2023-경기부천-0868호</li>
-          <li>사업장 주소: 경기 부천시 소사로160번길 23-8</li>
-          <li>대표전화: 032-224-6525</li>
-          <li>전자우편: slunch@slunch.co.kr</li>
+          <li>상호: {COMPANY.name}</li>
+          <li>대표자: {COMPANY.ceo}</li>
+          <li>사업자등록번호: {COMPANY.bizRegNo}</li>
+          <li>통신판매업 신고번호: {COMPANY.mailOrderNo}</li>
+          <li>사업장 주소: {COMPANY.address}</li>
+          <li>대표전화: {COMPANY.tel}</li>
+          <li>전자우편: {COMPANY.email}</li>
         </ul>
       </section>
 
@@ -136,7 +137,25 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>제10조 (재화의 배송)</h2>
+        <h2>제10조 (정기결제 및 구독 서비스)</h2>
+        <ol>
+          <li>구독 서비스는 이용자가 선택한 주기에 따라 등록된 결제수단으로 이용요금이 자동 결제되는 정기결제 방식으로 제공됩니다.</li>
+          <li>회사는 다음 결제 예정일과 결제 예정 금액을 결제일 이전에 이메일 등으로 이용자에게 사전 고지합니다.</li>
+          <li>이용자는 마이페이지 또는 고객센터를 통해 언제든지 구독을 해지할 수 있으며, 해지 시 다음 결제 주기부터 자동결제가 중단됩니다. 이미 결제된 회차의 중도 해지·환불은 별도의 <a href="/refund-policy">환불·취소 정책</a> 및 관련 법령에 따릅니다.</li>
+          <li>등록된 결제수단의 한도 초과·유효기간 만료 등으로 자동결제가 실패한 경우, 회사는 결제를 재시도하거나 해당 구독을 보류·해지할 수 있으며 그 사실을 이용자에게 통지합니다.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>제11조 (미성년자의 거래)</h2>
+        <p>
+          만 19세 미만 미성년자가 결제할 경우 법정대리인의 동의를 받아야 하며, 법정대리인의 동의를
+          받지 않은 거래는 본인 또는 법정대리인이 「민법」에 따라 취소할 수 있습니다.
+        </p>
+      </section>
+
+      <section>
+        <h2>제12조 (재화의 배송)</h2>
         <ol>
           <li>회사는 이용자와 재화 등의 공급 시기에 관하여 별도의 약정이 없는 이상, 결제 완료일로부터 7영업일 이내에 배송에 필요한 조치를 취합니다.</li>
           <li>배송 방식, 배송비 부담, 배송 기간 등은 상품 페이지 및 결제 화면에 표시되며, 도서·산간 등 일부 지역은 추가 배송비가 발생할 수 있습니다.</li>
@@ -145,7 +164,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>제11조 (청약철회 및 환불)</h2>
+        <h2>제13조 (청약철회 및 환불)</h2>
         <ol>
           <li>이용자는 「전자상거래 등에서의 소비자보호에 관한 법률」 제17조에 따라 재화 등의 수령일로부터 7일 이내에 청약철회를 할 수 있습니다.</li>
           <li>다만 다음 각 호의 경우 청약철회가 제한될 수 있습니다.
@@ -161,7 +180,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>제12조 (저작권의 귀속 및 이용제한)</h2>
+        <h2>제14조 (저작권의 귀속 및 이용제한)</h2>
         <ol>
           <li>서비스에 게재된 상품 정보, 이미지, 텍스트, 디자인 등 일체의 저작물에 대한 저작권은 회사 또는 정당한 권리자에게 귀속됩니다.</li>
           <li>이용자는 회사가 제공하는 서비스를 이용함으로써 얻은 정보를 회사의 사전 동의 없이 복제·전송·출판·배포·방송 기타 방법에 의하여 영리목적으로 이용하거나 제3자에게 이용하게 하여서는 안 됩니다.</li>
@@ -169,7 +188,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>제13조 (회원 탈퇴 및 자격 상실)</h2>
+        <h2>제15조 (회원 탈퇴 및 자격 상실)</h2>
         <ol>
           <li>회원은 언제든지 마이페이지에서 탈퇴를 신청할 수 있으며, 회사는 관련 법령 등이 정하는 바에 따라 이를 즉시 처리합니다.</li>
           <li>회사는 회원이 본 약관에 위배되는 행위를 한 경우 사전 통보 후 회원 자격을 제한·정지·상실시킬 수 있습니다.</li>
@@ -177,7 +196,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>제14조 (개인정보 보호)</h2>
+        <h2>제16조 (개인정보 보호)</h2>
         <p>
           회사는 이용자의 개인정보를 보호하기 위해 노력하며, 개인정보의 처리에 관한 상세한 내용은
           별도의 <a href="/privacy">개인정보 처리방침</a>에 따릅니다.
@@ -185,7 +204,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>제15조 (분쟁의 해결 및 재판관할)</h2>
+        <h2>제17조 (분쟁의 해결 및 재판관할)</h2>
         <ol>
           <li>회사는 이용자가 제기하는 정당한 의견이나 불만을 반영하여 적절한 절차를 거쳐 처리하기 위해 노력합니다.</li>
           <li>회사와 이용자 간 분쟁이 발생한 경우 양 당사자는 상호 협의하여 해결하도록 노력합니다.</li>
@@ -194,9 +213,7 @@ export default function TermsPage() {
         </ol>
       </section>
 
-      <p className="legal-todo">
-        TBD: 본 약관은 표준 전자상거래 약관을 기반으로 한 초안이며, 실제 서비스 출시 전 법무 검토가 권장됩니다.
-      </p>
+      {/* 내부 메모(비노출): 표준 전자상거래 약관 기반 초안 — 출시 전 법무 검토 권장(#59). */}
     </LegalPage>
   );
 }

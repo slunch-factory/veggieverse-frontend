@@ -2,12 +2,15 @@ import { apiFetch } from "@/lib/api/client";
 
 export interface EmailCheckResult {
   exists: boolean;
+  /** 가입 시 사용한 인증 수단(소문자 정규화) — "email" | "kakao". exists=false면 빈 배열. */
+  providers: string[];
   /** rate-limit(429) 시 true. exists는 의미 없음. */
   rateLimited?: boolean;
 }
 
 /**
- * 이메일 가입 여부 확인 — consumer.users 의 email 존재 여부만 반환 (provider 미노출).
+ * 이메일 가입 여부 + 가입 수단(providers) 확인 — consumer.users 기준.
+ * providers로 "이메일/비번 가입" vs "카카오 전용 가입"을 구분해 중복 이메일 안내 모달을 분기한다.
  * Rate-limit: 분당 30회/IP, 시간당 5회/email.
  */
 export async function checkEmailExists(email: string): Promise<EmailCheckResult> {
@@ -15,14 +18,17 @@ export async function checkEmailExists(email: string): Promise<EmailCheckResult>
     `/api/v1/veggieverse/users/email-check?email=${encodeURIComponent(email)}`,
     { auth: "none" },
   );
-  if (res.status === 429) return { exists: false, rateLimited: true };
+  if (res.status === 429) return { exists: false, providers: [], rateLimited: true };
   if (!res.ok) {
     // 백엔드 일시 오류 — signUp으로 fallback되므로 dev overlay를 띄우지 않도록 warn으로 낮춤
     console.warn("[checkEmailExists] HTTP error:", res.status, res.statusText);
-    return { exists: false };
+    return { exists: false, providers: [] };
   }
-  const data = (await res.json().catch(() => null)) as { exists?: boolean } | null;
-  return { exists: Boolean(data?.exists) };
+  const data = (await res.json().catch(() => null)) as
+    | { exists?: boolean; providers?: string[] }
+    | null;
+  const providers = (data?.providers ?? []).map((p) => p.toLowerCase());
+  return { exists: Boolean(data?.exists), providers };
 }
 
 /** 계정 상태 — ACTIVE(정상) | PENDING_DELETION(탈퇴 신청, 유예 중) */

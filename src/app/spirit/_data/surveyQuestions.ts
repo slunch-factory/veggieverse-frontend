@@ -86,8 +86,8 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
   {
     id: 3,
     step: 3,
-    question: "알레르기가 있으신가요?",
-    subtitle: "해당하는 항목을 모두 선택해주세요.",
+    question: "빼고 싶은 재료가 있나요?",
+    subtitle: "알레르기·매운맛 등 빼고 싶은 항목을 골라주세요. 없으면 선택하지 않아도 됩니다.",
     multiSelect: true,
     options: [
       {
@@ -109,30 +109,35 @@ const _STANDARD_QUESTIONS: SurveyQuestion[] = [
         tarot: { number: "XI", title: "The Milkyway.", image: "/images/tarot/diet-option/milkyway.png" },
       },
       {
-        label: "해당 없음",
-        description: "위 항목에 해당하는 알레르기가 없어요",
-        value: "no-allergy",
-        tarot: { number: "XV", title: "The Clear.", image: "/images/tarot/food-mood/silence.png" },
+        label: "밀",
+        description: "밀(글루텐)이 포함되지 않은 식단을 선호합니다",
+        value: "gluten",
+        // TODO: 전용 타로 이미지 교체 전까지 placeholder
+        tarot: { number: "XVI", title: "The Wheat.", image: "/images/tarot/food-mood/silence.png" },
       },
-    ],
-  },
-  {
-    id: 4,
-    step: 4,
-    question: "매운맛을 선호하시나요?",
-    subtitle: "평소 매운맛 선호 여부를 선택해주세요.",
-    options: [
       {
-        label: "매운맛이 강한 음식을 선호해요.",
-        description: "",
-        value: "spicy-yes",
+        label: "대두",
+        description: "대두(콩)가 포함되지 않은 식단을 선호합니다",
+        value: "soy",
+        tarot: { number: "XVII", title: "The Bean.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
+        label: "토마토",
+        description: "토마토가 포함되지 않은 식단을 선호합니다",
+        value: "tomato",
+        tarot: { number: "XVIII", title: "The Vine.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
+        label: "아황산류",
+        description: "아황산류가 포함되지 않은 식단을 선호합니다",
+        value: "sulfites",
+        tarot: { number: "XIX", title: "The Mist.", image: "/images/tarot/food-mood/silence.png" },
+      },
+      {
+        label: "매운맛",
+        description: "매운 음식은 빼주세요",
+        value: "no-spicy",
         tarot: { number: "XII", title: "The Flame.", image: "/images/tarot/food-mood/alchemy.png" },
-      },
-      {
-        label: "매운맛이 약한 순한 음식을 선호해요.",
-        description: "",
-        value: "spicy-no",
-        tarot: { number: "XIII", title: "The Breeze.", image: "/images/tarot/food-mood/silence.png" },
       },
     ],
   },

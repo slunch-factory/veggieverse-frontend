@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Heart } from "lucide-react";
 import type { Recipe } from "../_data/recipes";
 
@@ -10,8 +11,14 @@ export function RecipeCard({ recipe, rank }: { recipe: Recipe; rank?: number }) 
   return (
     <Link href={`/recipe/${recipe.id}`} className="block bg-[var(--cream)]">
       <div className="relative w-full aspect-square bg-[#f5f5f5] overflow-hidden rounded-[4px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" loading="lazy" />
+        <Image
+          src={recipe.image}
+          alt={recipe.title}
+          fill
+          sizes="(min-width:640px) 25vw, 50vw"
+          className="object-cover"
+          onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
+        />
         {rank !== undefined && (
           <span className="absolute top-2 left-2 bg-black text-white px-2 py-1 text-[11px] rounded-[2px]">
             #{rank + 1}
@@ -46,8 +53,7 @@ export function EditorialRecipeCard({ recipe }: { recipe: Recipe }) {
       onMouseLeave={() => setHovered(false)}
     >
       <div className="w-[200px] h-[200px] overflow-hidden bg-[#f0f0f0] shrink-0 rounded-t-2xl">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" loading="lazy" />
+        <Image src={recipe.image} alt={recipe.title} width={200} height={200} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }} />
       </div>
       <div className="px-4 pt-3 pb-4 flex flex-col flex-1 min-h-0">
         <h3 className={`text-[18px] font-bold text-black leading-[1.3] mb-1 line-clamp-2 ${hovered ? "underline underline-offset-2" : ""}`}>

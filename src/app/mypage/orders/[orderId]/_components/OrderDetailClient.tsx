@@ -1,33 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import {
-  getStoreOrderDetail,
-  type StoreOrderDetailResponse,
-} from "@/lib/api/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/contexts/UserContext";
-import { Snackbar } from "@/app/subscribe/_components/Snackbar";
+import { useStoreOrderDetail } from "@/lib/query/store";
+import { queryKeys } from "@/lib/query/queryKeys";
+import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
+import { useToast } from "@/components/ui/Toast";
 import { RefundModal } from "./RefundModal";
-
-type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "환불됨" | "취소됨" | "기타";
-
-// PENDING은 주문 row 생성 후 confirm 전 — "결제 대기".
-// PAID는 confirm 성공으로 결제 확정 — "결제 완료".
-const STORE_STATUS_LABEL: Record<string, OrderStatus> = {
-  PENDING: "결제대기",
-  PAID: "결제완료",
-  COMPLETED: "배송완료",
-  SHIPPING: "배송중",
-  REFUNDED: "환불됨",
-  CANCELED: "취소됨",
-};
-
-function mapStatus(status: string): OrderStatus {
-  return STORE_STATUS_LABEL[status] ?? "기타";
-}
+import {
+  formatDateTime,
+  PriceRow,
+  SectionCard,
+  StoreOrderStatusBadge,
+  SummaryRow,
+} from "@/app/mypage/_components/order-ui";
 
 /** 환불 버튼을 노출할지 결정. 결제완료·배송중 단계까지 허용. */
 function isRefundable(rawStatus: string): boolean {
@@ -35,63 +26,20 @@ function isRefundable(rawStatus: string): boolean {
   return normalized === "PENDING" || normalized === "PAID" || normalized === "SHIPPING";
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd}`;
-}
-
-function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
 export function OrderDetailClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { orderId } = useParams<{ orderId: string }>();
-  const { isLoggedIn, isLoadingSession } = useUser();
-  const [data, setData] = useState<StoreOrderDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { isLoadingSession } = useUser();
+  const { data, isLoading, isError } = useStoreOrderDetail(orderId);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToast();
 
-  useEffect(() => {
-    if (!orderId) return;
-    if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getStoreOrderDetail(orderId).then((res) => {
-      if (cancelled) return;
-      if (!res) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-      setData(res);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, isLoggedIn, isLoadingSession]);
+  const loading = isLoadingSession || isLoading;
+  const error = isError;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="t-small" style={{ color: "var(--ink-light)" }}>
-          주문 상세를 불러오는 중...
-        </p>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error || !data) {
@@ -111,7 +59,6 @@ export function OrderDetailClient() {
   const discount = data.discountInfo?.discountAmount ?? 0;
   const couponName = data.discountInfo?.couponName;
   const eventName = data.discountInfo?.eventName;
-  const status = mapStatus(data.status);
 
   return (
     <div className="mx-auto max-w-[720px]">
@@ -136,7 +83,7 @@ export function OrderDetailClient() {
       <header className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <h1 className="t-h2" style={{ color: "var(--ink)" }}>주문 상세</h1>
-          <OrderStatusBadge status={status} />
+          <StoreOrderStatusBadge status={data.status} />
         </div>
         <p className="t-small" style={{ color: "var(--ink-light)" }}>
           {data.orderNumber}
@@ -168,10 +115,11 @@ export function OrderDetailClient() {
                 }}
               >
                 {p.imageUrl && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
+                  <Image
                     src={p.imageUrl}
                     alt={p.name}
+                    width={56}
+                    height={56}
                     className="w-full h-full object-cover"
                   />
                 )}
@@ -276,112 +224,13 @@ export function OrderDetailClient() {
         isOpen={refundOpen}
         onClose={() => setRefundOpen(false)}
         onRefunded={(updated) => {
-          setData(updated);
+          // 환불 응답을 RQ 캐시에 직접 반영 — 재페칭 없이 화면 갱신.
+          queryClient.setQueryData(queryKeys.store.orderDetail(orderId), updated);
           setRefundOpen(false);
-          setToast("환불 요청이 정상적으로 접수되었습니다.");
+          toast.success("환불 요청이 정상적으로 접수되었습니다.");
         }}
       />
-
-      <Snackbar message={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
 
-/* ─── 보조 컴포넌트 ─── */
-
-function SectionCard({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={className}
-      style={{
-        background: "var(--bg-white)",
-        border: "1px solid var(--ink)",
-        borderRadius: "var(--r-btn)",
-        overflow: "hidden",
-      }}
-    >
-      <header
-        className="px-5 py-3"
-        style={{
-          borderBottom: "1px solid var(--ink)",
-          background: "var(--bg-pale)",
-        }}
-      >
-        <p
-          className="t-caption"
-          style={{
-            color: "var(--ink-light)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          {label}
-        </p>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="t-caption" style={{ color: "var(--ink-light)" }}>{label}</span>
-      <span className="t-small text-right" style={{ color: "var(--ink)" }}>{value}</span>
-    </div>
-  );
-}
-
-function PriceRow({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span style={{ color: "var(--ink-light)" }}>{label}</span>
-      <span style={{ color: valueColor ?? "var(--ink)" }}>{value}</span>
-    </div>
-  );
-}
-
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const variant: Record<OrderStatus, { bg: string; color: string }> = {
-    "결제대기": { bg: "var(--bg-white)", color: "var(--alert-red)" },
-    "결제완료": { bg: "var(--point)", color: "var(--ink)" },
-    "배송중": { bg: "var(--neutral-blue)", color: "var(--ink)" },
-    "배송완료": { bg: "var(--bg-off)", color: "var(--ink-light)" },
-    "환불됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
-    "취소됨": { bg: "var(--bg-off)", color: "var(--alert-red)" },
-    "기타": { bg: "var(--bg-off)", color: "var(--ink-light)" },
-  };
-  const v = variant[status];
-  return (
-    <span
-      className="inline-flex items-center"
-      style={{
-        background: v.bg,
-        color: v.color,
-        padding: "3px 10px",
-        borderRadius: "var(--r-pill)",
-        border: "1px solid var(--ink)",
-        fontSize: 11,
-        letterSpacing: "0.02em",
-      }}
-    >
-      {status}
-    </span>
-  );
-}

@@ -5,6 +5,7 @@ import { formatPrice } from "../_data/subscription";
 interface MobileCheckoutBarProps {
   totalPrice: number;
   filledSlots: number;
+  totalSlots: number;
   onSubmit: () => void;
   onOpenMenu: () => void;
 }
@@ -12,6 +13,7 @@ interface MobileCheckoutBarProps {
 export function MobileCheckoutBar({
   totalPrice,
   filledSlots,
+  totalSlots,
   onSubmit,
   onOpenMenu,
 }: MobileCheckoutBarProps) {
@@ -23,7 +25,7 @@ export function MobileCheckoutBar({
         {/* 좌: 끼 수 + 금액 */}
         <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
           <span className="text-[10px] font-medium text-[#9a928c] tracking-[-0.01em]">
-            식단 총 14끼(1주) · {filledSlots}/14끼
+            식단 {filledSlots}/{totalSlots}끼 선택
           </span>
           <span className="text-[17px] font-extrabold text-black tracking-[-0.02em] leading-tight tabular-nums">
             {formatPrice(totalPrice)}

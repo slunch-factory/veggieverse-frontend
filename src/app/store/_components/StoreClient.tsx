@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import TopControlBar, { type TabItem, type SortOption } from "@/components/store/TopControlBar";
 import { ProductCard } from "./ProductCard";
 import { FilterDrawer, type FilterState } from "./FilterDrawer";
-import { isComingSoon, type StoreProduct, type StoreSortParam } from "@/lib/api/store";
+import { isStockSoldOut, type StoreProduct, type StoreSortParam } from "@/lib/api/store";
 
 const SORT_OPTIONS: SortOption[] = [
   { value: "nameAsc",     label: "상품명순 A-Z" },
@@ -74,9 +74,9 @@ export function StoreClient({ initialProducts, currentSort, searchQuery = "" }: 
     ? searchBase
     : searchBase.filter((p) => p.categories.includes(activeTab));
 
-  // 준비중 상품은 항상 목록 하단으로, 판매 상품은 위로. 같은 그룹 내 순서(상품명 A-Z 등 현재 정렬)는 stable sort로 유지.
+  // 품절(재고 SOLD_OUT) 상품은 항상 목록 하단으로, 판매 상품은 위로. 같은 그룹 내 순서는 stable sort로 유지.
   const ordered = [...filtered].sort(
-    (a, b) => Number(isComingSoon(a.slug)) - Number(isComingSoon(b.slug)),
+    (a, b) => Number(isStockSoldOut(a.stock)) - Number(isStockSoldOut(b.stock)),
   );
 
   const tabs: TabItem[] = CATEGORY_TABS.map((cat) => ({
@@ -132,8 +132,9 @@ export function StoreClient({ initialProducts, currentSort, searchQuery = "" }: 
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {ordered.map((product) => (
-              <ProductCard key={product.productId} product={product} />
+            {ordered.map((product, index) => (
+              // 첫 행(최대 4~5열) 대표 이미지는 LCP 후보 → 앞 4개만 priority preload
+              <ProductCard key={product.productId} product={product} priority={index < 4} />
             ))}
           </div>
         )}

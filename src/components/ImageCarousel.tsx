@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, type CSSProperties, type ReactNode } from "react";
 
 export interface CarouselImage {
@@ -80,8 +81,7 @@ export function ImageCarousel({
                 border: `2px solid ${i === idx ? "var(--ink)" : "var(--neutral-stone)"}`,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.altText ?? ""} className="h-full w-full object-cover" />
+              <Image src={img.url} alt={img.altText ?? ""} fill sizes="64px" className="object-cover" />
             </button>
           ))}
         </div>

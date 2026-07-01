@@ -1,19 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
-import { categoryLabel, isComingSoon, type StoreProduct } from "@/lib/api/store";
+import { WishlistButton } from "@/components/ui/WishlistButton";
+import { categoryLabel, isStockSoldOut, type StoreProduct } from "@/lib/api/store";
 
-export function ProductCard({ product }: { product: StoreProduct }) {
+/** 그리드 상단(첫 행) 카드의 대표 이미지는 LCP 대상 → priority로 preload. */
+const PRODUCT_CARD_SIZES = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
+
+export function ProductCard({ product, priority = false }: { product: StoreProduct; priority?: boolean }) {
   const router = useRouter();
-  const comingSoon = isComingSoon(product.slug);
+  // 품절 = 실제 재고 SOLD_OUT. SOLD OUT 디자인(디밍 + 배지)으로 표시.
+  const soldOut = isStockSoldOut(product.stock);
+  // 품절임박 — 품절이 아닐 때만. (재고 LOW_STOCK)
+  const lowStock = !soldOut && product.stock?.status === "LOW_STOCK";
   // Sold Out 상품도 상세는 누구나 볼 수 있다(구매 버튼만 상세 안에서 잠금).
   const detailHref = `/store/${product.slug}`;
   // 카테고리 태그(기본값): 분류가 없으면 "기타"로 표시
   const categoryTag = product.categories[0] ? categoryLabel(product.categories[0]) : "기타";
   const images = product.imageUrl ? [product.imageUrl] : [];
-  const useSlider = images.length >= 3 && !comingSoon;
+  const useSlider = images.length >= 3 && !soldOut;
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [dragStartX, setDragStartX] = useState<number | null>(null);
@@ -80,12 +88,13 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                     style={{ flex: "0 0 auto", width: `${100 / images.length}%`, height: "100%" }}
                   >
                     {Math.abs(idx - currentImageIndex) <= 1 && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
+                      <Image
                         src={img}
                         alt={product.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading="lazy"
+                        fill
+                        sizes={PRODUCT_CARD_SIZES}
+                        className="object-cover"
+                        priority={priority && idx === 0}
                         onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
                       />
                     )}
@@ -93,12 +102,13 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                 ))}
               </div>
             ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
+              <Image
                 src={images[0]}
                 alt={product.name}
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
+                fill
+                sizes={PRODUCT_CARD_SIZES}
+                className="object-cover"
+                priority={priority}
                 onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
               />
             )}
@@ -107,7 +117,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           <span className="text-[13px]" style={{ color: "var(--neutral-stone)" }}>IMG</span>
         )}
 
-        {comingSoon && (
+        {soldOut && (
           <>
             {/* 최암색(--ink) 디밍 막 — sticky 탭바(z-30)보다 낮게 둔다 */}
             <div
@@ -132,7 +142,25 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           </>
         )}
 
-        {badgeVariant && !comingSoon && (
+        {/* 품절임박 — 우상단. NEW/BEST(좌상단 .card-badges)와 겹치지 않도록 분리. */}
+        {lowStock && (
+          <div className="absolute top-2.5 right-2.5 z-10 pointer-events-none">
+            <span
+              className="text-[10px] font-bold tracking-[0.04em]"
+              style={{
+                color: "var(--bg-white)",
+                background: "var(--alert-red)",
+                borderRadius: "var(--r-btn)",
+                padding: "4px 8px",
+                boxShadow: "0 2px 8px rgba(37, 10, 0, 0.25)",
+              }}
+            >
+              품절임박
+            </span>
+          </div>
+        )}
+
+        {badgeVariant && !soldOut && (
           <div className="card-badges">
             <Badge variant={badgeVariant} />
           </div>
@@ -157,6 +185,24 @@ export function ProductCard({ product }: { product: StoreProduct }) {
             ))}
           </div>
         )}
+
+        {/* 찜(위시리스트) — 우하단 */}
+        <div className="absolute bottom-2.5 right-2.5 z-10">
+          <WishlistButton
+            size={16}
+            item={{
+              key: `store:${product.slug}`,
+              kind: "store",
+              name: product.name,
+              imageUrl: product.imageUrl,
+              href: detailHref,
+              price: product.price,
+              discountedPrice: product.discountedPrice,
+              discountRate: product.discountRate,
+              tagline: product.tagline,
+            }}
+          />
+        </div>
       </div>
 
       {/* 상품 정보 */}

@@ -14,8 +14,8 @@ export function UpdatePasswordClient() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // callback이 code→세션 교환을 마친 뒤 이 페이지로 보내므로 recovery 세션이 쿠키에 있어야 한다.
-  // 세션이 없으면(링크 만료/직접 접근) 재요청을 안내한다.
+  // /auth/confirm이 verifyOtp(type=recovery)로 세션을 발급한 뒤 이 페이지로 보내므로
+  // recovery 세션이 쿠키에 있어야 한다. 세션이 없으면(링크 만료/직접 접근) 재요청을 안내한다.
   useEffect(() => {
     let active = true;
     const supabase = getSupabaseBrowserClient();

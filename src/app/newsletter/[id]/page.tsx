@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -85,11 +86,13 @@ function SmallImages({ images }: { images: { small?: string[] } | undefined }) {
 function ImageOverlay({ article }: { article: { category: string; title: string; subtitle: string; author: string; date: string; thumbnail: string } }) {
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={article.thumbnail}
         alt={`${article.title} - 커버 이미지`}
-        className="w-full h-full object-cover"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
       />
       <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Minus, Plus, ShoppingCart, Check, Trash2 } from "lucide-react";
@@ -8,6 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useUser } from "@/contexts/UserContext";
 import { deleteCartItem, getCart, syncCartAfterLogin, updateCartItemQuantity } from "@/lib/api/cart";
 import { LoginModal } from "@/components/modals/LoginModal";
+import { CartSkeleton } from "./_components/CartSkeleton";
 
 const SHIPPING_FEE = 3500;
 const FREE_SHIPPING_THRESHOLD = 55000;
@@ -23,6 +25,8 @@ export default function CartPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState<Set<number>>(new Set());
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  // 진입 시 서버 카트 동기화가 끝나기 전까지 true — 빈 카트 깜빡임 방지.
+  const [syncing, setSyncing] = useState(true);
   const hydrated = useRef(false);
   const cartFetched = useRef(false);
 
@@ -40,22 +44,27 @@ export default function CartPage() {
     cartFetched.current = true;
     // 비회원 카트 병합이 아직 안 끝났을 수 있으므로 GET 전에 먼저 보장
     (async () => {
-      const mergeResult = await syncCartAfterLogin();
-      if (mergeResult.status === "failed") {
-        // 병합 실패 시 백엔드 멤버 카트는 비어있을 수 있으므로 화면을 덮어쓰지 않음.
-        // localStorage 캐시 데이터를 그대로 유지 → 비회원 추가 상품이 사라지지 않음.
-        console.warn(
-          "[cart] 비회원 카트 병합 실패 — localStorage 카트를 유지합니다.",
-        );
-        return;
+      try {
+        const mergeResult = await syncCartAfterLogin();
+        if (mergeResult.status === "failed") {
+          // 병합 실패 시 백엔드 멤버 카트는 비어있을 수 있으므로 화면을 덮어쓰지 않음.
+          // localStorage 캐시 데이터를 그대로 유지 → 비회원 추가 상품이 사라지지 않음.
+          console.warn(
+            "[cart] 비회원 카트 병합 실패 — localStorage 카트를 유지합니다.",
+          );
+          return;
+        }
+        // 병합 응답에 카트 데이터가 포함되어 있으면 즉시 반영, 아니면 GET으로 fallback
+        if (mergeResult.status === "merged" && mergeResult.cart) {
+          syncFromServer(mergeResult.cart);
+          return;
+        }
+        const response = await getCart();
+        syncFromServer(response);
+      } finally {
+        // 동기화 완료(성공·실패 무관) → 로딩 종료. 이후 비어있으면 진짜 빈 카트.
+        setSyncing(false);
       }
-      // 병합 응답에 카트 데이터가 포함되어 있으면 즉시 반영, 아니면 GET으로 fallback
-      if (mergeResult.status === "merged" && mergeResult.cart) {
-        syncFromServer(mergeResult.cart);
-        return;
-      }
-      const response = await getCart();
-      syncFromServer(response);
     })();
   }, [syncFromServer]);
 
@@ -106,6 +115,13 @@ export default function CartPage() {
   const selectedTotal = selectedItems.reduce((s, i) => s + i.discountedPrice * i.quantity, 0);
   const shippingFee = selectedItems.length === 0 ? 0 : selectedTotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
   const orderTotal = selectedTotal + shippingFee;
+
+  // 서버 동기화 중 + 화면 카트 비어있음 → '비어있음' 대신 스켈레톤.
+  // 로그인 사용자만: 서버 카트가 뒤늦게 채워질 수 있어 빈 화면이 오해를 부름.
+  // (비회원은 서버 카트가 없으므로 즉시 빈 상태가 진실 → 스켈레톤 불필요)
+  if (syncing && items.length === 0 && isLoggedIn) {
+    return <CartSkeleton />;
+  }
 
   if (items.length === 0) {
     return (
@@ -208,12 +224,11 @@ export default function CartPage() {
                     {/* 이미지 */}
                     <Link href={`/store/${item.slug}`} className="flex-shrink-0">
                       <div
-                        className="overflow-hidden"
+                        className="relative overflow-hidden"
                         style={{ width: 72, height: 72, borderRadius: "var(--r-btn)", background: "var(--bg-off)", border: "1px solid var(--neutral-stone)" }}
                       >
                         {item.imageUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="96px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <ShoppingCart size={18} style={{ color: "var(--neutral-stone)" }} />

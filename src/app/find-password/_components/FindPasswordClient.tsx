@@ -3,14 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { requestPasswordResetAction } from "@/app/auth/actions";
 
-type Tab = "phone" | "email";
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function FindPasswordClient() {
-  const [tab, setTab] = useState<Tab>("email");
-
-  // 이메일 인증 탭 상태
+  // 이메일 인증 상태
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -46,11 +42,7 @@ export function FindPasswordClient() {
           비밀번호 찾기
         </h1>
 
-        <Tabs tab={tab} onChange={setTab} />
-
-        {tab === "phone" ? (
-          <PhoneTabComingSoon />
-        ) : sent ? (
+        {sent ? (
           <div className="mt-8 flex flex-col gap-4 text-center">
             <p className="t-body" style={{ color: "var(--ink)" }}>
               <b>{email.trim()}</b> 으로
@@ -103,64 +95,6 @@ export function FindPasswordClient() {
 }
 
 /* ─── 보조 컴포넌트 ─── */
-
-function PhoneTabComingSoon() {
-  return (
-    <div className="mt-8 flex flex-col gap-4 text-center">
-      <p className="t-body" style={{ color: "var(--ink)" }}>
-        휴대폰 인증은 준비 중입니다.
-      </p>
-      <p className="t-small" style={{ color: "var(--neutral-stone)" }}>
-        지금은 이메일 인증으로 비밀번호를 재설정할 수 있습니다.
-      </p>
-    </div>
-  );
-}
-
-function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
-  return (
-    <div
-      className="flex"
-      style={{ borderBottom: "1px solid var(--neutral-stone)" }}
-    >
-      <TabButton active={tab === "phone"} onClick={() => onChange("phone")}>
-        휴대폰 인증
-      </TabButton>
-      <TabButton active={tab === "email"} onClick={() => onChange("email")}>
-        이메일 인증
-      </TabButton>
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex-1 transition-colors cursor-pointer"
-      style={{
-        height: 48,
-        background: "transparent",
-        border: "none",
-        borderBottom: active ? "2px solid var(--ink)" : "none",
-        marginBottom: -1,
-        color: active ? "var(--ink)" : "var(--neutral-stone)",
-        fontSize: 14,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

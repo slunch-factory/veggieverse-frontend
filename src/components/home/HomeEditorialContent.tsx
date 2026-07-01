@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   motion,
   useMotionValue,
@@ -308,9 +309,14 @@ function Features() {
         >
           {FEATURES.map((f) => (
             <motion.div key={f.num} variants={fadeUp} className="flex flex-col gap-5">
-              <motion.div variants={imgReveal} className="overflow-hidden rounded-sm aspect-[4/3]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.img} alt={f.title} className="w-full h-full object-cover" loading="lazy" />
+              <motion.div variants={imgReveal} className="relative overflow-hidden rounded-sm aspect-[4/3]">
+                <Image
+                  src={f.img}
+                  alt={f.title}
+                  fill
+                  className="object-cover"
+                  sizes="(min-width:640px) 33vw, 100vw"
+                />
               </motion.div>
               <div>
                 <p className="text-[11px] tracking-[0.18em] mb-2 uppercase" style={{ color: MUTED }}>
@@ -564,12 +570,12 @@ function HowItWorks() {
                   blockLeft ? "md:left-0" : "md:right-0"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={s.img}
                   alt={s.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
+                  fill
+                  className="object-cover"
+                  sizes="(min-width:768px) 50vw, 100vw"
                 />
               </motion.div>
 
@@ -629,13 +635,14 @@ function Testimonial() {
           {/* 이미지 */}
           <motion.div
             variants={imgReveal}
-            className="overflow-hidden rounded-sm aspect-[4/5] md:aspect-[3/4]"
+            className="relative overflow-hidden rounded-sm aspect-[4/5] md:aspect-[3/4]"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={IMG.review}
               alt="슬런치 구독 멤버 후기"
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              sizes="(min-width:768px) 50vw, 100vw"
             />
           </motion.div>
 

@@ -8,9 +8,11 @@ import { motion } from "framer-motion";
 const MYPAGE_TABS = [
   { path: "/mypage", label: "홈" },
   { path: "/mypage/orders", label: "주문 내역" },
+  { path: "/mypage/delivery", label: "배송 조회" },
   { path: "/mypage/subscriptions", label: "구독 내역" },
   { path: "/mypage/bookmarks", label: "레시피 북마크" },
   { path: "/mypage/wishlist", label: "관심상품" },
+  { path: "/mypage/coupons", label: "쿠폰" },
   { path: "/mypage/reviews", label: "상품 리뷰" },
   { path: "/mypage/info", label: "회원정보" },
 ];

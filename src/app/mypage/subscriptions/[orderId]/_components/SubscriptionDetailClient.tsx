@@ -1,29 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import {
-  getOrderDetail,
   type OrderDetailProduct,
   type OrderDetailResponse,
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
+import { useSubscriptionDetail } from "@/lib/query/subscription";
+import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
 import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd}`;
-}
-
-function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+import {
+  formatDate,
+  formatDateTime,
+  PriceRow,
+  SectionCard,
+  SummaryRow,
+} from "@/app/mypage/_components/order-ui";
 
 const CYCLE_LABEL: Record<string, string> = {
   WEEKLY: "주 1회",
@@ -103,51 +99,22 @@ function slotLabel(slotsPerDay: number, slotIdx: number): string {
 export function SubscriptionDetailClient() {
   const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
-  const { isLoggedIn, isLoadingSession } = useUser();
-  const [data, setData] = useState<OrderDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { isLoadingSession } = useUser();
+  const { data, isLoading, isError } = useSubscriptionDetail(orderId);
 
-  useEffect(() => {
-    if (!orderId) return;
-    if (isLoadingSession) return;
-    if (!isLoggedIn) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    getOrderDetail(orderId).then((res) => {
-      if (cancelled) return;
-      if (!res) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-      setData(res);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, isLoggedIn, isLoadingSession]);
+  const loading = isLoadingSession || isLoading;
+  // 비로그인/실패/미존재는 모두 에러 화면으로 (기존 동작 유지)
+  const error = isError;
 
+  const detail: OrderDetailResponse | undefined = data;
   const weeks = useMemo(
     () =>
-      data ? buildSchedule(data.startDate, data.endDate, data.products) : [],
-    [data],
+      detail ? buildSchedule(detail.startDate, detail.endDate, detail.products) : [],
+    [detail],
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="t-small" style={{ color: "var(--ink-light)" }}>
-          구독 상세를 불러오는 중...
-        </p>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error || !data) {
@@ -257,76 +224,6 @@ export function SubscriptionDetailClient() {
           </div>
         </div>
       </SectionCard>
-    </div>
-  );
-}
-
-/* ─── 보조 컴포넌트 ─── */
-
-function SectionCard({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={className}
-      style={{
-        background: "var(--bg-white)",
-        border: "1px solid var(--ink)",
-        borderRadius: "var(--r-btn)",
-        overflow: "hidden",
-      }}
-    >
-      <header
-        className="px-5 py-3"
-        style={{
-          borderBottom: "1px solid var(--ink)",
-          background: "var(--bg-pale)",
-        }}
-      >
-        <p
-          className="t-caption"
-          style={{
-            color: "var(--ink-light)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          {label}
-        </p>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="t-caption" style={{ color: "var(--ink-light)" }}>{label}</span>
-      <span className="t-small text-right" style={{ color: "var(--ink)" }}>{value}</span>
-    </div>
-  );
-}
-
-function PriceRow({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span style={{ color: "var(--ink-light)" }}>{label}</span>
-      <span style={{ color: valueColor ?? "var(--ink)" }}>{value}</span>
     </div>
   );
 }
@@ -493,11 +390,12 @@ function MealCell({ meal }: { meal: OrderDetailProduct | null }) {
       }}
     >
       {meal.imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={meal.imageUrl}
           alt={meal.name}
-          className="absolute inset-0 w-full h-full object-cover"
+          fill
+          className="object-cover"
+          sizes="(min-width:640px) 25vw, 50vw"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}

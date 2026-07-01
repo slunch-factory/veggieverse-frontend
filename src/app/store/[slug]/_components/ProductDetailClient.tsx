@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -8,18 +9,19 @@ import {
   Minus,
   Plus,
   ShoppingCart,
-  Heart,
   Truck,
   Info,
   X,
 } from "lucide-react";
-import { type StoreProductDetail, categoryLabel, isComingSoon } from "@/lib/api/store";
+import { type StoreProductDetail, categoryLabel, isStockSoldOut } from "@/lib/api/store";
 import { useCart } from "@/contexts/CartContext";
 import { addCartItem } from "@/lib/api/cart";
 import { useRouter } from "next/navigation";
 import { ProductDetailTemplate } from "./ProductDetailTemplate";
 import { PRODUCT_TEMPLATE_DATA, parseDescTemplate } from "../_data/templateData";
 import { ImageCarousel } from "@/components/ImageCarousel";
+import { WishlistButton } from "@/components/ui/WishlistButton";
+import { ReviewSection } from "./ReviewSection";
 
 /* ------------------------------------------------------------------ */
 /*  Tabs                                                               */
@@ -46,20 +48,24 @@ function formatPrice(n: number) {
 /* ------------------------------------------------------------------ */
 
 export function ProductDetailClient({ product }: { product: StoreProductDetail }) {
-  const allImages = [product.images.main, ...product.images.subs, ...product.images.details];
+  // 빈/무효 URL(백엔드 미입력 placeholder 등)은 제외 — next/image가 빈 src로 터지는 것 방지.
+  const allImages = [product.images.main, ...product.images.subs, ...product.images.details].filter(
+    (img) => img?.url,
+  );
   const { addItem } = useCart();
   const router = useRouter();
 
   const [quantity, setQuantity] = useState(1);
-  const [liked, setLiked] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
   const [showCartPopup, setShowCartPopup] = useState(false);
 
-  // Sold Out(준비중) 상품: 상세는 누구나 볼 수 있고 구매 버튼만 잠근다.
-  const comingSoon = isComingSoon(product.slug);
+  // 품절(재고 SOLD_OUT) 상품: 상세는 누구나 볼 수 있고 구매 버튼만 잠근다.
+  const purchaseLocked = isStockSoldOut(product.stock);
+  const lowStock = !purchaseLocked && product.stock?.status === "LOW_STOCK";
+  const buyLabel = purchaseLocked ? "품절" : "바로구매";
 
   async function handleAddToCart() {
-    if (comingSoon || cartLoading) return;
+    if (purchaseLocked || cartLoading) return;
     setCartLoading(true);
     try {
       await addCartItem(product.productId, quantity);
@@ -82,7 +88,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
   }
 
   function handleBuyNow() {
-    if (comingSoon) return;
+    if (purchaseLocked) return;
     sessionStorage.setItem(
       "directBuyItem",
       JSON.stringify({
@@ -196,12 +202,14 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
             showThumbnails
             frameClassName="relative aspect-square w-full overflow-hidden"
             frameStyle={{ borderRadius: "var(--r-btn)", border: "1px solid var(--ink)", background: "var(--bg-off)" }}
-            renderImage={(img) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+            renderImage={(img, index) => (
+              <Image
                 src={img.url}
-                alt={img.altText}
-                className="absolute inset-0 h-full w-full object-cover"
+                alt={img.altText ?? ""}
+                fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+                priority={index === 0}
               />
             )}
           />
@@ -233,6 +241,14 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
               <span className="card-price" style={{ fontSize: 22 }}>{formatPrice(product.discountedPrice)}원</span>
             )}
           </div>
+
+          {/* 품절임박 안내 — 재고 LOW_STOCK일 때. remaining 있으면 남은 수량까지 표시. */}
+          {lowStock && (
+            <p className="t-small mt-2" style={{ color: "var(--alert-red)", fontWeight: 600 }}>
+              품절임박
+              {typeof product.stock?.remaining === "number" ? ` · ${product.stock.remaining}개 남음` : ""}
+            </p>
+          )}
 
           {product.categories.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -299,13 +315,29 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
                 <Plus size={16} />
               </button>
             </div>
-            <button onClick={handleAddToCart} disabled={comingSoon || cartLoading} className="btn btn-ghost flex-1 gap-1.5">
+            <button onClick={handleAddToCart} disabled={purchaseLocked || cartLoading} className="btn btn-ghost flex-1 gap-1.5">
               <ShoppingCart size={18} />
               장바구니
             </button>
-            <button onClick={handleBuyNow} disabled={comingSoon} className="btn btn-dark flex-1">
-              {comingSoon ? "판매 준비중" : "바로구매"}
+            <button onClick={handleBuyNow} disabled={purchaseLocked} className="btn btn-dark flex-1">
+              {buyLabel}
             </button>
+            <WishlistButton
+              size={20}
+              className="flex-shrink-0"
+              style={{ width: 48, height: 48, borderRadius: "var(--r-btn)", border: "1px solid var(--ink)" }}
+              item={{
+                key: `store:${product.slug}`,
+                kind: "store",
+                name: product.name,
+                imageUrl: product.images.main.url,
+                href: `/store/${product.slug}`,
+                price: product.price,
+                discountedPrice: product.discountedPrice,
+                discountRate: product.discountRate,
+                tagline: product.tagline,
+              }}
+            />
           </div>
         </div>
       </div>
@@ -340,9 +372,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
         {/* 리뷰 */}
         <div ref={(el) => { sectionRefs.current.review = el; }} className="pt-8">
           <h2 className="t-h3" style={{ color: "var(--ink)", marginBottom: 16 }}>리뷰</h2>
-          <div className="p-6 text-center t-small" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)", color: "var(--neutral-stone)" }}>
-            아직 작성된 리뷰가 없습니다.
-          </div>
+          <ReviewSection slug={product.slug} />
         </div>
 
         {/* 상세정보 */}
@@ -401,20 +431,28 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
       {/* mobile fixed bottom bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 px-4 py-3 lg:hidden" style={{ borderTop: "1px solid var(--ink)", background: "var(--bg-white)" }}>
         <div className="mx-auto flex max-w-6xl items-center gap-2">
-          <button
-            onClick={() => setLiked((v) => !v)}
-            className="btn btn-icon btn-md btn-ghost flex-shrink-0"
-            style={liked ? { color: "#e05555" } : undefined}
-            aria-label="좋아요"
-          >
-            <Heart size={20} fill={liked ? "currentColor" : "none"} />
-          </button>
-          <button onClick={handleAddToCart} disabled={comingSoon || cartLoading} className="btn btn-ghost flex-1 gap-1.5">
+          <WishlistButton
+            size={20}
+            className="flex-shrink-0"
+            style={{ width: 48, height: 48, borderRadius: "var(--r-btn)", border: "1px solid var(--ink)" }}
+            item={{
+              key: `store:${product.slug}`,
+              kind: "store",
+              name: product.name,
+              imageUrl: product.images.main.url,
+              href: `/store/${product.slug}`,
+              price: product.price,
+              discountedPrice: product.discountedPrice,
+              discountRate: product.discountRate,
+              tagline: product.tagline,
+            }}
+          />
+          <button onClick={handleAddToCart} disabled={purchaseLocked || cartLoading} className="btn btn-ghost flex-1 gap-1.5">
             <ShoppingCart size={18} />
             {cartLoading ? "담는 중..." : "장바구니"}
           </button>
-          <button onClick={handleBuyNow} disabled={comingSoon} className="btn btn-dark flex-1">
-            {comingSoon ? "판매 준비중" : "바로구매"}
+          <button onClick={handleBuyNow} disabled={purchaseLocked} className="btn btn-dark flex-1">
+            {buyLabel}
           </button>
         </div>
       </div>

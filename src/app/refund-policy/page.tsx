@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "환불·취소 정책 - 슬런치 팩토리",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RefundPolicyPage() {
   return (
-    <LegalPage title="환불·취소 정책" lastUpdated="2026-05-19">
+    <LegalPage title="환불·취소 정책" lastUpdated="2026-06-29">
       <section>
         <p>
           본 정책은 슬런치 팩토리에서 구매하신 상품의 결제 취소·환불에 관한 기준을 안내합니다.
@@ -38,6 +39,12 @@ export default function RefundPolicyPage() {
             배송비 무료 기준 금액 미달이 발생하면 무료배송 혜택은 환수되어 정산됩니다.</li>
           <li>상품 하자 등으로 인한 교환은 동일 상품·동일 옵션에 한해 1회 가능합니다.</li>
         </ul>
+        <p>
+          <strong>구독(정기결제) 중도 해지·환불</strong> — 구독 상품을 중도 해지하는 경우, 아직 배송되지
+          않은(미수령) 잔여 회차에 대해서는 환불해 드리며, 이미 배송이 완료된 회차는 위 청약철회 기준을
+          따릅니다. 구독 해지는 마이페이지 또는 고객센터를 통해 신청할 수 있으며, 해지 시 다음 결제
+          주기부터 자동결제가 중단됩니다.
+        </p>
       </section>
 
       <section>
@@ -47,10 +54,13 @@ export default function RefundPolicyPage() {
           <li>이용자의 사용 또는 일부 소비로 상품의 가치가 현저히 감소한 경우</li>
           <li>시간의 경과로 재판매가 어려울 정도로 가치가 현저히 감소한 경우</li>
           <li>식품 등 특성상 재판매가 어려운 상품으로서 포장을 개봉한 경우 또는 냉장·냉동 유통이 필요한 상품</li>
+          <li>비건·신선식품 특성상 개봉, 해동 또는 조리가 이루어진 경우(위생·변질 우려로 환불·교환 제한)</li>
+          <li>유통기한이 임박한 신선·냉장·냉동 식품을 수령 후 단순 변심으로 반품하여 재판매가 불가능한 경우</li>
           <li>관련 법령에서 환불을 제한하는 경우</li>
         </ul>
-        <p className="legal-todo">
-          TBD: 비건 식품 상품군 특성을 반영하여 환불 불가 사유 세부 조항(유통기한·포장 형태 등) 보강 필요.
+        <p>
+          다만 표시·광고 내용과 다르거나 상품에 하자가 있는 경우에는 위 제한과 관계없이 수령일로부터
+          3개월 이내(또는 사실을 안 날부터 30일 이내)에 환불·교환을 요청하실 수 있습니다.
         </p>
       </section>
 
@@ -80,12 +90,9 @@ export default function RefundPolicyPage() {
           안내받은 운송장 정보로 발송해 주세요.
         </p>
         <ul>
-          <li>받는 사람: (주)슬런치팩토리 반품 담당자</li>
-          <li>주소: 경기 부천시 소사로160번길 23-8</li>
-          <li>연락처: 032-224-6525</li>
-          <li className="legal-todo">
-            TBD: 반품 전용 창고/물류센터가 별도라면 해당 주소로 변경 필요.
-          </li>
+          <li>받는 사람: {COMPANY.name} 반품 담당자 (물류 대행: 품고)</li>
+          <li>반품지: 반품 요청 접수 후 마이페이지·고객센터에서 개별 안내드립니다.</li>
+          <li>연락처: {COMPANY.tel}</li>
         </ul>
       </section>
 
@@ -107,10 +114,9 @@ export default function RefundPolicyPage() {
           회사는 (주)토스페이먼츠를 결제 대행사로 이용하여, 이용자가 안전하게 결제할 수 있도록
           PG사가 제공하는 보안 결제 시스템을 활용하고 있습니다.
         </p>
-        <p className="legal-todo">
-          TBD: 에스크로(결제대금예치) 서비스 가입 여부에 따라 다음을 명시
-          — 가입 시: 가입 사실 + 가맹점 코드 + 확인 가능한 URL.
-          미가입 시: 「전자상거래법」 제24조 적용 예외 사유(예: 신용카드 결제만 제공 등).
+        <p>
+          또한 회사는 「전자상거래 등에서의 소비자보호에 관한 법률」에 따라 (주)토스페이먼츠가 제공하는
+          구매안전서비스(결제대금예치, 에스크로)에 가입하여, 이용자가 안심하고 거래할 수 있도록 하고 있습니다.
         </p>
       </section>
 
@@ -137,16 +143,14 @@ export default function RefundPolicyPage() {
       <section>
         <h2>10. 문의</h2>
         <p>
-          환불 관련 문의는 <a href="mailto:slunch@slunch.co.kr">slunch@slunch.co.kr</a> 또는
-          고객센터(032-224-6525)로 연락 주시기 바랍니다. 운영시간 외 접수된 문의는 다음 영업일에
+          환불 관련 문의는 <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> 또는
+          고객센터({COMPANY.tel})로 연락 주시기 바랍니다. 운영시간 외 접수된 문의는 다음 영업일에
           순차적으로 답변드립니다.
         </p>
       </section>
 
-      <p className="legal-todo">
-        TBD: 본 정책 초안은 일반 이커머스 환불 정책 골격이며, 슬런치 팩토리의 실제 운영 정책
-        (반품 창고 주소·에스크로 가입 여부·교환 처리 절차 등)에 맞춰 추가 보강 및 법무 검토가 필요합니다.
-      </p>
+      {/* 내부 메모(비노출): 일반 이커머스 환불정책 골격 기반 — 품고 반품지 확정·교환 처리 절차 등
+          실제 운영정책 반영 및 출시 전 법무 검토 필요(#59). */}
     </LegalPage>
   );
 }

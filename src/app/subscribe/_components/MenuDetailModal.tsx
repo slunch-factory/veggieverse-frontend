@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import type { DisplayMenuData, ExcludeCategory, MenuNutrition } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
 import { ImageCarousel } from "@/components/ImageCarousel";
+import { Modal } from "@/components/ui/Modal";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 
 interface MenuDetailModalProps {
   meal: DisplayMenuData | null;
@@ -35,22 +38,44 @@ const DIVIDER = <div style={{ margin: "24px 0", height: 1, background: "#c9bcbe"
  * 모바일에서는 사진이 위로, 상세 설명이 그 아래로 노출된다. +/× 버튼·담기·ESC 등 모달 상호작용은 유지.
  */
 export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) {
-  useEffect(() => {
-    if (!meal) return;
-    const sw = window.innerWidth - document.documentElement.clientWidth;
-    document.documentElement.style.setProperty("--scrollbar-w", `${sw}px`);
-    document.documentElement.classList.add("mm-open");
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.documentElement.classList.remove("mm-open");
-      document.documentElement.style.removeProperty("--scrollbar-w");
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [meal, onClose]);
+  // 닫힘 애니메이션 동안에도 마지막 식단을 렌더하기 위해 보존한다
+  // (부모가 meal=null로 닫아도 종료 트랜지션이 끝날 때까지 내용 유지).
+  // 렌더 중 파생 상태 조정 — React 공식 패턴(이전 prop 기억), effect 불필요.
+  const [displayMeal, setDisplayMeal] = useState<DisplayMenuData | null>(meal);
+  if (meal && meal !== displayMeal) {
+    setDisplayMeal(meal);
+  }
 
-  if (!meal) return null;
+  const renderMeal = meal ?? displayMeal;
 
+  return (
+    <Modal
+      isOpen={meal != null}
+      onClose={onClose}
+      labelledBy="mm-name"
+      wrapperClassName="max-lg:items-end max-lg:p-0"
+      className={[
+        "w-full overflow-hidden bg-[#fcfaf8] flex",
+        "lg:flex-row lg:max-w-[900px] lg:max-h-[90dvh] lg:rounded-[20px]",
+        "lg:border lg:border-black lg:shadow-[0_24px_64px_rgba(0,0,0,0.18)]",
+        "max-lg:flex-col max-lg:h-[88dvh] max-lg:rounded-t-[16px]",
+        "max-lg:border-t max-lg:border-black max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
+      ].join(" ")}
+    >
+      {renderMeal && <MenuDetailContent meal={renderMeal} onClose={onClose} onAdd={onAdd} />}
+    </Modal>
+  );
+}
+
+function MenuDetailContent({
+  meal,
+  onClose,
+  onAdd,
+}: {
+  meal: DisplayMenuData;
+  onClose: () => void;
+  onAdd: (meal: DisplayMenuData) => void;
+}) {
   const allergyTags = meal.excludable
     .filter((e) => e !== "spicy")
     .map((e) => EXCLUDE_CATEGORIES[e as ExcludeCategory]?.label)
@@ -106,56 +131,51 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
 
   return (
     <>
-      {/* 딤 */}
-      <div className="fixed inset-0 z-[200] bg-black/50" aria-hidden="true" onClick={onClose} />
-
-      {/* 포지셔닝 래퍼 — 데스크톱: 중앙 / 모바일: 하단 */}
-      <div
-        className="fixed inset-0 z-[201] flex items-center justify-center p-6 max-lg:p-0 max-lg:items-end"
-        onClick={onClose}
-      >
-        {/* 다이얼로그 = admin 카드 */}
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mm-name"
-          data-menu-modal="true"
-          className={[
-            "w-full overflow-hidden bg-[#fcfaf8] flex",
-            "lg:flex-row lg:max-w-[900px] lg:max-h-[90dvh] lg:rounded-[20px]",
-            "lg:border lg:border-black lg:shadow-[0_24px_64px_rgba(0,0,0,0.18)]",
-            "max-lg:flex-col max-lg:h-[88dvh] max-lg:rounded-t-[16px]",
-            "max-lg:border-t max-lg:border-black max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
-          ].join(" ")}
-          onClick={(e) => e.stopPropagation()}
-        >
           {/* LEFT: 이미지 (어두운 배경, 여러 장이면 슬라이드)
               ※ 로고는 이미지 자체에 워터마크로 포함되어 있어 별도 오버레이를 그리지 않는다(중복 방지). */}
           <div className="relative overflow-hidden bg-[#250a00] lg:w-[44%] lg:shrink-0 max-lg:w-full max-lg:shrink-0 max-lg:h-[30vh] max-lg:max-h-[280px]">
             <ImageCarousel
               images={detailImages.map((url) => ({ url }))}
-              frameClassName="relative w-full h-full"
+              className="w-full max-lg:h-full"
+              frameClassName="relative w-full max-lg:h-full"
               renderImage={(img) => (
-                <MealImage src={img.url} alt={meal.displayName} width={640} className="w-full h-full object-cover" />
+                <MealImage src={img.url} alt={meal.displayName} full className="block w-full lg:h-auto max-lg:h-full max-lg:object-cover" />
               )}
             />
           </div>
 
-          {/* RIGHT: 본문 */}
+          {/* RIGHT: 본문
+              데스크톱: 모달 높이를 왼쪽 이미지(자연 높이)에 맞추기 위해 본문은 absolute로 띄워
+                        칼럼 자체 높이에 기여하지 않게 하고, 내부에서만 스크롤한다.
+              모바일: 일반 흐름 + 스크롤. */}
           <div
-            className="flex-1 overflow-y-auto max-lg:min-h-0 lg:px-9 lg:py-10 max-lg:px-[22px] max-lg:py-7"
+            className="flex-1 min-w-0 lg:relative max-lg:overflow-y-auto max-lg:min-h-0"
             style={{ fontFamily: sf }}
           >
-            {/* + / × 버튼 */}
+          <div className="lg:absolute lg:inset-0 lg:overflow-y-auto lg:px-9 lg:pt-5 lg:pb-10 max-lg:px-[22px] max-lg:py-7">
+            {/* 찜 / 담기 / 닫기 버튼 */}
             <div className="flex flex-row items-center justify-end gap-[10px] mb-3">
+              <WishlistButton
+                size={16}
+                style={{ width: 36, height: 36, border: "1px solid #111", background: "#fcfaf8" }}
+                item={{
+                  key: `subscribe:${meal.id}`,
+                  kind: "subscribe",
+                  name: meal.displayName,
+                  imageUrl: meal.image,
+                  href: "/subscribe",
+                  price: meal.price,
+                }}
+              />
               <button
                 type="button"
                 onClick={() => { onAdd(meal); onClose(); }}
-                aria-label="식단에 추가하기"
-                title="식단에 추가"
-                className="w-9 h-9 max-lg:w-10 max-lg:h-10 shrink-0 border border-black rounded-full bg-[#fcfaf8] text-[#3d3d3d] flex items-center justify-center text-[18px] leading-none font-light hover:bg-black hover:text-[#dfff4f] transition-colors"
+                aria-label="식단에 담기"
+                title="식단에 담기"
+                className="inline-flex items-center gap-1 h-9 max-lg:h-10 px-4 shrink-0 border border-black rounded-full bg-[#dfff4f] text-black text-[13px] font-medium leading-none hover:bg-black hover:text-[#dfff4f] transition-colors"
               >
-                +
+                <Plus size={15} strokeWidth={2.2} />
+                담기
               </button>
               <button
                 type="button"
@@ -267,7 +287,7 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
                     >
                       <span style={{ fontSize: 12.5, color: "#250a00", fontFamily: sf }}>{ing.name}</span>
                       <span style={{ fontSize: 11.5, color: "rgba(0,0,0,0.38)", fontFamily: sf, marginLeft: 12, flexShrink: 0 }}>
-                        {ing.amountG}g
+                        {ing.amountText ?? (ing.amountG ? `${ing.amountG}g` : "")}
                       </span>
                     </div>
                   ))}
@@ -343,18 +363,7 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
               </>
             )}
           </div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes mmSlideUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
-        }
-        @media (max-width: 1023px) {
-          [data-menu-modal="true"] { animation: mmSlideUp 0.28s ease; }
-        }
-      `}</style>
+          </div>
     </>
   );
 }

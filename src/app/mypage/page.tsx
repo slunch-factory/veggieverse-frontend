@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat } from "lucide-react";
+import { User, ShoppingBag, Heart, MessageSquare, ChevronRight, Repeat, Truck, MapPin, Ticket } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { getOrderHistory, type OrderHistoryItem } from "@/lib/api/subscription";
 import {
@@ -14,7 +15,7 @@ import {
 import { getUserProfile } from "@/lib/api/user";
 import { supabaseRenderUrl } from "@/lib/supabaseImage";
 import { CountUp } from "./_components/CountUp";
-import { Skeleton, SkeletonRow } from "./_components/Skeleton";
+import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton";
 import { listContainer, cardItem } from "./_components/motion";
 
 type OrderStatus = "결제대기" | "결제완료" | "배송중" | "배송완료" | "취소됨" | "기타";
@@ -67,7 +68,10 @@ function getProductSummary(order: OrderHistoryItem | StoreOrderHistoryItem) {
 
 const QUICK_MENU = [
   { label: "구독 내역", path: "/mypage/subscriptions", icon: Repeat },
+  { label: "배송 조회", path: "/mypage/delivery", icon: Truck },
+  { label: "배송지 관리", path: "/mypage/info/addresses", icon: MapPin },
   { label: "관심상품", path: "/mypage/wishlist", icon: Heart },
+  { label: "쿠폰", path: "/mypage/coupons", icon: Ticket },
   { label: "레시피 북마크", path: "/mypage/bookmarks", icon: ShoppingBag },
   { label: "상품 리뷰", path: "/mypage/reviews", icon: MessageSquare },
   { label: "회원정보", path: "/mypage/info", icon: User },
@@ -171,8 +175,7 @@ export default function MyPageHome() {
             }}
           >
             {profileImage ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={supabaseRenderUrl(profileImage, { width: 160 })} alt="프로필" className="h-full w-full object-cover" decoding="async" />
+              <Image src={supabaseRenderUrl(profileImage, { width: 160 })} alt="프로필" fill className="object-cover" sizes="160px" decoding="async" />
             ) : (
               <User size={32} color="var(--neutral-stone)" />
             )}

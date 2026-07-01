@@ -8,9 +8,18 @@ import { X } from "lucide-react";
 import { PRODUCE_ITEMS } from "@/constants";
 import type { VegetableItem } from "@/types";
 import { HomeEditorialContent } from "@/components/home/HomeEditorialContent";
+import { getSubscriptionIngredients } from "@/lib/api/subscription";
+
+// 라벨 컬러는 API에 없으므로 로컬 PRODUCE_ITEMS(영문명)에서 매칭해 재사용. 없으면 기본색.
+const LABEL_COLOR_BY_NAME: Record<string, string> = Object.fromEntries(
+  PRODUCE_ITEMS.map((p) => [p.name.toLowerCase(), p.color]),
+);
+const DEFAULT_LABEL_COLOR = "#7CB342";
 
 // ─── FloatingItem 타입 ───
 interface FloatingItem extends VegetableItem {
+  /** 구독 재료 마스터 id — autoPlan 추천 랭킹(ingredientIds)용. 로컬 폴백 재료는 없음. */
+  ingredientId?: number;
   size: number;
   labelColor: string;
   labelOffsetX: number;
@@ -57,13 +66,30 @@ export default function HomePage() {
   }, [selectedItems.length]);
 
   // 초기 아이템 생성 - 그리드 기반 랜덤 배치
+  // API(구독 재료 마스터)의 imageUrl로 띄우고, 실패/빈 응답이면 로컬 PRODUCE_ITEMS로 폴백.
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+    const ingredients = await getSubscriptionIngredients();
+    if (cancelled) return;
+
+    const source: { name: string; image: string; color: string; ingredientId?: number }[] =
+      ingredients.length > 0
+        ? ingredients.map((ing) => ({
+            name: ing.nameEn,
+            image: ing.imageUrl,
+            color: LABEL_COLOR_BY_NAME[ing.nameEn.toLowerCase()] ?? DEFAULT_LABEL_COLOR,
+            ingredientId: ing.id, // autoPlan 추천 랭킹용 재료 id 보존
+          }))
+        : PRODUCE_ITEMS;
+
     const isMobile = window.innerWidth < 640;
     const sizeMultiplier = isMobile ? 0.78 : 1;
     const baseSize = 180;
 
     const cols = isMobile ? 6 : 8;
-    const rows = isMobile ? 10 : 8;
+    // 재료 수가 늘어도 모든 아이템에 격자 칸이 배정되도록 행 수 보장.
+    const rows = Math.max(isMobile ? 10 : 8, Math.ceil(source.length / cols));
     const xMin = 5, xMax = 95, yMin = 5, yMax = 95;
     const cellW = (xMax - xMin) / cols;
     const cellH = (yMax - yMin) / rows;
@@ -84,12 +110,13 @@ export default function HomePage() {
     }
 
     const SMALLER_ITEMS = new Set(["Peach", "Lemon", "Cucumber", "Onion", "Blueberry"]);
-    const initialItems: FloatingItem[] = PRODUCE_ITEMS.map((produce, index) => {
+    const initialItems: FloatingItem[] = source.map((produce, index) => {
       const pos = gridPositions[index];
       const sizeAdjust = SMALLER_ITEMS.has(produce.name) ? 0.8 : 1;
       const scale = (0.8 + Math.random() * 0.5) * sizeMultiplier * sizeAdjust;
       return {
         id: `produce-${index}`,
+        ingredientId: produce.ingredientId,
         name: produce.name,
         x: pos.x,
         y: pos.y,
@@ -125,6 +152,10 @@ export default function HomePage() {
       };
     });
     setItems(initialItems);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // CSS keyframes 동적 주입
@@ -183,8 +214,12 @@ export default function HomePage() {
         ref={containerRef}
         className="relative w-full bg-white flex flex-col pt-[clamp(40px,8vw,80px)] px-[clamp(20px,5vw,60px)]"
         style={{
-          minHeight: "calc(100vh - var(--header-h, 0px))",
-          height: "calc(100vh - var(--header-h, 0px))",
+          // 콘텐츠 영역은 main이 padding-top: var(--header-area-h)(프로모배너+헤더)만큼 내려가 있으므로
+          // hero도 같은 값을 빼야 한다. (과거 --header-h만 빼서, 프로모배너가 보이는 화면에선 배너
+          // 높이만큼 넘쳐 하단 텍스트/버튼이 잘리던 버그)
+          // 또한 고정 height 대신 minHeight만 둔다 — 짧은 뷰포트에서 텍스트가 섹션을 넘으면
+          // clipPath(하단 0)에 잘리던 문제를 막기 위해 콘텐츠에 맞춰 늘어나게 한다.
+          minHeight: "calc(100dvh - var(--header-area-h, var(--header-h, 64px)))",
           clipPath: "inset(-40px -50px 0 -50px)",
         }}
       >

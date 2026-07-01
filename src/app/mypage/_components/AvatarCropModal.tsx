@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
 import { ZoomIn, ZoomOut } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
 const VIEWPORT = 300; // 정사각 편집 영역(px) — 사진 전체가 보이는 영역
 const CROP = 240; // 원형 크롭 지름(px) — 실제 잘리는 영역
@@ -72,24 +71,6 @@ export function AvatarCropModal({
     };
     im.src = imageSrc;
   }, [isOpen, imageSrc]);
-
-  useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) onClose();
-    };
-    window.addEventListener("keydown", onEsc);
-    return () => window.removeEventListener("keydown", onEsc);
-  }, [isOpen, onClose]);
-
-  // 모달 열림 동안 배경(body) 스크롤 잠금
-  useEffect(() => {
-    if (!isOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [isOpen]);
 
   // 마우스 휠로 원 중앙 기준 확대/축소 — 배경 스크롤 방지 위해 non-passive 네이티브 리스너
   useEffect(() => {
@@ -165,30 +146,26 @@ export function AvatarCropModal({
     );
   };
 
-  if (!isOpen || !imageSrc || typeof document === "undefined") return null;
-
-  return createPortal(
-    <motion.div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50"
-      onClick={onClose}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.18 }}
+  return (
+    <Modal
+      isOpen={isOpen && !!imageSrc}
+      onClose={onClose}
+      labelledBy="avatar-crop-modal-title"
+      position="center"
+      zIndex={200}
+      className="w-full max-w-[360px] mx-[16px]"
+      style={{
+        background: "var(--bg-white)",
+        border: "1px solid var(--ink)",
+        borderRadius: "var(--r-modal, 16px)",
+        padding: "24px 20px",
+      }}
     >
-      <motion.div
-        className="w-full max-w-[360px] mx-[16px]"
-        style={{
-          background: "var(--bg-white)",
-          border: "1px solid var(--ink)",
-          borderRadius: "var(--r-modal, 16px)",
-          padding: "24px 20px",
-        }}
-        onClick={(e) => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.94, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 320, damping: 26 }}
-      >
-        <p className="t-body text-center" style={{ color: "var(--ink)" }}>
+        <p
+          id="avatar-crop-modal-title"
+          className="t-body text-center"
+          style={{ color: "var(--ink)" }}
+        >
           프로필 사진 편집
         </p>
         <p className="t-caption text-center mt-1" style={{ color: "var(--ink-light)" }}>
@@ -215,7 +192,7 @@ export function AvatarCropModal({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={imgRef}
-              src={imageSrc}
+              src={imageSrc ?? undefined}
               alt="크롭"
               draggable={false}
               style={{
@@ -294,8 +271,6 @@ export function AvatarCropModal({
             적용
           </button>
         </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+    </Modal>
   );
 }
