@@ -10,9 +10,9 @@ export interface FilterState {
   foodTypes: string[];
 }
 
-const DIET_OPTIONS = ["전체", "비건", "락토", "오보", "페스코"];
-const RESTRICTION_OPTIONS = ["글루텐프리", "넛프리", "소이프리"];
-const FOOD_TYPE_OPTIONS = ["한식", "양식", "일식", "중식", "디저트"];
+export const DIET_OPTIONS = ["전체", "비건", "락토", "오보", "페스코"];
+export const RESTRICTION_OPTIONS = ["글루텐프리", "넛프리", "소이프리"];
+export const FOOD_TYPE_OPTIONS = ["한식", "양식", "일식", "중식", "디저트"];
 
 export function FilterDrawer({
   open,
@@ -82,7 +82,7 @@ export function FilterDrawer({
       overlayClassName="!bg-transparent"
       zIndex={100}
       className="flex w-[320px] max-w-full flex-col bg-white border-l border-black"
-      style={{ marginTop: "calc(var(--header-area-h, var(--header-h)) + 48px)" }}
+      style={{ marginTop: "var(--header-area-h, var(--header-h))" }}
     >
       <div className="flex items-center justify-between border-b border-black px-5 py-4">
         <span id="filter-drawer-title" className="text-[16px]">Filter</span>

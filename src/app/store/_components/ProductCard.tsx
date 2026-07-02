@@ -3,8 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { WishlistButton } from "@/components/ui/WishlistButton";
+import { useToast } from "@/components/ui/Toast";
+import { useCart } from "@/contexts/CartContext";
+import { addCartItem } from "@/lib/api/cart";
 import { categoryLabel, isStockSoldOut, type StoreProduct } from "@/lib/api/store";
 
 /** 그리드 상단(첫 행) 카드의 대표 이미지는 LCP 대상 → priority로 preload. */
@@ -12,6 +16,9 @@ const PRODUCT_CARD_SIZES = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 5
 
 export function ProductCard({ product, priority = false }: { product: StoreProduct; priority?: boolean }) {
   const router = useRouter();
+  const { addItem } = useCart();
+  const toast = useToast();
+  const [cartLoading, setCartLoading] = useState(false);
   // 품절 = 실제 재고 SOLD_OUT. SOLD OUT 디자인(디밍 + 배지)으로 표시.
   const soldOut = isStockSoldOut(product.stock);
   // 품절임박 — 품절이 아닐 때만. (재고 LOW_STOCK)
@@ -53,6 +60,32 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
       : null;
 
   const hasDiscount = product.discountRate > 0;
+
+  // 담기 — 상세 페이지와 동일하게 백엔드 카트 반영 후 화면 카트 갱신 (수량 1 고정)
+  async function handleAddToCart(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (soldOut || cartLoading) return;
+    setCartLoading(true);
+    try {
+      await addCartItem(product.productId, 1);
+      addItem({
+        productId: product.productId,
+        slug: product.slug,
+        name: product.name,
+        tagline: product.tagline,
+        price: product.price,
+        discountRate: product.discountRate,
+        discountedPrice: product.discountedPrice,
+        imageUrl: product.imageUrl,
+      }, 1);
+      toast.success("장바구니에 담았어요.", { emoji: "🛒", detail: product.name });
+    } catch (err) {
+      console.error("[addCartItem] failed:", err);
+      toast.error("장바구니 담기에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setCartLoading(false);
+    }
+  }
 
   return (
     <div
@@ -204,6 +237,18 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
           />
         </div>
       </div>
+
+      {/* 담기 — 이미지 바로 아래 (컬리 스타일) */}
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={soldOut || cartLoading}
+        className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 border border-[rgba(26,10,5,0.2)] bg-white py-2 text-[13px] text-black transition-colors hover:border-black hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[rgba(26,10,5,0.2)] disabled:hover:bg-white disabled:hover:text-black"
+        style={{ borderRadius: "var(--r-btn)" }}
+      >
+        <ShoppingCart size={14} strokeWidth={1.5} />
+        {soldOut ? "품절" : "담기"}
+      </button>
 
       {/* 상품 정보 */}
       <div className="card-body">
