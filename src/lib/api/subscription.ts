@@ -329,6 +329,35 @@ export async function getMenus(): Promise<MenuData[]> {
   }
 }
 
+/** 구독 상품 상세(단건) — GET /subscription/products/{id}.
+ *  상세 응답은 description/sellingPoints/nutritionInfo/cookingTip/productInfo를 직접 포함하므로
+ *  getMenus와 달리 admin JSON 병합(enrich)이 필요 없다. subscribe/detail/[id]에서 사용. */
+export async function getSubscriptionProductDetail(
+  id: number | string,
+): Promise<MenuData | null> {
+  const url = `${API_BASE}/api/v1/veggieverse/subscription/products/${encodeURIComponent(String(id))}`;
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "ko-KR",
+      },
+    });
+    if (!res.ok) {
+      if (res.status !== 404) {
+        console.error("[getSubscriptionProductDetail] HTTP error:", res.status, res.statusText);
+      }
+      return null;
+    }
+    const data: ProductItem = await res.json();
+    return mapToMenuData(data);
+  } catch (err) {
+    console.error("[getSubscriptionProductDetail] fetch failed:", err);
+    return null;
+  }
+}
+
 export async function getSlotRecommend(): Promise<MenuData[]> {
   // 브라우저 호출(DayRow) — 프록시 경유.
   try {
