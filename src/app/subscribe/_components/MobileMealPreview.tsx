@@ -40,7 +40,7 @@ export function MobileMealPreview({ preview, onClose }: MobileMealPreviewProps) 
         role="dialog"
         aria-label={preview.meal.displayName}
         onClick={onClose}
-        className="fixed z-[201] bg-white border border-black shadow-[0_8px_24px_rgba(0,0,0,0.2)] overflow-hidden animate-fadeIn cursor-pointer"
+        className="fixed z-[201] bg-white border border-black overflow-hidden animate-fadeIn cursor-pointer"
         style={{
           right: RIGHT_OFFSET,
           top,

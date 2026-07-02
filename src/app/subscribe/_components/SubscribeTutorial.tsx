@@ -156,7 +156,6 @@ export function SubscribeTutorial() {
             border: "1px solid var(--ink, #250a00)",
             borderRadius: "var(--r-modal, 16px)",
             padding: "24px 22px",
-            boxShadow: "0 12px 32px rgba(26,10,5,0.28)",
           }}
         >
           <p className="text-[16px] font-bold mb-2" style={{ color: "var(--ink, #250a00)" }}>

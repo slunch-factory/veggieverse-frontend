@@ -94,8 +94,8 @@ export function MenuLibrary({
 
   return (
     <aside className="flex flex-col h-full min-h-0 lg:h-auto" aria-label="구독 식단">
-      <div className="shrink-0">
-        {/* 메뉴 검색 — 이름/재료 */}
+      <div className="shrink-0 lg:hidden">
+        {/* 메뉴 검색 — 모바일 시트 전용 (데스크톱은 필터 사이드바 안에 있음) */}
         <div className="px-5 pt-4 pb-3">
           <div className="relative flex items-center">
             <Search
@@ -146,6 +146,8 @@ export function MenuLibrary({
         {/* 데스크톱: 왼쪽 필터 사이드바 — 스토어와 동일한 컬리 스타일(무보더), 스크롤 시 sticky */}
         <div className="hidden lg:block w-[176px] shrink-0 border-r border-[rgba(26,10,5,0.1)]">
           <FilterSidebar
+            query={query}
+            onQueryChange={setQuery}
             dietType={dietType}
             nutritionGoals={nutritionGoals}
             allergyFilters={allergyFilters}
@@ -205,7 +207,7 @@ export function MenuLibrary({
           )
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 p-6 lg:gap-4 lg:py-4 lg:px-8">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 p-6 lg:gap-4 lg:py-4 lg:px-3">
               {pagedMeals.map((meal) => (
                 <MealCard
                   key={meal.id}

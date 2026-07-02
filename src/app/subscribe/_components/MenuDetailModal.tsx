@@ -57,9 +57,9 @@ export function MenuDetailModal({ meal, onClose, onAdd }: MenuDetailModalProps) 
       className={[
         "w-full overflow-hidden bg-[#fcfaf8] flex",
         "lg:flex-row lg:max-w-[900px] lg:max-h-[90dvh] lg:rounded-[20px]",
-        "lg:border lg:border-black lg:shadow-[0_24px_64px_rgba(0,0,0,0.18)]",
+        "lg:border lg:border-black",
         "max-lg:flex-col max-lg:h-[88dvh] max-lg:rounded-t-[16px]",
-        "max-lg:border-t max-lg:border-black max-lg:shadow-[0_-12px_32px_rgba(26,10,5,0.18)]",
+        "max-lg:border-t max-lg:border-black",
       ].join(" ")}
     >
       {renderMeal && <MenuDetailContent meal={renderMeal} onClose={onClose} onAdd={onAdd} />}

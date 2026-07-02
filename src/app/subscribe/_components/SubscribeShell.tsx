@@ -30,18 +30,18 @@ export function SubscribeShell({
            스케줄은 오른쪽에 sticky로 떠서 따라오는 창(플로팅 패널) ════════ */}
       <div className="hidden lg:block">
         <div
-          className="mx-auto grid w-full max-w-[1200px] items-start gap-8 px-4"
-          style={{ gridTemplateColumns: "1fr 420px" }}
+          className="mx-auto grid w-full max-w-[1200px] items-start gap-6 px-4"
+          style={{ gridTemplateColumns: "1fr 372px" }}
         >
           {/* LEFT: 메뉴 카탈로그 — 문서 흐름대로 전체 렌더 → 푸터는 목록 끝까지 스크롤해야 보인다 */}
           <div data-tutorial="menu" className="min-w-0">
             {menuColumn}
           </div>
 
-          {/* RIGHT: 구독 스케줄 — 스크롤을 따라오는 플로팅 패널 */}
+          {/* RIGHT: 구독 스케줄 — 스크롤을 따라오는 패널 (플랫: 그림자 대신 라인) */}
           <div
             data-tutorial="schedule"
-            className="sticky mt-4 mb-8 flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_16px_48px_rgba(26,10,5,0.14)]"
+            className="sticky mt-4 mb-8 flex flex-col overflow-hidden rounded-2xl border border-[rgba(26,10,5,0.14)] bg-white"
             style={{
               top: "calc(var(--header-area-h, var(--header-h, 64px)) + 16px)",
               height: "calc(100dvh - var(--header-area-h, var(--header-h, 64px)) - 32px)",
@@ -82,7 +82,7 @@ export function SubscribeShell({
           aria-modal="true"
           aria-label="구독 식단"
           aria-hidden={!sheetOpen}
-          className={`fixed bottom-0 left-0 right-0 z-[100] flex flex-col bg-white border-t border-black shadow-[0_-12px_32px_rgba(26,10,5,0.18)] transition-transform duration-300 ${
+          className={`fixed bottom-0 left-0 right-0 z-[100] flex flex-col bg-white border-t border-black transition-transform duration-300 ${
             sheetOpen ? "translate-y-0" : "translate-y-full"
           }`}
           style={{ height: "88dvh" }}

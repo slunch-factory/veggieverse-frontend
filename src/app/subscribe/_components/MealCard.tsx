@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { DisplayMenuData, ExcludeCategory } from "../_data/subscription";
 import { EXCLUDE_CATEGORIES } from "../_data/subscription";
 import { MealImage } from "./MealImage";
@@ -54,18 +54,19 @@ export function MealCard({ meal, draggingMealId, onAdd, onDetail, onDragStart, o
           draggable={false}
         />
 
-        {/* 장바구니 담기 — 카드 클릭(상세)과 분리된 전용 버튼 */}
+        {/* 스케줄에 추가 — 카드 클릭(상세)과 분리된 전용 버튼.
+            장바구니가 아니라 스케줄표를 채우는 동작이라 + 아이콘 사용 */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onAdd(meal);
           }}
-          aria-label={`${meal.displayName} 담기`}
-          title="식단에 담기"
-          className="absolute right-1.5 top-1.5 flex h-[30px] w-[30px] items-center justify-center rounded-full border border-black bg-[#dfff4f] text-black shadow-sm transition-colors hover:bg-black hover:text-[#dfff4f]"
+          aria-label={`${meal.displayName} 스케줄에 추가`}
+          title="스케줄에 추가"
+          className="absolute right-1.5 top-1.5 flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full border border-black bg-[#dfff4f] text-black transition-colors hover:bg-black hover:text-[#dfff4f]"
         >
-          <ShoppingCart size={15} strokeWidth={2} />
+          <Plus size={16} strokeWidth={2} />
         </button>
 
         {/* 찜(위시리스트) — 우하단 (담기 버튼·알레르기 라벨과 분리) */}

@@ -33,7 +33,7 @@ export function MealHoverTooltip({ hovered }: MealHoverTooltipProps) {
       <MealImage
         src={hovered.meal.image}
         alt={hovered.meal.displayName}
-        className="w-[160px] h-[160px] object-cover border border-black bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+        className="w-[160px] h-[160px] object-cover border border-black bg-white"
       />
     </div>,
     document.body,

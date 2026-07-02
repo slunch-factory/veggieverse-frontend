@@ -218,7 +218,7 @@ export function MobileMealWheel({
               >
                 <div
                   className={`w-[130px] h-[130px] rounded-full overflow-hidden border-solid bg-gray-100 pointer-events-none ${
-                    absPos < 0.5 ? "border-2 border-black shadow-xl" : "border border-gray-200"
+                    absPos < 0.5 ? "border-2 border-black" : "border border-gray-200"
                   }`}
                 >
                   <MealImage

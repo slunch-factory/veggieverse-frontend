@@ -1,5 +1,6 @@
 "use client";
 
+import { Search, X } from "lucide-react";
 import type {
   AllergyFilter,
   DietType,
@@ -14,6 +15,9 @@ import {
 } from "../_data/subscription";
 
 interface FilterSidebarProps {
+  /** 메뉴·재료 검색어 — 필터 영역 안의 검색창과 연결 */
+  query: string;
+  onQueryChange: (v: string) => void;
   dietType: DietType | null;
   nutritionGoals: NutritionGoal[];
   allergyFilters: AllergyFilter[];
@@ -61,6 +65,8 @@ function OptionRow({
  * 모바일 바텀시트는 기존 가로 드롭다운(FilterPanel)을 그대로 사용한다.
  */
 export function FilterSidebar({
+  query,
+  onQueryChange,
   dietType,
   nutritionGoals,
   allergyFilters,
@@ -79,7 +85,7 @@ export function FilterSidebar({
 
   return (
     <div className="no-scrollbar flex flex-col px-4 pt-4 lg:sticky lg:top-[calc(var(--header-area-h,var(--header-h))+16px)] lg:max-h-[calc(100dvh-var(--header-area-h,var(--header-h))-32px)] lg:overflow-y-auto">
-      <div className={`flex items-center justify-between pb-3.5 ${DIVIDER}`}>
+      <div className="flex items-center justify-between pb-3">
         <span className="text-[15px] font-bold">필터</span>
         {hasActive && (
           <button
@@ -90,6 +96,37 @@ export function FilterSidebar({
             초기화
           </button>
         )}
+      </div>
+
+      {/* 메뉴 검색 — 이름/재료 */}
+      <div className={`pb-4 ${DIVIDER}`}>
+        <div className="relative flex items-center">
+          <Search
+            size={13}
+            className="pointer-events-none absolute left-2.5"
+            style={{ color: "var(--neutral-stone)" }}
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder="메뉴·재료 검색"
+            aria-label="메뉴 검색"
+            className="h-[32px] w-full border border-[rgba(26,10,5,0.18)] bg-white pl-7 pr-7 text-[12px] text-black outline-none transition-colors focus:border-black"
+            style={{ borderRadius: "var(--r-btn)" }}
+          />
+          {query.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onQueryChange("")}
+              aria-label="검색어 지우기"
+              className="absolute right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center"
+              style={{ color: "var(--neutral-stone)" }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={`py-5 ${DIVIDER}`}>
