@@ -30,6 +30,9 @@ export default function AboutPage() {
     <div className="bg-[var(--cream)] min-h-screen">
       <AboutSectionNav />
 
+      {/* 콘텐츠 박스 — 홈(1200px)과 동일한 가로 폭으로 제한 */}
+      <div className="mx-auto w-full max-w-[1200px] border-x border-black">
+
       {/* 1. HERO */}
       <section className="border-b border-black">
         <div
@@ -246,6 +249,8 @@ export default function AboutPage() {
           </div>
         </Reveal>
       </section>
+
+      </div>
     </div>
   );
 }

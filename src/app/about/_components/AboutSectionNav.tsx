@@ -49,7 +49,7 @@ export function AboutSectionNav() {
       className="sticky z-40 bg-[var(--cream)] border-b border-black"
       style={{ top: "var(--header-area-h)" }}
     >
-      <div className="max-w-[1440px] mx-auto flex items-center h-12">
+      <div className="max-w-[1200px] mx-auto flex items-center h-12">
         {NAV_ITEMS.map((item, index) => {
           const isActive = active === item.id;
           return (
