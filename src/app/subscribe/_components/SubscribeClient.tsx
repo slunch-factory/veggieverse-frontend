@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type MenuData } from "../_data/subscription";
 import { postPlan } from "@/lib/api/subscription";
@@ -13,6 +13,7 @@ import { CheckoutBar } from "./CheckoutBar";
 import { MobileCheckoutBar } from "./MobileCheckoutBar";
 import { AllergyWarningModal } from "./AllergyWarningModal";
 import { SubscribeTutorial } from "./SubscribeTutorial";
+import { SubscribeInfoBanner } from "./SubscribeInfoBanner";
 
 interface SubscribeClientProps {
   menus: MenuData[];
@@ -22,6 +23,41 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
   const router = useRouter();
   const p = useSubscribePlanner(menus);
   const [showAllergyModal, setShowAllergyModal] = useState(false);
+
+  // 상단 안내 배너 — 세션 동안 닫으면 다시 뜨지 않는다. 배너 실측 높이를 shell 높이 계산에 넘긴다.
+  const [bannerOpen, setBannerOpen] = useState(true);
+  const [bannerH, setBannerH] = useState(0);
+  const bannerWrapRef = useRef<HTMLDivElement>(null);
+
+  // 실측 높이는 ResizeObserver 콜백(외부 구독)에서만 반영 — effect 본문 동기 setState 회피.
+  useEffect(() => {
+    const el = bannerWrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setBannerH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [bannerOpen]);
+
+  const closeBanner = useCallback(() => {
+    try {
+      sessionStorage.setItem("slunch-subscribe-info-seen", "1");
+    } catch {
+      /* 무시 */
+    }
+    setBannerOpen(false);
+  }, []);
+
+  // 세션 내 이미 닫았으면 마운트 후 숨김(초기 렌더는 true → SSR 하이드레이션 불일치 방지)
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("slunch-subscribe-info-seen")) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- 외부(sessionStorage) UI 선호도 1회 동기화
+        setBannerOpen(false);
+      }
+    } catch {
+      /* 무시 */
+    }
+  }, []);
 
   // 선택된 슬롯의 사람용 라벨(예: "3일차 점심") — 메뉴 영역 안내 배너에 사용
   const selectedSlotLabel = useMemo(() => {
@@ -139,20 +175,27 @@ export function SubscribeClient({ menus }: SubscribeClientProps) {
 
   return (
     <>
-      <SubscribeShell
-        menuColumn={menuColumn}
-        plannerTopColumn={plannerTopColumn}
-        plannerBottomColumn={plannerBottomColumn}
-        mobileBottomBar={(onOpenMenu) => (
-          <MobileCheckoutBar
-            totalPrice={p.totalPrice}
-            filledSlots={p.filledSlots}
-            totalSlots={p.totalSlots}
-            onSubmit={handleOrderSubmit}
-            onOpenMenu={onOpenMenu}
-          />
+      <div style={{ "--subscribe-banner-h": bannerOpen ? `${bannerH}px` : "0px" } as React.CSSProperties}>
+        {bannerOpen && (
+          <div ref={bannerWrapRef}>
+            <SubscribeInfoBanner onClose={closeBanner} />
+          </div>
         )}
-      />
+        <SubscribeShell
+          menuColumn={menuColumn}
+          plannerTopColumn={plannerTopColumn}
+          plannerBottomColumn={plannerBottomColumn}
+          mobileBottomBar={(onOpenMenu) => (
+            <MobileCheckoutBar
+              totalPrice={p.totalPrice}
+              filledSlots={p.filledSlots}
+              totalSlots={p.totalSlots}
+              onSubmit={handleOrderSubmit}
+              onOpenMenu={onOpenMenu}
+            />
+          )}
+        />
+      </div>
       <AllergyWarningModal
         open={showAllergyModal}
         onClose={() => setShowAllergyModal(false)}

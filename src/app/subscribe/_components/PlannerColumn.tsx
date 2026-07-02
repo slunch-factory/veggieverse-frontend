@@ -1,6 +1,7 @@
 "use client";
 
-import { Shuffle, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Maximize2, Shuffle, Trash2 } from "lucide-react";
 import type {
   DayPlan,
   DisplayMenuData,
@@ -8,6 +9,7 @@ import type {
 } from "../_data/subscription";
 import { MEALS_PER_DAY_OPTIONS } from "../_data/subscription";
 import { DayRow } from "./DayRow";
+import { ScheduleOverviewModal } from "./ScheduleOverviewModal";
 
 interface PlannerColumnProps {
   allDays: DayPlan[];
@@ -60,6 +62,7 @@ export function PlannerColumn({
 }: PlannerColumnProps) {
   const hasEmpty = allDays.some((d) => d.slots.some((s) => !mealPlan[s.slotId]));
   const hasSlots = allDays.some((d) => d.slots.length > 0);
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   return (
     <section
@@ -67,7 +70,7 @@ export function PlannerColumn({
       aria-label="구독 일정 플래너"
     >
       {/* 타이틀 행 — 랜덤 채우기(좌) / 전체 비우기(우) */}
-      <div className="relative shrink-0 h-[48px] px-5 flex items-center justify-center border-b border-black bg-white">
+      <div className="relative shrink-0 h-[48px] px-5 flex items-center justify-center border-b border-[rgba(26,10,5,0.1)] bg-white">
         <h2 className="text-[14px] font-normal tracking-[-0.005em] text-black">구독 스케쥴</h2>
         {hasSlots && (
           <button
@@ -104,8 +107,8 @@ export function PlannerColumn({
         )}
       </div>
 
-      {/* 끼니 선택 (플랜 길이는 7일 고정) */}
-      <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-b border-black bg-white overflow-x-auto no-scrollbar">
+      {/* 끼니 선택 (플랜 길이는 7일 고정) + 펼쳐서 보기 */}
+      <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-[rgba(26,10,5,0.1)] bg-white overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1">
           {MEALS_PER_DAY_OPTIONS.map((n) => (
             <SegButton key={n} active={n === mealsPerDay} onClick={() => onMealsPerDayChange(n)}>
@@ -113,6 +116,14 @@ export function PlannerColumn({
             </SegButton>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setOverviewOpen(true)}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[12px] text-[#9a928c] transition-colors hover:text-black"
+        >
+          <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.6} />
+          펼쳐서 보기
+        </button>
       </div>
 
       {/* 일정 리스트 — 1일차 ~ N일차 (카드형) */}
@@ -141,6 +152,14 @@ export function PlannerColumn({
           />
         ))}
       </div>
+
+      {/* 펼쳐서 보기 — 고른 식단 전체를 한눈에 */}
+      <ScheduleOverviewModal
+        open={overviewOpen}
+        onClose={() => setOverviewOpen(false)}
+        allDays={allDays}
+        mealPlan={mealPlan}
+      />
     </section>
   );
 }

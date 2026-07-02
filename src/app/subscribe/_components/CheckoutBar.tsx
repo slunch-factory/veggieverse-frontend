@@ -14,7 +14,7 @@ export function CheckoutBar({ totalPrice, filledSlots, totalSlots, onSubmit }: C
 
   return (
     <section
-      className="flex shrink-0 flex-col border-t border-black bg-[#fcfaf8] px-6 py-7"
+      className="flex shrink-0 flex-col border-t border-[rgba(26,10,5,0.1)] bg-white px-6 py-7"
       aria-label="결제"
     >
       <div className="flex flex-row items-center gap-[10px]">

@@ -41,7 +41,7 @@ const DIRECT_STEPS: Step[] = [
   },
 ];
 
-const DIM = "rgba(26,10,5,0.55)";
+const DIM = "rgba(0,0,0,0.4)";
 /**
  * 직접 진입 튜토리얼 노출 여부 — 모듈 메모리(페이지 로드당 1회).
  * 하드 리로드 시 모듈이 다시 평가되어 초기화 → 다시 노출.
@@ -135,16 +135,16 @@ export function SubscribeTutorial() {
           left: rect.left,
           width: rect.width,
           height: rect.height,
-          boxShadow: "inset 0 0 0 2px var(--point, #dcfd4a)",
+          boxShadow: "inset 0 0 0 2px #000",
           transition: "all 0.25s ease",
         }}
       />
 
-      {/* 안내 카드 — 강조 영역 중앙 */}
+      {/* 안내 카드 — 강조 영역 중앙 (영역이 화면보다 길면 뷰포트 안으로 클램프) */}
       <div
         className="fixed z-[152]"
         style={{
-          top: rect.top + rect.height / 2,
+          top: Math.max(160, Math.min(rect.top + rect.height / 2, vh - 180)),
           left: rect.left + rect.width / 2,
           transform: "translate(-50%, -50%)",
         }}

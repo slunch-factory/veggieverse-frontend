@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
 import type {
   AllergyFilter,
   DietType,
@@ -10,6 +11,7 @@ import type {
   SpicyPreference,
 } from "../_data/subscription";
 import { FilterPanel } from "./FilterPanel";
+import { FilterSidebar } from "./FilterSidebar";
 import { MealCard } from "./MealCard";
 import { MenuDetailModal } from "./MenuDetailModal";
 
@@ -67,16 +69,34 @@ export function MenuLibrary({
 
   const isSearching = q.length > 0;
 
-  return (
-    <aside className="flex flex-col h-full min-h-0" aria-label="구독 식단">
-      {/* 헤더 — 데스크톱 전용 (catalog-header) */}
-      <div className="shrink-0 bg-white">
-        <div className="hidden lg:flex h-[48px] px-5 items-center justify-center border-b border-black bg-white">
-          <h1 className="text-[14px] font-normal tracking-[-0.005em] text-black">구독 식단</h1>
-        </div>
+  // 페이지네이션 — 스토어와 동일하게 18개씩
+  const PAGE_SIZE = 18;
+  const [page, setPage] = useState(1);
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // 필터/검색으로 목록이 바뀌면 1페이지로 — 렌더 중 상태 보정 패턴
+  const [prevVisible, setPrevVisible] = useState(visibleMeals);
+  if (prevVisible !== visibleMeals) {
+    setPrevVisible(visibleMeals);
+    setPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(visibleMeals.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedMeals = visibleMeals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function handlePageChange(next: number) {
+    setPage(next);
+    // 데스크톱: 페이지 스크롤 / 모바일 시트: 내부 스크롤 — 각자 맨 위로
+    window.scrollTo(0, 0);
+    gridScrollRef.current?.scrollTo(0, 0);
+  }
+
+  return (
+    <aside className="flex flex-col h-full min-h-0 lg:h-auto" aria-label="구독 식단">
+      <div className="shrink-0">
         {/* 메뉴 검색 — 이름/재료 */}
-        <div className="px-5 py-3 border-b border-black bg-white">
+        <div className="px-5 pt-4 pb-3">
           <div className="relative flex items-center">
             <Search
               size={15}
@@ -106,24 +126,43 @@ export function MenuLibrary({
           </div>
         </div>
 
-        <FilterPanel
-          dietType={dietType}
-          nutritionGoals={nutritionGoals}
-          allergyFilters={allergyFilters}
-          spicyPreference={spicyPreference}
-          onDietTypeChange={onDietTypeChange}
-          onNutritionGoalToggle={onNutritionGoalToggle}
-          onAllergyFilterToggle={onAllergyFilterToggle}
-          onSpicyPreferenceChange={onSpicyPreferenceChange}
-          onResetFilters={onResetFilters}
-        />
+        {/* 모바일 바텀시트 전용 — 데스크톱은 왼쪽 필터 사이드바 사용 */}
+        <div className="lg:hidden">
+          <FilterPanel
+            dietType={dietType}
+            nutritionGoals={nutritionGoals}
+            allergyFilters={allergyFilters}
+            spicyPreference={spicyPreference}
+            onDietTypeChange={onDietTypeChange}
+            onNutritionGoalToggle={onNutritionGoalToggle}
+            onAllergyFilterToggle={onAllergyFilterToggle}
+            onSpicyPreferenceChange={onSpicyPreferenceChange}
+            onResetFilters={onResetFilters}
+          />
+        </div>
       </div>
 
-      {/* 메뉴 그리드 */}
-      <div className="no-scrollbar flex-1 min-h-0 overflow-y-auto bg-[#fcfaf8]">
+      <div className="flex flex-1 min-h-0">
+        {/* 데스크톱: 왼쪽 필터 사이드바 — 스토어와 동일한 컬리 스타일(무보더), 스크롤 시 sticky */}
+        <div className="hidden lg:block w-[176px] shrink-0 border-r border-[rgba(26,10,5,0.1)]">
+          <FilterSidebar
+            dietType={dietType}
+            nutritionGoals={nutritionGoals}
+            allergyFilters={allergyFilters}
+            spicyPreference={spicyPreference}
+            onDietTypeChange={onDietTypeChange}
+            onNutritionGoalToggle={onNutritionGoalToggle}
+            onAllergyFilterToggle={onAllergyFilterToggle}
+            onSpicyPreferenceChange={onSpicyPreferenceChange}
+            onResetFilters={onResetFilters}
+          />
+        </div>
+
+        {/* 메뉴 그리드 — 데스크톱은 페이지 스크롤, 모바일 시트는 내부 스크롤 */}
+        <div ref={gridScrollRef} className="no-scrollbar flex-1 min-h-0 overflow-y-auto bg-[#fcfaf8] lg:overflow-visible">
         {/* 선택된 슬롯 안내 배너 — 메뉴 카드를 클릭하면 이 슬롯에 담긴다 */}
         {selectedSlotLabel && (
-          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-black bg-[#dfff4f] px-4 py-2.5">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-[rgba(26,10,5,0.1)] bg-[#dfff4f] px-4 py-2.5 lg:top-[var(--header-area-h,var(--header-h))]">
             <span className="text-[12px] font-medium leading-snug text-black">
               <b>{selectedSlotLabel}</b> 칸에 담는 중 · 메뉴를 선택하세요
             </span>
@@ -165,20 +204,26 @@ export function MenuLibrary({
             </div>
           )
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 p-6">
-            {visibleMeals.map((meal) => (
-              <MealCard
-                key={meal.id}
-                meal={meal}
-                draggingMealId={draggingMealId}
-                onAdd={onAddMeal}
-                onDetail={setDetailMeal}
-                onDragStart={onDragStartMeal}
-                onDragEnd={onDragEndMeal}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 p-6 lg:gap-4 lg:py-4 lg:px-8">
+              {pagedMeals.map((meal) => (
+                <MealCard
+                  key={meal.id}
+                  meal={meal}
+                  draggingMealId={draggingMealId}
+                  onAdd={onAddMeal}
+                  onDetail={setDetailMeal}
+                  onDragStart={onDragStartMeal}
+                  onDragEnd={onDragEndMeal}
+                />
+              ))}
+            </div>
+            <div className="pb-8">
+              <Pagination page={currentPage} totalPages={totalPages} onChange={handlePageChange} />
+            </div>
+          </>
         )}
+        </div>
       </div>
 
       <MenuDetailModal

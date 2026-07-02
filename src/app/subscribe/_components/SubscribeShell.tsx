@@ -11,7 +11,9 @@ interface SubscribeShellProps {
   mobileWheel?: ReactNode;
 }
 
-const SHELL_HEIGHT = "calc(100dvh - var(--header-area-h, var(--header-h, 64px)))";
+// 상단 안내 배너가 있으면 그 높이(--subscribe-banner-h)만큼 빼서 배너+shell이 정확히 뷰포트를 채우게 한다.
+const SHELL_HEIGHT =
+  "calc(100dvh - var(--header-area-h, var(--header-h, 64px)) - var(--subscribe-banner-h, 0px))";
 
 export function SubscribeShell({
   menuColumn,
@@ -22,25 +24,32 @@ export function SubscribeShell({
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className="subscribe-shell w-full border-t border-black">
+    <div className="subscribe-shell w-full bg-[var(--bg-pale)]">
 
-      {/* ════════ 데스크톱 (lg+): 2열 그리드 ════════ */}
-      <div
-        className="hidden lg:grid"
-        style={{
-          gridTemplateColumns: "1fr 440px",
-          height: SHELL_HEIGHT,
-        }}
-      >
-        {/* LEFT: 메뉴 카탈로그 — 자체 스크롤 */}
-        <div data-tutorial="menu" className="border-r border-black overflow-y-auto no-scrollbar bg-[#fcfaf8] flex flex-col">
-          {menuColumn}
-        </div>
+      {/* ════════ 데스크톱 (lg+): 메뉴는 페이지 스크롤로 흐르고(스토어와 동일),
+           스케줄은 오른쪽에 sticky로 떠서 따라오는 창(플로팅 패널) ════════ */}
+      <div className="hidden lg:block">
+        <div
+          className="mx-auto grid w-full max-w-[1200px] items-start gap-8 px-4"
+          style={{ gridTemplateColumns: "1fr 420px" }}
+        >
+          {/* LEFT: 메뉴 카탈로그 — 문서 흐름대로 전체 렌더 → 푸터는 목록 끝까지 스크롤해야 보인다 */}
+          <div data-tutorial="menu" className="min-w-0">
+            {menuColumn}
+          </div>
 
-        {/* RIGHT: 캘린더 패널 — 내부 스크롤 */}
-        <div data-tutorial="schedule" className="flex flex-col bg-[#fcfaf8] overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-hidden">{plannerTopColumn}</div>
-          <div className="shrink-0">{plannerBottomColumn}</div>
+          {/* RIGHT: 구독 스케줄 — 스크롤을 따라오는 플로팅 패널 */}
+          <div
+            data-tutorial="schedule"
+            className="sticky mt-4 mb-8 flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_16px_48px_rgba(26,10,5,0.14)]"
+            style={{
+              top: "calc(var(--header-area-h, var(--header-h, 64px)) + 16px)",
+              height: "calc(100dvh - var(--header-area-h, var(--header-h, 64px)) - 32px)",
+            }}
+          >
+            <div className="flex-1 min-h-0 overflow-hidden">{plannerTopColumn}</div>
+            <div className="shrink-0">{plannerBottomColumn}</div>
+          </div>
         </div>
       </div>
 
