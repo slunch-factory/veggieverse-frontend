@@ -81,7 +81,14 @@ export function CouponCard({
             </button>
           )
         ) : (
-          <span className="t-caption flex-shrink-0" style={{ color: "var(--point, var(--ink))" }}>
+          <span
+            className="t-caption flex-shrink-0 px-2.5 py-1"
+            style={{
+              background: "var(--point)",
+              color: "var(--ink)",
+              borderRadius: "var(--r-pill)",
+            }}
+          >
             보유 중
           </span>
         )}
