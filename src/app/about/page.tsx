@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MapPin, Phone, Clock, ExternalLink, Mail, Award } from "lucide-react";
-import { AboutSectionNav } from "./_components/AboutSectionNav";
 import { Reveal } from "./_components/Reveal";
 import { AboutPlaceholder } from "./_components/AboutPlaceholder";
 
@@ -28,8 +27,6 @@ const LABEL = "text-[11px] text-[var(--warm-gray)] uppercase tracking-[0.1em] mb
 export default function AboutPage() {
   return (
     <div className="bg-[var(--cream)] min-h-screen">
-      <AboutSectionNav />
-
       {/* 콘텐츠 박스 — 홈(1200px)과 동일한 가로 폭으로 제한 */}
       <div className="mx-auto w-full max-w-[1200px] border-x border-black">
 
@@ -160,7 +157,7 @@ export default function AboutPage() {
       {/* 6. STORES */}
       <section id="stores" style={SECTION_OFFSET} className="border-b border-black">
         {/* 홍대점 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 border-b border-black">
+        <div className="grid grid-cols-1 md:grid-cols-2">
           <AboutPlaceholder label="홍대점 이미지" className="aspect-[4/3] md:border-r border-black" />
           <div className="p-10 md:p-11 flex flex-col justify-center">
             <Reveal>
@@ -189,40 +186,6 @@ export default function AboutPage() {
             </Reveal>
           </div>
         </div>
-        {/* 더현대 서울 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 border-b border-black">
-          <div className="p-10 md:p-12 flex flex-col justify-center md:border-r border-black order-2 md:order-1">
-            <Reveal>
-              <p className={LABEL}>Department Store</p>
-              <h2 className="text-[24px] mb-6">더현대 서울</h2>
-              <div className="flex flex-col gap-3 mb-6">
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-[var(--warm-gray)] mt-[2px] shrink-0" />
-                  <span className="text-[14px] text-[var(--charcoal)] leading-[1.6]">서울 영등포구 여의대로 108, 더현대 서울 B1</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-[var(--warm-gray)] shrink-0" />
-                  <span className="text-[14px] text-[var(--charcoal)]">10:30 - 20:00 (더현대 영업시간 따름)</span>
-                </div>
-              </div>
-              <p className="text-[14px] text-[var(--warm-gray)] leading-[1.7]">
-                지하 1층 푸드마켓 안에 있어요. 바로 먹을 수 있는 델리 위주예요.
-              </p>
-            </Reveal>
-          </div>
-          <AboutPlaceholder label="더현대점 이미지" className="aspect-[4/3] order-1 md:order-2" />
-        </div>
-        {/* 온라인 스토어 */}
-        <Reveal className="p-12 md:p-16 text-center">
-          <p className={LABEL}>Online</p>
-          <h2 className="text-[24px] mb-4">온라인 스토어</h2>
-          <p className="text-[14px] text-[var(--warm-gray)] leading-[1.7] mb-6">
-            매장에 못 오셔도 괜찮아요. 냉동 배송으로 전국 어디든 보내드려요.
-          </p>
-          <Link href="/store" className="inline-flex items-center gap-2 px-7 py-3.5 bg-black text-white text-[14px] transition-transform hover:-translate-y-0.5">
-            스토어 둘러보기 <ExternalLink className="w-4 h-4" />
-          </Link>
-        </Reveal>
       </section>
 
       {/* 7. B2B / OEM·FOB */}
