@@ -11,6 +11,7 @@ import {
   type DisplayMenuData,
 } from "../../_data/subscription";
 import { MealImage } from "../../_components/MealImage";
+import { DeliveryEstimate } from "@/components/common/DeliveryEstimate";
 import type { OrderData } from "../../_data/order";
 import type { CustomPlanResponse } from "@/lib/api/subscription";
 
@@ -155,6 +156,7 @@ export function OrderSummaryCard({
 
       {/* CTA */}
       <div className="px-5 pb-5">
+        <DeliveryEstimate className="mb-3" />
         <button
           type="button"
           disabled={!canSubmit}

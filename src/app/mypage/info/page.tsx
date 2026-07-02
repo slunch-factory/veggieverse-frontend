@@ -22,6 +22,7 @@ import {
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
 import { WithdrawConfirmModal } from "@/components/modals/WithdrawConfirmModal";
 import { AvatarCropModal } from "../_components/AvatarCropModal";
+import { PaymentMethodsSection } from "./_components/PaymentMethodsSection";
 import { useToast } from "@/components/ui/Toast";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/UserContext";
@@ -500,6 +501,8 @@ export default function EditProfilePage() {
               </span>
             )}
           </button>
+
+          <PaymentMethodsSection />
 
           <div className="text-center mt-1">
             <button

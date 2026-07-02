@@ -8,6 +8,7 @@ import { EXCLUDE_CATEGORIES } from "@/app/subscribe/_data/subscription";
 import { MealImage } from "@/app/subscribe/_components/MealImage";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { WishlistButton } from "@/components/ui/WishlistButton";
+import { DeliveryEstimate } from "@/components/common/DeliveryEstimate";
 
 const DUMMY_NUTRITION: MenuNutrition = { kcal: 520, protein: 18, carbs: 24, fat: 17 };
 
@@ -144,6 +145,8 @@ export function SubscribeDetailClient({ meal }: { meal: MenuData | null }) {
               }}
             />
           </div>
+
+          <DeliveryEstimate className="mt-4" />
 
           <Divider />
 

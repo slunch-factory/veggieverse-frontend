@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { KakaoPostcodeModal } from "@/components/modals/KakaoPostcodeModal";
+import { DeliveryEstimate } from "@/components/common/DeliveryEstimate";
 import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { createStoreOrder } from "@/lib/api/store-payment";
 
@@ -646,6 +647,7 @@ export function OrderClient() {
                       <span className="t-body" style={{ color: "var(--ink)" }}>합계</span>
                       <span className="t-h3" style={{ color: "var(--ink)" }}>{formatPrice(total)}원</span>
                     </div>
+                    <DeliveryEstimate className="mb-4" />
                     <button
                       type="button"
                       disabled={!canSubmit || submitting}

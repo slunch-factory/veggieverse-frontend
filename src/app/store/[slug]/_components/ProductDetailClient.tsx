@@ -9,8 +9,6 @@ import {
   Minus,
   Plus,
   ShoppingCart,
-  Truck,
-  Info,
   X,
 } from "lucide-react";
 import { type StoreProductDetail, categoryLabel, isStockSoldOut } from "@/lib/api/store";
@@ -21,6 +19,7 @@ import { ProductDetailTemplate } from "./ProductDetailTemplate";
 import { PRODUCT_TEMPLATE_DATA, parseDescTemplate } from "../_data/templateData";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { WishlistButton } from "@/components/ui/WishlistButton";
+import { DeliveryEstimate } from "@/components/common/DeliveryEstimate";
 import { ReviewSection } from "./ReviewSection";
 
 /* ------------------------------------------------------------------ */
@@ -275,14 +274,7 @@ export function ProductDetailClient({ product }: { product: StoreProductDetail }
             </div>
           </dl>
 
-          <div className="mt-4 flex items-start gap-2 p-3" style={{ border: "1px solid var(--ink)", borderRadius: "var(--r-btn)", background: "var(--bg-white)" }}>
-            <Truck size={18} className="mt-0.5 flex-shrink-0" style={{ color: "var(--neutral-blue)" }} />
-            <div style={{ fontSize: 14 }}>
-              <p style={{ color: "var(--ink)" }}>오늘출발 상품</p>
-              <p className="mt-0.5" style={{ color: "var(--ink-light)" }}>평일 14시 이전 주문 시 당일 출고됩니다.</p>
-            </div>
-            <Info size={14} className="ml-auto mt-0.5 flex-shrink-0" style={{ color: "var(--neutral-stone)" }} />
-          </div>
+          <DeliveryEstimate className="mt-4" />
 
           <div className="my-5" style={{ borderTop: "1px solid var(--ink)" }} />
 

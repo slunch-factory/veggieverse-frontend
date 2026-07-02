@@ -304,6 +304,50 @@ export async function cancelSubscriptionOrder(
   }
 }
 
+export interface BillingCard {
+  billingKeyId: number;
+  cardCompany?: string;
+  cardLast4?: string;
+  status?: string;
+}
+
+export interface BillingCardsResult {
+  /** ok=조회 성공(카드 0개일 수 있음) | not_ready=엔드포인트 미배포 | error=기타 실패 */
+  status: "ok" | "not_ready" | "error";
+  cards: BillingCard[];
+}
+
+/**
+ * 등록된 결제수단(빌링키/카드) 목록 — GET /subscription/billing/keys.
+ * 구독 정기결제용으로 발급된 빌링키를 카드 정보(카드사·끝4자리·상태)로 보여준다.
+ * 조회 엔드포인트가 아직 없으면 404/405/501 → status:"not_ready"로 구분해 UI가 "준비 중" 안내.
+ */
+export async function getBillingCards(): Promise<BillingCardsResult> {
+  const path = "/api/v1/veggieverse/subscription/billing/keys";
+  try {
+    const res = await apiFetch(path, { cache: "no-store", auth: "required" });
+    if (res.ok) {
+      const data = await res.json();
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.content)
+          ? data.content
+          : [];
+      return { status: "ok", cards: list as BillingCard[] };
+    }
+    if (res.status === 404 || res.status === 405 || res.status === 501) {
+      return { status: "not_ready", cards: [] };
+    }
+    if (res.status !== 401) {
+      console.error("[getBillingCards] HTTP error:", res.status, res.statusText);
+    }
+    return { status: "error", cards: [] };
+  } catch (err) {
+    console.error("[getBillingCards] fetch failed:", err);
+    return { status: "error", cards: [] };
+  }
+}
+
 export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
   // 브라우저 호출 — 프록시(apiFetch) 경유. 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.
   try {

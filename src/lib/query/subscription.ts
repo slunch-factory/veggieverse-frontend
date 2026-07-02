@@ -5,6 +5,7 @@ import {
   getOrderHistory,
   getOrderDetail,
   cancelSubscriptionOrder,
+  getBillingCards,
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
 import { queryKeys } from "./queryKeys";
@@ -42,6 +43,18 @@ export function useSubscriptionDetail(orderId: number | string | undefined) {
       return res;
     },
     enabled: !isLoadingSession && isLoggedIn && orderId != null && orderId !== "",
+  });
+}
+
+/**
+ * 등록된 결제수단(빌링키/카드) 목록. 세션 준비 + 로그인 시에만 활성화.
+ */
+export function useBillingCards() {
+  const { isLoggedIn, isLoadingSession } = useUser();
+  return useQuery({
+    queryKey: ["subscription", "billingCards"],
+    queryFn: getBillingCards,
+    enabled: !isLoadingSession && isLoggedIn,
   });
 }
 

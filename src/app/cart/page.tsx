@@ -9,6 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useUser } from "@/contexts/UserContext";
 import { deleteCartItem, getCart, syncCartAfterLogin, updateCartItemQuantity } from "@/lib/api/cart";
 import { LoginModal } from "@/components/modals/LoginModal";
+import { DeliveryEstimate } from "@/components/common/DeliveryEstimate";
 import { CartSkeleton } from "./_components/CartSkeleton";
 
 const SHIPPING_FEE = 3500;
@@ -339,6 +340,8 @@ export default function CartPage() {
                 <span className="t-body" style={{ color: "var(--ink)" }}>합계</span>
                 <span className="t-h3" style={{ color: "var(--ink)" }}>{formatPrice(orderTotal)}원</span>
               </div>
+
+              <DeliveryEstimate className="mb-4" />
 
               <button
                 className="btn btn-dark w-full btn-lg"
