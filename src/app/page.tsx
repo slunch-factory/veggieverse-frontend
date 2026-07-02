@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { X } from "lucide-react";
+import { X, List } from "lucide-react";
 import { PRODUCE_ITEMS } from "@/constants";
 import type { VegetableItem } from "@/types";
 import { HomeEditorialContent } from "@/components/home/HomeEditorialContent";
@@ -20,6 +20,8 @@ const DEFAULT_LABEL_COLOR = "#7CB342";
 interface FloatingItem extends VegetableItem {
   /** 구독 재료 마스터 id — autoPlan 추천 랭킹(ingredientIds)용. 로컬 폴백 재료는 없음. */
   ingredientId?: number;
+  /** 한글명 — 리스트 선택 UI 표기용(플로팅 라벨은 영문 name 사용). */
+  nameKo?: string;
   size: number;
   labelColor: string;
   labelOffsetX: number;
@@ -54,6 +56,7 @@ export default function HomePage() {
   const [selectedItems, setSelectedItems] = useState<FloatingItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [peekOpen, setPeekOpen] = useState(true);
+  const [listOpen, setListOpen] = useState(false);
   const prevSelectedCountRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -73,10 +76,11 @@ export default function HomePage() {
     const ingredients = await getSubscriptionIngredients();
     if (cancelled) return;
 
-    const source: { name: string; image: string; color: string; ingredientId?: number }[] =
+    const source: { name: string; nameKo?: string; image: string; color: string; ingredientId?: number }[] =
       ingredients.length > 0
         ? ingredients.map((ing) => ({
             name: ing.nameEn,
+            nameKo: ing.nameKo, // 리스트 선택 UI 표기용
             image: ing.imageUrl,
             color: LABEL_COLOR_BY_NAME[ing.nameEn.toLowerCase()] ?? DEFAULT_LABEL_COLOR,
             ingredientId: ing.id, // autoPlan 추천 랭킹용 재료 id 보존
@@ -90,7 +94,8 @@ export default function HomePage() {
     const cols = isMobile ? 6 : 8;
     // 재료 수가 늘어도 모든 아이템에 격자 칸이 배정되도록 행 수 보장.
     const rows = Math.max(isMobile ? 10 : 8, Math.ceil(source.length / cols));
-    const xMin = 5, xMax = 95, yMin = 5, yMax = 95;
+    // 세로는 하단 clipPath(inset bottom 0)에 잘리므로 상단 80%로 제한해 하단(텍스트/잘림)을 비운다.
+    const xMin = 5, xMax = 95, yMin = 5, yMax = 80;
     const cellW = (xMax - xMin) / cols;
     const cellH = (yMax - yMin) / rows;
 
@@ -118,6 +123,7 @@ export default function HomePage() {
         id: `produce-${index}`,
         ingredientId: produce.ingredientId,
         name: produce.name,
+        nameKo: produce.nameKo,
         x: pos.x,
         y: pos.y,
         scale,
@@ -140,13 +146,14 @@ export default function HomePage() {
         vx: 0,
         vy: 0,
         moveX1: (Math.random() - 0.5) * 120,
-        moveY1: (Math.random() - 0.5) * 120,
+        // 세로 이동은 낮아진 히어로에서 하단 잘림을 피하려 가로보다 작게 유지
+        moveY1: (Math.random() - 0.5) * 70,
         moveX2: (Math.random() - 0.5) * 150,
-        moveY2: (Math.random() - 0.5) * 150,
+        moveY2: (Math.random() - 0.5) * 80,
         moveX3: (Math.random() - 0.5) * 130,
-        moveY3: (Math.random() - 0.5) * 130,
+        moveY3: (Math.random() - 0.5) * 70,
         moveX4: (Math.random() - 0.5) * 100,
-        moveY4: (Math.random() - 0.5) * 100,
+        moveY4: (Math.random() - 0.5) * 55,
         floatDuration: 10 + Math.random() * 8,
         floatDelay: Math.random() * 4,
       };
@@ -205,6 +212,21 @@ export default function HomePage() {
     setSelectedItems((prev) => prev.filter((i) => i.id !== itemId));
   }, []);
 
+  // 리스트 모달이 열려 있는 동안 배경 스크롤 잠금 + ESC 닫기
+  useEffect(() => {
+    if (!listOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setListOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [listOpen]);
+
   return (
     <div className="min-h-screen w-full bg-white overflow-x-hidden">
       {/* ════════════════════════════════════════════
@@ -219,7 +241,8 @@ export default function HomePage() {
           // 높이만큼 넘쳐 하단 텍스트/버튼이 잘리던 버그)
           // 또한 고정 height 대신 minHeight만 둔다 — 짧은 뷰포트에서 텍스트가 섹션을 넘으면
           // clipPath(하단 0)에 잘리던 문제를 막기 위해 콘텐츠에 맞춰 늘어나게 한다.
-          minHeight: "calc(100dvh - var(--header-area-h, var(--header-h, 64px)))",
+          // 재료 세로 공간을 넉넉히 — 95dvh. 하단에 영상 패널이 살짝 걸쳐 스크롤을 유도한다.
+          minHeight: "calc(95dvh - var(--header-area-h, var(--header-h, 64px)))",
           clipPath: "inset(-40px -50px 0 -50px)",
         }}
       >
@@ -323,7 +346,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-gray-50/80 mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(15px,2vw,20px)] leading-[1.6] tracking-[-0.01em] max-w-[700px] px-4 md:px-10 text-[#C8A000]"
+          className="bg-gray-50/80 mb-4 md:mb-6 z-30 relative text-center mx-auto text-[clamp(17px,2.2vw,22px)] font-bold leading-[1.5] tracking-[-0.01em] max-w-[700px] px-4 md:px-10 text-[#B8860B]"
         >
           &ldquo;뭐 먹지?&rdquo; 고민은 내려놓고, 나에게 맞는 한 끼를 발견하세요.
           <br className="hidden md:inline" />
@@ -335,7 +358,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-gray-50/80 text-stone-600 mb-8 md:mb-12 z-30 relative text-center mx-auto text-[clamp(13px,1.6vw,16px)] leading-[1.7] md:leading-[1.8] tracking-[-0.01em] max-w-[800px] px-4 md:px-10"
+          className="bg-gray-50/80 text-stone-700 font-medium mb-8 md:mb-12 z-30 relative text-center mx-auto text-[clamp(14px,1.7vw,17px)] leading-[1.7] md:leading-[1.8] tracking-[-0.01em] max-w-[800px] px-4 md:px-10"
         >
         슬런치는 맛있는 한 끼가 거창할 필요 없다고 믿습니다. 바쁜 하루 속에서도 나를 위한 시간, 천천히 음미하는 식사. 우리는 당신의 취향과 라이프스타일에 맞춰 매일의 식탁을 설계합니다.<br className="hidden md:inline" />건강을 위해 맛을 포기하거나, 맛을 위해 건강을 타협하지 않아도 됩니다. 그냥 맛있게 먹었을 뿐인데,<br className="hidden md:inline" />몸도 마음도 가벼워지는 경험. 슬런치가 그 테이블을 열어드릴게요.
         </motion.p>
@@ -426,7 +449,104 @@ export default function HomePage() {
             </div>
           </motion.div>
         )}
+
+        {/* 리스트로 재료 선택 열기 — 오른쪽 아래 */}
+        <button
+          type="button"
+          onClick={() => setListOpen(true)}
+          aria-label="재료를 리스트에서 선택"
+          className="absolute bottom-4 right-4 z-[41] inline-flex items-center gap-2 rounded-full border border-[#250a00] bg-white/90 px-4 py-2.5 text-[13px] text-[#250a00] shadow-[0_6px_20px_rgba(37,10,0,0.12)] backdrop-blur-[4px] transition-colors hover:bg-[#DCFD4A] cursor-pointer"
+        >
+          <List size={16} strokeWidth={2} />
+          <span>리스트로 선택</span>
+        </button>
       </section>
+
+      {/* 재료 리스트 선택 모달 — 이름(한글)으로도 재료를 고를 수 있다. 선택 로직은 플로팅과 공유. */}
+      {listOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="재료 리스트 선택"
+          className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"
+        >
+          <button
+            type="button"
+            aria-label="닫기"
+            onClick={() => setListOpen(false)}
+            className="absolute inset-0 z-0 cursor-default bg-black/40 backdrop-blur-[2px]"
+          />
+          <div className="relative z-[1] flex max-h-[82vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] sm:max-h-[72vh] sm:max-w-[560px] sm:rounded-2xl">
+            {/* 헤더 */}
+            <div className="flex shrink-0 items-center justify-between border-b border-[#eee] px-5 py-4">
+              <div>
+                <p className="text-[15px] font-bold text-[#250a00]">재료 선택</p>
+                <p className="text-[12px] text-stone-500">
+                  끌리는 재료 3가지를 골라주세요 · {selectedItems.length}/3
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setListOpen(false)}
+                aria-label="닫기"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[#250a00] hover:bg-black/5"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* 리스트 */}
+            <div className="flex-1 overflow-y-auto p-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {items.map((item) => {
+                  const isSelected = selectedItems.some((i) => i.id === item.id);
+                  const disabled = !isSelected && selectedItems.length >= 3;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleItemClick(item)}
+                      disabled={disabled}
+                      aria-pressed={isSelected}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                        isSelected
+                          ? "border-[#250a00] bg-[#DCFD4A]"
+                          : "border-[#e5e5e5] bg-white hover:border-[#250a00]"
+                      } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
+                    >
+                      <span className="relative h-8 w-8 shrink-0">
+                        <Image
+                          src={item.imageUrl}
+                          alt=""
+                          fill
+                          sizes="32px"
+                          className="object-contain"
+                          draggable={false}
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-[#250a00]">
+                        {item.nameKo ?? item.name}
+                      </span>
+                      {isSelected && <span className="shrink-0 text-[13px] text-[#250a00]">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 푸터 */}
+            <div className="shrink-0 border-t border-[#eee] p-3">
+              <button
+                type="button"
+                onClick={() => setListOpen(false)}
+                className="w-full cursor-pointer rounded-xl bg-[#8C451D] py-3 text-[14px] text-white transition-colors hover:bg-[#6B3514]"
+              >
+                {selectedItems.length > 0 ? `${selectedItems.length}개 선택 완료` : "닫기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <HomeEditorialContent />
     </div>

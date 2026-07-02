@@ -100,17 +100,16 @@ export function Header({ showTopBanner = false }: HeaderProps) {
             <Link
               href="/cart"
               className="relative w-10 h-10 flex items-center justify-center"
-              aria-label={`장바구니${totalCount > 0 ? ` (${totalCount}개 담김)` : ""}`}
+              aria-label={`장바구니 (${totalCount}개 담김)`}
             >
               <ShoppingCart size={22} strokeWidth={1.5} color="#000" />
-              {totalCount > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute top-1 right-1 min-w-4.5 h-4.5 px-1 rounded-full bg-[#FF3B30] text-white text-[10px] font-bold flex items-center justify-center leading-none border-[1.5px] border-[#DCFD4A]"
-                >
-                  {totalCount > 99 ? "99+" : totalCount}
-                </span>
-              )}
+              {/* 비어 있어도(비로그인 포함) 0을 노출 */}
+              <span
+                aria-hidden="true"
+                className="absolute top-1 right-1 min-w-4.5 h-4.5 px-1 rounded-full bg-[#FF3B30] text-white text-[10px] font-bold flex items-center justify-center leading-none border-[1.5px] border-[#DCFD4A]"
+              >
+                {totalCount > 99 ? "99+" : totalCount}
+              </span>
             </Link>
 
             {/* User Profile */}

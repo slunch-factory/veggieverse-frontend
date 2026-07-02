@@ -148,7 +148,9 @@ function Label({ children, light = false }: { children: ReactNode; light?: boole
   );
 }
 
-// ── 풀블리드 히어로 (패럴랙스) ───────────────────────────────────────
+// ── 프레임 히어로 (패럴랙스) ─────────────────────────────────────────
+// 풀블리드로 히어로 바로 아래 붙이면 떠다니는 과일 히어로와 경계 없이 이어져
+// 부자연스러웠다. 바깥 여백 + 라운드/그림자로 감싼 "별도 화면"처럼 띄운다.
 
 function ParallaxHero({ src, children }: { src: string; children: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
@@ -161,27 +163,30 @@ function ParallaxHero({ src, children }: { src: string; children: ReactNode }) {
   return (
     <section
       ref={ref}
-      className="relative flex w-full min-h-[min(88svh,920px)] items-center justify-center overflow-hidden"
+      className="w-full px-[clamp(16px,5vw,64px)] pt-[clamp(8px,2vw,24px)] pb-[clamp(12px,3vw,32px)]"
     >
-      <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden>
-        <motion.div
-          className="absolute left-0 w-full will-change-transform"
-          style={{ top: "-15%", height: "130%", y }}
-        >
-          <video
-            src={src}
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-          />
-        </motion.div>
-      </div>
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/75 via-black/52 to-black/68" aria-hidden />
-      <div className="page-container relative z-10 flex w-full flex-col items-center px-5 py-24 md:py-32 text-center">
-        {children}
+      {/* 영상 패널 — 라운드/오버플로 처리해 페이지 위에 놓인 하나의 화면처럼 보이게 */}
+      <div className="relative mx-auto flex w-full max-w-[1200px] min-h-[min(58svh,600px)] items-center justify-center overflow-hidden rounded-[clamp(20px,3vw,36px)] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.45)]">
+        <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden>
+          <motion.div
+            className="absolute left-0 w-full will-change-transform"
+            style={{ top: "-15%", height: "130%", y }}
+          >
+            <video
+              src={src}
+              className="h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+            />
+          </motion.div>
+        </div>
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/75 via-black/52 to-black/68" aria-hidden />
+        <div className="page-container relative z-10 flex w-full flex-col items-center px-5 py-24 md:py-32 text-center">
+          {children}
+        </div>
       </div>
     </section>
   );
@@ -275,7 +280,7 @@ const FEATURES = [
 function Features() {
   return (
     <section
-      className="py-20 md:py-28"
+      className="pt-10 md:pt-14 pb-20 md:pb-28"
       style={{ background: "var(--bg-pale)", borderBottom: `1px solid ${HAIRLINE}` }}
     >
       <div className="page-container">
@@ -415,7 +420,7 @@ function MenuShowcase() {
 
   return (
     <section
-      className="py-20 md:py-28"
+      className="pt-10 md:pt-14 pb-20 md:pb-28"
       style={{ background: "var(--bg-white)", borderBottom: `1px solid ${HAIRLINE}` }}
     >
       {/* 헤더 */}
@@ -522,7 +527,7 @@ const STEPS = [
 function HowItWorks() {
   return (
     <section
-      className="relative py-20 md:py-28 overflow-hidden"
+      className="relative pt-10 md:pt-14 pb-20 md:pb-28 overflow-hidden"
       style={{ background: "var(--bg-pale)", borderBottom: `1px solid ${HAIRLINE}` }}
     >
       <div className="page-container">
@@ -531,7 +536,7 @@ function HowItWorks() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.3 }}
-          className="mb-12 md:mb-20"
+          className="mb-8 md:mb-12"
         >
           <motion.div variants={fadeUp}><Label>How it works</Label></motion.div>
           <motion.h2
@@ -550,7 +555,7 @@ function HowItWorks() {
         {/* 행은 풀블리드를 위해 page-container 밖(섹션 폭 = 100vw)에 둔다 */}
       </div>
 
-      <div className="flex flex-col gap-16 md:gap-28">
+      <div className="flex flex-col gap-10 md:gap-16">
         {STEPS.map((s, i) => {
           const blockLeft = i % 2 === 0;
           const slide = blockLeft ? slideFromLeft : slideFromRight;
@@ -620,7 +625,7 @@ function HowItWorks() {
 function Testimonial() {
   return (
     <section
-      className="py-20 md:py-28"
+      className="pt-10 md:pt-14 pb-20 md:pb-28"
       style={{ background: "var(--bg-white)", borderBottom: `1px solid ${HAIRLINE}` }}
     >
       <div className="page-container">
@@ -689,7 +694,7 @@ function Testimonial() {
 
 function FinalCTA() {
   return (
-    <section className="py-24 md:py-32" style={{ background: INK }}>
+    <section className="pt-10 md:pt-14 pb-10 md:pb-14" style={{ background: INK }}>
       <div className="page-container">
         <motion.div
           variants={stagger}
@@ -766,7 +771,9 @@ function FinalCTA() {
 
 export function HomeEditorialContent() {
   return (
-    <div className="w-full overflow-x-hidden">
+    // 히어로(떠다니는 과일) 아래 에디토리얼 영역은 폭을 좁혀 하나의 중앙 컬럼으로.
+    // 영상 패널과 같은 max-w-[1200px]로 맞춰, 각 섹션의 풀블리드 배경도 이 폭 안으로 함께 축소된다.
+    <div className="mx-auto w-full max-w-[1200px] overflow-x-hidden">
       <HeroBrand />
       <Features />
       <MenuShowcase />
