@@ -166,7 +166,7 @@ function ParallaxHero({ src, children }: { src: string; children: ReactNode }) {
       className="w-full px-[clamp(16px,5vw,64px)] pt-[clamp(8px,2vw,24px)] pb-[clamp(12px,3vw,32px)]"
     >
       {/* 영상 패널 — 라운드/오버플로 처리해 페이지 위에 놓인 하나의 화면처럼 보이게 */}
-      <div className="relative mx-auto flex w-full max-w-[1200px] min-h-[min(58svh,600px)] items-center justify-center overflow-hidden rounded-[clamp(20px,3vw,36px)] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.45)]">
+      <div className="relative mx-auto flex w-full max-w-[1200px] min-h-[min(58svh,600px)] items-center justify-center overflow-hidden rounded-[clamp(20px,3vw,36px)] border border-[rgba(26,10,5,0.14)]">
         <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden>
           <motion.div
             className="absolute left-0 w-full will-change-transform"

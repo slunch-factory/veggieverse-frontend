@@ -166,7 +166,6 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
                   background: "var(--ink)",
                   borderRadius: "var(--r-btn)",
                   padding: "4px 8px",
-                  boxShadow: "0 2px 8px rgba(37, 10, 0, 0.35)",
                 }}
               >
                 SOLD OUT
@@ -185,7 +184,6 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
                 background: "var(--alert-red)",
                 borderRadius: "var(--r-btn)",
                 padding: "4px 8px",
-                boxShadow: "0 2px 8px rgba(37, 10, 0, 0.25)",
               }}
             >
               품절임박
