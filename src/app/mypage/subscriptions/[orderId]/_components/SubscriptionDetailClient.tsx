@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -10,16 +10,31 @@ import {
   type OrderDetailResponse,
 } from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
-import { useSubscriptionDetail } from "@/lib/query/subscription";
+import { useSubscriptionDetail, useCancelSubscription } from "@/lib/query/subscription";
 import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
+import { Modal } from "@/components/ui/Modal";
 import { WEEKDAY_KO } from "@/app/subscribe/_data/subscription";
 import {
+  CanceledBadge,
   formatDate,
   formatDateTime,
+  LifecycleBadge,
+  type LifecyclePhase,
   PriceRow,
   SectionCard,
   SummaryRow,
 } from "@/app/mypage/_components/order-ui";
+
+/** 시작/종료 날짜에서 진행 단계 파생 (구독 목록과 동일 규칙). */
+function derivePhase(startISO: string, endISO: string): LifecyclePhase {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  if (today < start) return "준비중";
+  if (today > end) return "종료됨";
+  return "진행중";
+}
 
 const CYCLE_LABEL: Record<string, string> = {
   WEEKLY: "주 1회",
@@ -113,6 +128,11 @@ export function SubscriptionDetailClient() {
     [detail],
   );
 
+  // 취소 관련 훅은 early return보다 위에 있어야 한다(훅 규칙).
+  const cancelMutation = useCancelSubscription(orderId);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState<string | null>(null);
+
   if (loading) {
     return <DetailSkeleton />;
   }
@@ -135,6 +155,21 @@ export function SubscriptionDetailClient() {
   const discount = data.discountInfo?.discountAmount ?? 0;
   const couponName = data.discountInfo?.couponName;
 
+  const isCanceled = data.status === "CANCELED" || data.status === "PARTIAL_CANCELED";
+  const phase = derivePhase(data.startDate, data.endDate);
+  const canCancel = !isCanceled && phase !== "종료됨";
+
+  const handleCancel = async () => {
+    setCancelMsg(null);
+    const res = await cancelMutation.mutateAsync({ effective: "END_OF_TERM" });
+    if (res.ok) {
+      setCancelOpen(false);
+    } else {
+      // not_ready(엔드포인트 미배포)/error 모두 모달 안에서 안내
+      setCancelMsg(res.message ?? "구독 취소에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[720px]">
       {/* 백 링크 */}
@@ -156,7 +191,10 @@ export function SubscriptionDetailClient() {
 
       {/* 주문 헤더 */}
       <header className="mb-8">
-        <h1 className="t-h2 mb-2" style={{ color: "var(--ink)" }}>구독 상세</h1>
+        <div className="mb-2 flex items-center gap-2.5">
+          <h1 className="t-h2" style={{ color: "var(--ink)" }}>구독 상세</h1>
+          {isCanceled ? <CanceledBadge /> : <LifecycleBadge phase={phase} />}
+        </div>
         <p className="t-small" style={{ color: "var(--ink-light)" }}>
           {data.orderNumber}
         </p>
@@ -224,6 +262,64 @@ export function SubscriptionDetailClient() {
           </div>
         </div>
       </SectionCard>
+
+      {/* 구독 취소 */}
+      {isCanceled ? (
+        <p className="mb-4 text-center t-small" style={{ color: "var(--neutral-stone)" }}>
+          이 구독은 취소되었습니다.
+        </p>
+      ) : canCancel ? (
+        <div className="mb-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => { setCancelMsg(null); setCancelOpen(true); }}
+            className="rounded-[var(--r-btn)] border px-6 py-3 text-[14px] font-medium transition-colors"
+            style={{ borderColor: "var(--alert-red)", color: "var(--alert-red)", background: "transparent", cursor: "pointer" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--alert-red)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--alert-red)"; }}
+          >
+            구독 취소하기
+          </button>
+        </div>
+      ) : null}
+
+      {/* 취소 확인 모달 */}
+      <Modal
+        isOpen={cancelOpen}
+        onClose={() => { if (!cancelMutation.isPending) setCancelOpen(false); }}
+        ariaLabel="구독 취소 확인"
+        className="w-full max-w-[400px] rounded-[16px] bg-white p-6"
+      >
+        <h2 className="t-h3 mb-3" style={{ color: "var(--ink)" }}>구독을 취소하시겠어요?</h2>
+        <p className="t-small mb-5" style={{ color: "var(--ink-light)", lineHeight: 1.7 }}>
+          취소하면 <b>다음 회차부터 결제·배송이 중단</b>됩니다.
+          이미 결제된 회차는 구독 기간까지 그대로 이용하실 수 있어요.
+        </p>
+        {cancelMsg && (
+          <p className="t-small mb-4" style={{ color: "var(--alert-red)" }}>
+            {cancelMsg}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCancelOpen(false)}
+            disabled={cancelMutation.isPending}
+            className="btn btn-ghost btn-md flex-1"
+          >
+            돌아가기
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={cancelMutation.isPending}
+            className="btn btn-md flex-1"
+            style={{ background: "var(--alert-red)", color: "#fff", border: "1px solid var(--alert-red)" }}
+          >
+            {cancelMutation.isPending ? "취소 중…" : "구독 취소"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

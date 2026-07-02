@@ -183,17 +183,22 @@ export function StatusPill({
 
 export type LifecyclePhase = "준비중" | "진행중" | "종료됨";
 
-const PHASE_DOT: Record<LifecyclePhase, string> = {
-  준비중: "var(--neutral-lavender)",
-  진행중: "var(--neutral-blue)",
-  종료됨: "var(--neutral-stone)",
+// 상태별 채움색 — 한눈에 구분되도록. 진행중=초록, 준비중=파랑, 종료됨=회색.
+const PHASE_STYLE: Record<LifecyclePhase, { bg: string; color: string; border: string }> = {
+  준비중: { bg: "var(--neutral-blue)", color: "var(--ink)", border: "var(--neutral-blue)" },
+  진행중: { bg: "var(--primary)", color: "#ffffff", border: "var(--primary)" },
+  종료됨: { bg: "var(--neutral-stone)", color: "var(--ink)", border: "var(--neutral-stone)" },
 };
 
-/** 구독 진행 상태 배지 (시작/종료 날짜에서 파생). 아웃라인 스타일. */
+/** 구독 진행 상태 배지 (시작/종료 날짜에서 파생). 상태별 채움색. */
 export function LifecycleBadge({ phase }: { phase: LifecyclePhase }) {
-  return (
-    <StatusPill bg="transparent" color="var(--ink)" border="var(--ink)" dot={PHASE_DOT[phase]} label={phase} />
-  );
+  const s = PHASE_STYLE[phase];
+  return <StatusPill bg={s.bg} color={s.color} border={s.border} label={phase} />;
+}
+
+/** 구독 취소 상태 배지 — 빨강 채움. */
+export function CanceledBadge() {
+  return <StatusPill bg="var(--alert-red)" color="#ffffff" border="var(--alert-red)" label="취소됨" />;
 }
 
 export type StoreFulfillmentLabel =

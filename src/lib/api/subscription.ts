@@ -262,6 +262,48 @@ export async function getOrderDetail(
   }
 }
 
+export interface CancelSubscriptionResult {
+  ok: boolean;
+  /** ok=false 원인: not_ready(엔드포인트 미배포 404/405/501) | error */
+  reason?: "not_ready" | "error";
+  message?: string;
+}
+
+/**
+ * 구독 취소 — POST /subscription/orders/{orderId}/cancel.
+ * 정기결제(빌링) 구독이라 "환불"이 아니라 다음 회차 자동결제 중단이 본질이다.
+ * `effective` 기본 END_OF_TERM: 이미 결제한 회차는 이용하고 다음 회차부터 중단.
+ * 백엔드 엔드포인트가 아직 없으면 404/405/501 → reason:"not_ready"로 구분해 UI가 "준비 중" 안내를 띄운다.
+ */
+export async function cancelSubscriptionOrder(
+  orderId: number | string,
+  opts?: { effective?: "IMMEDIATE" | "END_OF_TERM"; reason?: string },
+): Promise<CancelSubscriptionResult> {
+  const path = `/api/v1/veggieverse/subscription/orders/${encodeURIComponent(String(orderId))}/cancel`;
+  try {
+    const res = await apiFetch(path, {
+      method: "POST",
+      body: {
+        effective: opts?.effective ?? "END_OF_TERM",
+        ...(opts?.reason ? { reason: opts.reason } : {}),
+      },
+      auth: "required",
+    });
+    if (res.ok) return { ok: true };
+    if (res.status === 404 || res.status === 405 || res.status === 501) {
+      return { ok: false, reason: "not_ready", message: "구독 취소 기능이 아직 준비 중입니다." };
+    }
+    const body = await res.text().catch(() => "");
+    if (res.status !== 401) {
+      console.error("[cancelSubscriptionOrder] HTTP error:", res.status, res.statusText, body);
+    }
+    return { ok: false, reason: "error", message: "구독 취소에 실패했습니다. 잠시 후 다시 시도해 주세요." };
+  } catch (err) {
+    console.error("[cancelSubscriptionOrder] fetch failed:", err);
+    return { ok: false, reason: "error", message: "네트워크 오류로 구독 취소에 실패했습니다." };
+  }
+}
+
 export async function postPlan(items: PlanItem[]): Promise<CustomPlanResponse | null> {
   // 브라우저 호출 — 프록시(apiFetch) 경유. 직접 fetch는 HTTPS↔HTTP 혼합콘텐츠/CORS로 차단됨.
   try {

@@ -9,6 +9,7 @@ import { useSubscriptionHistory } from "@/lib/query/subscription";
 import { SubscriptionsSkeleton } from "./_components/SubscriptionsSkeleton";
 import {
   CardDivider,
+  CanceledBadge,
   Eyebrow,
   formatDate,
   type LifecyclePhase,
@@ -108,6 +109,7 @@ export default function MySubscriptionsPage() {
 function SubscriptionCard({ item }: { item: OrderHistoryItem }) {
   const router = useRouter();
   const phase = deriveStatus(item.startDate, item.endDate);
+  const isCanceled = item.status === "CANCELED" || item.status === "PARTIAL_CANCELED";
   const progress = deriveProgress(item.startDate, item.endDate);
   const itemCount = item.products.reduce((sum, p) => sum + p.quantity, 0);
 
@@ -116,7 +118,7 @@ function SubscriptionCard({ item }: { item: OrderHistoryItem }) {
       <div className="px-5 pt-4 pb-3">
         <Eyebrow>구독 · {item.orderNumber}</Eyebrow>
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          <LifecycleBadge phase={phase} />
+          {isCanceled ? <CanceledBadge /> : <LifecycleBadge phase={phase} />}
         </div>
         <p className="t-h3 mt-2.5" style={{ color: "var(--ink)" }}>
           {formatDate(item.startDate)} – {formatDate(item.endDate)}
@@ -128,7 +130,7 @@ function SubscriptionCard({ item }: { item: OrderHistoryItem }) {
           </span>
         </div>
 
-        {phase === "진행중" && (
+        {phase === "진행중" && !isCanceled && (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-1.5">
               <span className="t-caption" style={{ color: "var(--ink-light)" }}>

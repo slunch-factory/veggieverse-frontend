@@ -1,7 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getOrderHistory, getOrderDetail } from "@/lib/api/subscription";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getOrderHistory,
+  getOrderDetail,
+  cancelSubscriptionOrder,
+} from "@/lib/api/subscription";
 import { useUser } from "@/contexts/UserContext";
 import { queryKeys } from "./queryKeys";
 
@@ -38,5 +42,22 @@ export function useSubscriptionDetail(orderId: number | string | undefined) {
       return res;
     },
     enabled: !isLoadingSession && isLoggedIn && orderId != null && orderId !== "",
+  });
+}
+
+/**
+ * 구독 취소 뮤테이션. 성공(ok) 시 해당 상세 + 목록 캐시를 무효화해 상태(취소됨)를 반영한다.
+ * cancelSubscriptionOrder는 실패를 throw하지 않고 결과 객체로 반환하므로 호출부가 res.ok로 분기한다.
+ */
+export function useCancelSubscription(orderId: number | string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (opts?: { effective?: "IMMEDIATE" | "END_OF_TERM"; reason?: string }) =>
+      cancelSubscriptionOrder(orderId, opts),
+    onSuccess: (res) => {
+      if (!res.ok) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscription.orderDetail(orderId) });
+      queryClient.invalidateQueries({ queryKey: ["subscription", "orderHistory"] });
+    },
   });
 }
